@@ -72,8 +72,8 @@ describe('TopNavbar', () => {
   })
 
   it('场景3: 点击Logo跳转首页', async () => {
-    // Given: 渲染组件
-    router.push('/publish')
+    // Given: 渲染组件并设置路由到 /publish
+    await router.push('/publish')
     await router.isReady()
 
     render(TopNavbar, {
@@ -82,13 +82,18 @@ describe('TopNavbar', () => {
       }
     })
 
+    // 验证当前在 /publish 路径
+    expect(router.currentRoute.value.path).toBe('/publish')
+
     // When: 点击Logo
     const logo = screen.getByText('Blog Circle')
     await logo.click()
 
-    // Then: 应该跳转到首页
+    // Then: 应该跳转到首页 (/home，因为 / 会重定向到 /home)
     await router.isReady()
-    expect(router.currentRoute.value.path).toBe('/')
+    // 等待路由导航完成
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(router.currentRoute.value.path).toBe('/home')
   })
 
   it('场景4: 显示Blog Circle Logo', () => {
