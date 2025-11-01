@@ -43,14 +43,37 @@ test.describe('发布动态场景', () => {
     await expect(contentInput).toBeVisible({ timeout: 5000 })
     await contentInput.fill(testContent)
 
-    // When: 点击发布按钮
+    // When: 点击发布按钮（在点击前等待 API 响应）
     const submitButton = page.locator('button:has-text("发布")')
     await expect(submitButton).toBeVisible()
     await expect(submitButton).toBeEnabled()
+    
+    // 等待发布 API 响应（在点击按钮之前启动监听）
+    const publishResponsePromise = page.waitForResponse(
+      (response) => response.url().includes('/api/posts') && response.request().method() === 'POST',
+      { timeout: 15000 }
+    )
+    
     await submitButton.click()
 
-    // Then: 应该发布成功并跳转到首页
-    await page.waitForURL(/.*\/home/, { timeout: 10000 })
+    // 等待发布 API 响应完成
+    const publishResponse = await publishResponsePromise
+    const status = publishResponse.status()
+    
+    // 读取响应数据（只能读取一次）
+    const responseData = await publishResponse.json().catch(() => ({ code: -1, message: '无法解析响应数据' }))
+    
+    if (status !== 200) {
+      throw new Error(`发布失败: HTTP ${status}, ${responseData.message || '未知错误'}`)
+    }
+    
+    // 验证响应数据
+    if (responseData.code !== 200) {
+      throw new Error(`发布失败: ${responseData.message || '响应数据格式错误'}`)
+    }
+
+    // Then: 应该发布成功并跳转到首页（增加超时时间）
+    await page.waitForURL(/.*\/home/, { timeout: 15000 })
     await page.waitForLoadState('domcontentloaded')
     
     // 等待一下，然后刷新页面以获取最新数据
@@ -122,14 +145,37 @@ test.describe('发布动态场景', () => {
       }
     }
 
-    // When: 点击发布按钮
+    // When: 点击发布按钮（在点击前等待 API 响应）
     const submitButton = page.locator('button:has-text("发布")')
     await expect(submitButton).toBeVisible()
     await expect(submitButton).toBeEnabled()
+    
+    // 等待发布 API 响应（在点击按钮之前启动监听）
+    const publishResponsePromise = page.waitForResponse(
+      (response) => response.url().includes('/api/posts') && response.request().method() === 'POST',
+      { timeout: 15000 }
+    )
+    
     await submitButton.click()
 
-    // Then: 应该发布成功并跳转到首页
-    await page.waitForURL(/.*\/home/, { timeout: 10000 })
+    // 等待发布 API 响应完成
+    const publishResponse = await publishResponsePromise
+    const status = publishResponse.status()
+    
+    // 读取响应数据（只能读取一次）
+    const responseData = await publishResponse.json().catch(() => ({ code: -1, message: '无法解析响应数据' }))
+    
+    if (status !== 200) {
+      throw new Error(`发布失败: HTTP ${status}, ${responseData.message || '未知错误'}`)
+    }
+    
+    // 验证响应数据
+    if (responseData.code !== 200) {
+      throw new Error(`发布失败: ${responseData.message || '响应数据格式错误'}`)
+    }
+
+    // Then: 应该发布成功并跳转到首页（增加超时时间）
+    await page.waitForURL(/.*\/home/, { timeout: 15000 })
     await page.waitForLoadState('domcontentloaded')
     
     // 等待一下，然后刷新页面以获取最新数据
