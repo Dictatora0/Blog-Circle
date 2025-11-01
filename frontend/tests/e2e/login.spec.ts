@@ -110,3 +110,5 @@ test.describe('用户登录场景', () => {
     } else {
       // 如果链接不存在，至少验证注册页存在
       await expect(page).toHaveURL(/.*\/register/, { timeout: 5000 })
+    }
+  })

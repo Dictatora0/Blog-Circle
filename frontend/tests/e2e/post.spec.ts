@@ -262,3 +262,6 @@ test.describe('发布动态场景', () => {
       const contentInput = page.locator('textarea[placeholder="分享你的想法..."]')
       await expect(contentInput).toBeVisible({ timeout: 5000 })
     }
+  })
+
+  test('空内容不能发布', async ({ page }) => {
