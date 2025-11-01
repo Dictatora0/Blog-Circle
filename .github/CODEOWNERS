@@ -1,0 +1,17 @@
+# 项目代码所有者
+# 每一行指定一个文件或目录模式，后面跟着一个或多个所有者
+
+# 全局所有者
+* @Dictatora0
+
+# 后端代码
+/backend/ @Dictatora0
+
+# 前端代码
+/frontend/ @Dictatora0
+
+# 配置文件
+/.github/ @Dictatora0
+/README.md @Dictatora0
+/LICENSE @Dictatora0
+

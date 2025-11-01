@@ -3,12 +3,19 @@ backend/target/
 backend/.mvn/
 backend/mvnw
 backend/mvnw.cmd
+backend/*.jar
+backend/*.war
 
 # Node
 frontend/node_modules/
 frontend/dist/
 frontend/.temp/
 frontend/.cache/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+frontend/.vite/
+frontend/.vitest/
 
 # IDE
 .idea/
@@ -18,21 +25,62 @@ frontend/.cache/
 *.swo
 *~
 .DS_Store
+*.sublime-project
+*.sublime-workspace
 
 # Logs
 *.log
 logs/
+backend/*.log
+frontend/*.log
 
 # Environment
 .env
 .env.local
 .env.*.local
+*.env
 
 # Database
 *.db
 *.sqlite
+*.sql
+
+# Test
+test-results/
+playwright-report/
+coverage/
+*.lcov
+
+# Build artifacts
+dist/
+build/
+out/
 
 # OS
 Thumbs.db
+.DS_Store
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+~*
+
+# PID files
+*.pid
+
+# Uploads (可选，如果不想提交上传的文件)
+# backend/uploads/
+
+# Spark
+spark-warehouse/
+derby.log
+
+# Package manager
+package-lock.json.bak
+yarn.lock
+pnpm-lock.yaml
 
 

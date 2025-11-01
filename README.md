@@ -1,6 +1,6 @@
 # 简易博客系统
 
-一个基于 Spring Boot + MyBatis + GaussDB + Vue 3 + Element Plus 的前后端分离博客系统，集成 Spark 进行数据分析。
+一个基于 Spring Boot + MyBatis + PostgreSQL + Vue 3 + Element Plus 的前后端分离博客系统，支持 SQL 数据分析（可选 Spark 分析）。
 
 ## 项目结构
 
@@ -19,7 +19,7 @@ CloudCom/
 - **ORM**: MyBatis 3.0.3
 - **数据库**: GaussDB / PostgreSQL 42.6.0
 - **鉴权**: JWT (jjwt 0.11.5)
-- **数据分析**: Apache Spark 3.5.0
+- **数据分析**: SQL 查询（可选 Apache Spark 3.5.0）
 - **构建工具**: Maven
 - **JDK**: 17
 
@@ -57,12 +57,13 @@ CloudCom/
 - ✅ 查看文章评论列表
 - ✅ 我的评论管理
 
-### 数据分析功能（Spark）
+### 数据分析功能
 
-- ✅ 统计用户发文数量
-- ✅ 统计文章浏览次数
-- ✅ 统计文章评论数量
+- ✅ 统计用户发文数量（SQL 分析，默认启用）
+- ✅ 统计文章浏览次数（SQL 分析，默认启用）
+- ✅ 统计文章评论数量（SQL 分析，默认启用）
 - ✅ 数据可视化展示
+- ✅ 支持 Spark 分析（可选，Java 17+ 环境下默认禁用）
 
 ## 环境准备
 
@@ -218,7 +219,7 @@ npm run dev
 ### 5. 数据统计
 
 - 进入"数据统计"页面
-- 点击"运行 Spark 分析"按钮触发数据分析
+- 点击"运行数据分析"按钮触发数据分析（默认使用 SQL 分析）
 - 查看不同维度的统计结果：
   - 用户发文统计
   - 文章浏览统计
@@ -353,12 +354,14 @@ Authorization: Bearer {token}
 
 ### 统计接口
 
-#### 运行 Spark 分析（需登录）
+#### 运行数据分析（需登录）
 
 ```
 POST /api/stats/analyze
 Authorization: Bearer {token}
 ```
+
+**说明**：默认使用 SQL 分析。如需启用 Spark 分析，需在后端 `application.yml` 中设置 `spark.enabled: true`（注意：Java 17+ 环境下 Spark 可能不稳定）。
 
 #### 获取所有统计数据（需登录）
 
@@ -450,14 +453,15 @@ type: USER_POST_COUNT | POST_VIEW_COUNT | POST_COMMENT_COUNT
 - 确认数据库用户名和密码配置正确
 - 确认数据库 blog_db 已创建
 
-### 2. Spark 分析失败
+### 2. 数据分析失败
 
-**问题**: Spark 分析时出错
+**问题**: 数据分析时出错
 **解决**:
 
 - 确保访问日志表有数据
-- 检查 Spark 日志输出
-- 可能需要调整 Spark 配置（如内存设置）
+- 默认使用 SQL 分析，无需额外配置
+- 如果启用 Spark 分析但失败，系统会自动回退到 SQL 分析
+- 检查后端日志了解详细错误信息
 
 ### 3. 前端跨域问题
 
@@ -482,7 +486,7 @@ type: USER_POST_COUNT | POST_VIEW_COUNT | POST_COMMENT_COUNT
 3. **权限控制**:
    - 文章和评论只能由作者本人编辑/删除
    - JWT 拦截器自动验证登录状态
-4. **数据分析**: Spark 分析是资源密集型操作，建议定期执行而非实时
+4. **数据分析**: 默认使用 SQL 分析，性能稳定。Spark 分析在 Java 17+ 环境下可能不稳定，已配置自动回退到 SQL 分析
 
 ## 生产部署建议
 
@@ -530,6 +534,6 @@ type: USER_POST_COUNT | POST_VIEW_COUNT | POST_COMMENT_COUNT
 - ✅ 完成用户注册登录功能
 - ✅ 完成文章 CRUD 功能
 - ✅ 完成评论 CRUD 功能
-- ✅ 集成 Spark 数据分析
+- ✅ 集成 SQL 数据分析（支持 Spark 可选）
 - ✅ 完成前端所有页面开发
 - ✅ 实现 JWT 鉴权机制
