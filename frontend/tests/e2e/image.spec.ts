@@ -1,0 +1,230 @@
+import { test, expect } from '@playwright/test'
+import { waitForMomentsLoad } from './utils/helpers'
+
+/**
+ * E2E 测试：图片展示交互场景
+ * 
+ * 测试流程：
+ * 1. 点击动态图片
+ * 2. 验证图片放大查看层弹出
+ * 3. 点击空白处关闭放大层
+ */
+test.describe('图片展示交互场景', () => {
+  test.beforeEach(async ({ page }) => {
+    // 每次测试前先登录
+    await page.goto('/login')
+    await page.locator('input[placeholder="用户名"]').fill('admin')
+    await page.locator('input[placeholder="密码"]').fill('admin123')
+    await page.locator('button:has-text("登录")').click()
+    await page.waitForURL(/.*\/home/, { timeout: 10000 })
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(2000)
+  })
+
+  test('点击图片打开预览', async ({ page }) => {
+    // Given: 用户在首页，至少有一条带图片的动态
+    await expect(page).toHaveURL(/.*\/home/)
+    await waitForMomentsLoad(page)
+    
+    // 查找包含图片的动态
+    const momentsWithImages = page.locator('.moment-wrapper, .moment-item').filter({ 
+      has: page.locator('.moment-images .image-item') 
+    })
+    
+    const imageCount = await momentsWithImages.count()
+    
+    if (imageCount === 0) {
+      // 如果没有带图片的动态，跳过此测试
+      test.skip()
+      return
+    }
+
+    const firstMomentWithImage = momentsWithImages.first()
+    const firstImage = firstMomentWithImage.locator('.moment-images .image-item img').first()
+    
+    await expect(firstImage).toBeVisible({ timeout: 5000 })
+
+    // When: 点击图片
+    await firstImage.click()
+
+    // Then: 应该显示图片预览层
+    const imagePreviewOverlay = page.locator('.image-preview-overlay, [class*="preview"], [class*="modal"]').first()
+    await expect(imagePreviewOverlay).toBeVisible({ timeout: 3000 })
+    
+    // Then: 预览层中应该显示图片
+    const previewImage = imagePreviewOverlay.locator('img, .preview-image').first()
+    await expect(previewImage).toBeVisible({ timeout: 2000 })
+  })
+
+  test('关闭图片预览', async ({ page }) => {
+    // Given: 用户在首页，已打开图片预览
+    await expect(page).toHaveURL(/.*\/home/)
+    await waitForMomentsLoad(page)
+    
+    const momentsWithImages = page.locator('.moment-wrapper, .moment-item').filter({ 
+      has: page.locator('.moment-images .image-item') 
+    })
+    
+    const imageCount = await momentsWithImages.count()
+    
+    if (imageCount === 0) {
+      test.skip()
+      return
+    }
+
+    const firstMomentWithImage = momentsWithImages.first()
+    const firstImage = firstMomentWithImage.locator('.moment-images .image-item img').first()
+    await firstImage.click()
+
+    // 等待预览层显示
+    const imagePreviewOverlay = page.locator('.image-preview-overlay, [class*="preview"]').first()
+    await expect(imagePreviewOverlay).toBeVisible({ timeout: 3000 })
+
+    // When: 点击关闭按钮或空白处
+    const closeButton = imagePreviewOverlay.locator('.close-btn, button:has-text("×"), button:has-text("关闭")').first()
+    
+    if (await closeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      // 方式1: 点击关闭按钮
+      await closeButton.click()
+    } else {
+      // 方式2: 点击空白处（overlay背景）或按ESC键
+      await page.keyboard.press('Escape')
+    }
+
+    // Then: 预览层应该关闭
+    await expect(imagePreviewOverlay).not.toBeVisible({ timeout: 2000 })
+  })
+
+  test('图片预览导航（多张图片）', async ({ page }) => {
+    // Given: 用户在首页，动态包含多张图片
+    await expect(page).toHaveURL(/.*\/home/)
+    await waitForMomentsLoad(page)
+    
+    const momentsWithImages = page.locator('.moment-wrapper, .moment-item').filter({ 
+      has: page.locator('.moment-images .image-item') 
+    })
+    
+    const imageCount = await momentsWithImages.count()
+    
+    if (imageCount === 0) {
+      test.skip()
+      return
+    }
+
+    const firstMomentWithImage = momentsWithImages.first()
+    const images = firstMomentWithImage.locator('.moment-images .image-item img')
+    const imageNumber = await images.count()
+    
+    if (imageNumber < 2) {
+      // 如果图片少于2张，跳过导航测试
+      test.skip()
+      return
+    }
+
+    // When: 点击第一张图片
+    await images.first().click()
+
+    // Then: 应该显示预览层
+    const imagePreviewOverlay = page.locator('.image-preview-overlay, [class*="preview"]').first()
+    await expect(imagePreviewOverlay).toBeVisible({ timeout: 3000 })
+
+    // When: 点击下一张按钮（如果存在）
+    const nextButton = imagePreviewOverlay.locator('.nav-btn.right, button:has-text("下一张"), button:has-text("→")').first()
+    
+    if (await nextButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await nextButton.click()
+      
+      // Then: 应该切换到下一张图片
+      await page.waitForTimeout(500)
+      
+      // 检查图片计数器（如果存在）
+      const imageCounter = imagePreviewOverlay.locator('.image-counter, [class*="counter"]').first()
+      if (await imageCounter.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const counterText = await imageCounter.textContent()
+        expect(counterText).toContain('2')
+      }
+    }
+
+    // When: 点击上一张按钮（如果存在）
+    const prevButton = imagePreviewOverlay.locator('.nav-btn.left, button:has-text("上一张"), button:has-text("←")').first()
+    
+    if (await prevButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await prevButton.click()
+      
+      // Then: 应该切换回上一张图片
+      await page.waitForTimeout(500)
+    }
+  })
+
+  test('图片加载状态', async ({ page }) => {
+    // Given: 用户在首页
+    await expect(page).toHaveURL(/.*\/home/)
+    await waitForMomentsLoad(page)
+    
+    const momentsWithImages = page.locator('.moment-wrapper, .moment-item').filter({ 
+      has: page.locator('.moment-images .image-item') 
+    })
+    
+    const imageCount = await momentsWithImages.count()
+    
+    if (imageCount === 0) {
+      test.skip()
+      return
+    }
+
+    const firstMomentWithImage = momentsWithImages.first()
+    const firstImage = firstMomentWithImage.locator('.moment-images .image-item img').first()
+    
+    // Then: 图片应该正确加载
+    await expect(firstImage).toBeVisible({ timeout: 5000 })
+    
+    // 检查图片是否有src属性
+    const imageSrc = await firstImage.getAttribute('src')
+    expect(imageSrc).toBeTruthy()
+    
+    // 检查图片是否加载完成（没有broken image）
+    const isImageLoaded = await firstImage.evaluate((img) => {
+      return img.complete && img.naturalHeight !== 0
+    }).catch(() => false)
+    
+    expect(isImageLoaded).toBeTruthy()
+  })
+
+  test('图片九宫格布局', async ({ page }) => {
+    // Given: 用户在首页，动态包含多张图片
+    await expect(page).toHaveURL(/.*\/home/)
+    await waitForMomentsLoad(page)
+    
+    const momentsWithImages = page.locator('.moment-wrapper, .moment-item').filter({ 
+      has: page.locator('.moment-images .image-item') 
+    })
+    
+    const imageCount = await momentsWithImages.count()
+    
+    if (imageCount === 0) {
+      test.skip()
+      return
+    }
+
+    const firstMomentWithImage = momentsWithImages.first()
+    const images = firstMomentWithImage.locator('.moment-images .image-item')
+    const imageNumber = await images.count()
+    
+    if (imageNumber > 1) {
+      // Then: 图片应该按九宫格布局显示
+      const imageGrid = firstMomentWithImage.locator('.moment-images')
+      await expect(imageGrid).toBeVisible()
+      
+      // 检查是否有正确的grid类（如grid-1, grid-2, grid-3等）
+      const gridClass = await imageGrid.getAttribute('class').catch(() => '')
+      // 检查是否有grid相关的类或样式
+      const hasGridStyle = await imageGrid.evaluate((el) => {
+        const styles = window.getComputedStyle(el)
+        return styles.display === 'grid' || el.classList.toString().includes('grid')
+      }).catch(() => false)
+      
+      expect(gridClass.includes('grid') || hasGridStyle).toBeTruthy()
+    }
+  })
+})
+

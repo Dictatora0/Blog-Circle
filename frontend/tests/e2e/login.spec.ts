@@ -1,0 +1,147 @@
+import { test, expect } from '@playwright/test'
+
+/**
+ * E2E 测试：用户登录场景
+ * 
+ * 测试流程：
+ * 1. 打开首页 → 跳转登录页
+ * 2. 输入用户名和密码 → 点击登录
+ * 3. 校验跳转至主页并出现用户昵称
+ */
+test.describe('用户登录场景', () => {
+  test.beforeEach(async ({ page }) => {
+    // 访问首页
+    await page.goto('/')
+  })
+
+  test('成功登录并跳转到主页', async ({ page }) => {
+    // Given: 用户在首页
+    await expect(page).toHaveURL(/.*\/home/)
+
+    // When: 点击登录按钮
+    const loginButton = page.locator('text=登录').first()
+    await expect(loginButton).toBeVisible({ timeout: 10000 })
+    await loginButton.click()
+
+    // Then: 应该跳转到登录页
+    await expect(page).toHaveURL(/.*\/login/, { timeout: 5000 })
+
+    // When: 输入用户名和密码
+    const usernameInput = page.locator('input[placeholder="用户名"]')
+    const passwordInput = page.locator('input[placeholder="密码"]')
+    
+    await expect(usernameInput).toBeVisible({ timeout: 5000 })
+    await expect(passwordInput).toBeVisible({ timeout: 5000 })
+    
+    await usernameInput.fill('admin')
+    await passwordInput.fill('admin123')
+
+    // When: 点击登录按钮
+    const submitButton = page.locator('button:has-text("登录")')
+    await expect(submitButton).toBeVisible()
+    await submitButton.click()
+
+    // Then: 应该登录成功并跳转到首页
+    await page.waitForURL(/.*\/home/, { timeout: 10000 })
+    
+    // 等待页面DOM加载完成
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(1000)
+    
+    // Then: 验证登录状态（检查localStorage中的token）
+    const token = await page.evaluate(() => localStorage.getItem('token'))
+    expect(token).toBeTruthy()
+    
+    // Then: 应该看到"发表动态"按钮或用户信息（表示已登录）
+    // 等待导航栏更新
+    await page.waitForTimeout(500)
+    
+    // 检查是否有发表动态按钮（文本可能被隐藏）或用户头像
+    const publishButton = page.locator('button.btn-publish, button:has-text("发表动态")').first()
+    const userAvatar = page.locator('.user-avatar, .user-name').first()
+    const userMenu = page.locator('.user-menu, .user-avatar-wrapper').first()
+    
+    const hasLoginIndicator = await publishButton.isVisible().catch(() => false) || 
+                               await userAvatar.isVisible().catch(() => false) ||
+                               await userMenu.isVisible().catch(() => false)
+    
+    expect(hasLoginIndicator).toBeTruthy()
+  })
+
+  test('登录失败：用户名或密码错误', async ({ page }) => {
+    // Given: 用户在登录页
+    await page.goto('/login')
+    await expect(page).toHaveURL(/.*\/login/)
+
+    // When: 输入错误的用户名和密码
+    await page.locator('input[placeholder="用户名"]').fill('wrong_user')
+    await page.locator('input[placeholder="密码"]').fill('wrong_password')
+    await page.locator('button:has-text("登录")').click()
+
+    // Then: 应该显示错误提示或停留在登录页
+    await page.waitForTimeout(2000)
+    
+    // 检查是否有错误提示（Element Plus 的错误消息）
+    const errorMessage = page.locator('.el-message--error, .el-message__content, .el-message')
+    const hasError = await errorMessage.isVisible({ timeout: 3000 }).catch(() => false)
+    
+    // 或者页面应该仍停留在登录页（如果后端返回错误）
+    const isStillOnLoginPage = page.url().includes('/login')
+    
+    // 或者localStorage中没有token
+    const token = await page.evaluate(() => localStorage.getItem('token'))
+    const hasNoToken = !token
+    
+    // 三种情况都应该被视为正确的错误处理
+    expect(hasError || isStillOnLoginPage || hasNoToken).toBeTruthy()
+  })
+
+  test('从注册页跳转到登录页', async ({ page }) => {
+    // Given: 用户在注册页
+    await page.goto('/register')
+    
+    // When: 点击"已有账号，立即登录"链接
+    const loginLink = page.locator('text=/已有账号|立即登录/').first()
+    if (await loginLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await loginLink.click()
+      
+      // Then: 应该跳转到登录页
+      await expect(page).toHaveURL(/.*\/login/, { timeout: 5000 })
+    } else {
+      // 如果链接不存在，跳过此测试
+      test.skip()
+    }
+  })
+
+  test('登录后显示用户信息', async ({ page }) => {
+    // Given: 用户已登录
+    await page.goto('/login')
+    await page.locator('input[placeholder="用户名"]').fill('admin')
+    await page.locator('input[placeholder="密码"]').fill('admin123')
+    await page.locator('button:has-text("登录")').click()
+    await page.waitForURL(/.*\/home/, { timeout: 10000 })
+    
+    // 等待页面DOM加载完成
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(2000)
+
+    // Then: 验证token已设置
+    const token = await page.evaluate(() => localStorage.getItem('token'))
+    expect(token).toBeTruthy()
+
+    // Then: 顶部导航栏应该显示用户信息（头像或昵称）
+    // 检查是否有用户头像或昵称显示
+    const userAvatar = page.locator('.user-avatar').first()
+    const userName = page.locator('.user-name').first()
+    const userMenu = page.locator('.user-menu, .user-avatar-wrapper').first()
+    
+    // 至少应该有一个用户信息元素显示
+    const hasUserInfo = await userAvatar.isVisible({ timeout: 3000 }).catch(() => false) || 
+                        await userName.isVisible({ timeout: 3000 }).catch(() => false) ||
+                        await userMenu.isVisible({ timeout: 3000 }).catch(() => false)
+    
+    expect(hasUserInfo).toBeTruthy()
+  })
+})
+
+

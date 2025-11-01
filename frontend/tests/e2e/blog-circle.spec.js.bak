@@ -1,0 +1,125 @@
+import { test, expect } from '@playwright/test'
+
+/**
+ * E2E 测试 - Blog Circle 端到端测试
+ * 
+ * 测试场景：
+ * 1. 用户登录流程
+ * 2. 发布动态（文字+图片）
+ * 3. 点赞与评论交互
+ * 4. 滚动加载
+ */
+test.describe('Blog Circle E2E Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    // 访问首页
+    await page.goto('http://localhost:5173')
+  })
+
+  test('场景1: 用户登录流程', async ({ page }) => {
+    // Given: 用户在首页
+    await expect(page).toHaveURL(/.*\/home/)
+
+    // When: 点击登录按钮
+    await page.click('text=登录')
+
+    // Then: 应该跳转到登录页
+    await expect(page).toHaveURL(/.*\/login/)
+
+    // When: 输入用户名和密码
+    await page.fill('input[placeholder="用户名"]', 'admin')
+    await page.fill('input[placeholder="密码"]', 'admin123')
+
+    // When: 点击登录按钮
+    await page.click('button:has-text("登录")')
+
+    // Then: 应该登录成功并跳转到首页
+    await page.waitForURL(/.*\/home/, { timeout: 5000 })
+    await expect(page.locator('text=发表动态')).toBeVisible()
+  })
+
+  test('场景2: 发布动态（文字）', async ({ page }) => {
+    // Given: 用户已登录
+    await page.goto('http://localhost:5173/login')
+    await page.fill('input[placeholder="用户名"]', 'admin')
+    await page.fill('input[placeholder="密码"]', 'admin123')
+    await page.click('button:has-text("登录")')
+    await page.waitForURL(/.*\/home/)
+
+    // When: 点击发表动态按钮
+    await page.click('text=发表动态')
+
+    // Then: 应该跳转到发表页面
+    await expect(page).toHaveURL(/.*\/publish/)
+
+    // When: 输入动态内容
+    await page.fill('textarea[placeholder="分享你的想法..."]', '这是一条测试动态')
+
+    // When: 点击发布按钮
+    await page.click('button:has-text("发布")')
+
+    // Then: 应该发布成功并跳转到首页
+    await page.waitForURL(/.*\/home/, { timeout: 5000 })
+    await expect(page.locator('text=这是一条测试动态')).toBeVisible({ timeout: 5000 })
+  })
+
+  test('场景3: 点赞与评论交互', async ({ page }) => {
+    // Given: 用户已登录并在首页
+    await page.goto('http://localhost:5173/login')
+    await page.fill('input[placeholder="用户名"]', 'admin')
+    await page.fill('input[placeholder="密码"]', 'admin123')
+    await page.click('button:has-text("登录")')
+    await page.waitForURL(/.*\/home/)
+
+    // When: 点击点赞按钮
+    const likeButton = page.locator('button.action-btn').first()
+    await likeButton.click()
+
+    // Then: 点赞按钮应该变为已点赞状态
+    await expect(likeButton.locator('text=❤️')).toBeVisible({ timeout: 2000 })
+
+    // When: 点击评论按钮
+    const commentButtons = page.locator('button.action-btn')
+    const commentButton = commentButtons.filter({ hasText: '💬' }).first()
+    await commentButton.click()
+
+    // Then: 应该显示评论输入框
+    await expect(page.locator('input[placeholder="写评论..."]')).toBeVisible()
+  })
+
+  test('场景4: 滚动加载', async ({ page }) => {
+    // Given: 用户在首页
+    await page.goto('http://localhost:5173/home')
+
+    // When: 滚动到页面底部
+    await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight)
+    })
+
+    // Then: 应该加载更多内容
+    await page.waitForTimeout(1000)
+    const moments = page.locator('.moment-item')
+    const count = await moments.count()
+    expect(count).toBeGreaterThan(0)
+  })
+
+  test('场景5: 导航栏功能', async ({ page }) => {
+    // Given: 用户在首页
+    await page.goto('http://localhost:5173/home')
+
+    // When: 点击Logo
+    await page.click('text=Blog Circle')
+
+    // Then: 应该停留在首页
+    await expect(page).toHaveURL(/.*\/home/)
+
+    // When: 点击个人主页（如果已登录）
+    try {
+      await page.click('text=测试用户', { timeout: 2000 })
+      await expect(page).toHaveURL(/.*\/profile/)
+    } catch (e) {
+      // 如果未登录，跳过此测试
+      console.log('用户未登录，跳过个人主页测试')
+    }
+  })
+})
+

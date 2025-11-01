@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudcom.blog.mapper.StatisticMapper">
+
+    <insert id="insertOrUpdate" parameterType="Statistic">
+        INSERT INTO statistics (stat_type, stat_key, stat_value, created_at, updated_at)
+        VALUES (#{statType}, #{statKey}, #{statValue}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT (stat_type, stat_key) 
+        DO UPDATE SET stat_value = #{statValue}, updated_at = CURRENT_TIMESTAMP
+    </insert>
+
+    <select id="selectByType" resultType="Statistic">
+        SELECT * FROM statistics 
+        WHERE stat_type = #{statType}
+        ORDER BY stat_value DESC
+    </select>
+
+    <select id="selectAll" resultType="Statistic">
+        SELECT * FROM statistics 
+        ORDER BY stat_type, stat_value DESC
+    </select>
+
+    <!-- SQL备用方案：统计用户发文数量 -->
+    <select id="selectUserPostCounts" resultType="Statistic">
+        SELECT 
+            'USER_POST_COUNT' as stat_type,
+            CONCAT('user_', author_id) as stat_key,
+            COUNT(*) as stat_value
+        FROM posts
+        GROUP BY author_id
+    </select>
+
+    <!-- SQL备用方案：统计文章浏览次数 -->
+    <select id="selectPostViewCounts" resultType="Statistic">
+        SELECT 
+            'POST_VIEW_COUNT' as stat_type,
+            CONCAT('post_', id) as stat_key,
+            COALESCE(view_count, 0) as stat_value
+        FROM posts
+        WHERE view_count > 0
+    </select>
+
+    <!-- SQL备用方案：统计评论数量 -->
+    <select id="selectCommentCounts" resultType="Statistic">
+        SELECT 
+            'POST_COMMENT_COUNT' as stat_type,
+            CONCAT('post_', post_id) as stat_key,
+            COUNT(*) as stat_value
+        FROM comments
+        GROUP BY post_id
+    </select>
+
+</mapper>
+
+

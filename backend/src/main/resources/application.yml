@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: blog-system
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/blog_db
+    username: lying
+    password: 456789
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.cloudcom.blog.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# JWT配置
+jwt:
+  secret: cloudcom-blog-system-secret-key-2025
+  expiration: 86400000  # 24小时（毫秒）
+
+# Spark配置
+spark:
+  app-name: BlogAnalytics
+  master: local[*]
+  enabled: false  # 禁用Spark，使用SQL备用方案（Java 17+兼容性问题）
+
+# 文件上传配置
+file:
+  upload:
+    path: ./uploads
+    url-prefix: /uploads
+  
+server:
+  port: 8080
+
+logging:
+  level:
+    com.cloudcom.blog: DEBUG
+

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudcom.blog.mapper.PostMapper">
+
+    <insert id="insert" parameterType="Post" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO posts (title, content, author_id, view_count, images, created_at, updated_at)
+        VALUES (#{title}, #{content}, #{authorId}, 0, #{images}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    </insert>
+
+    <delete id="deleteById">
+        DELETE FROM posts WHERE id = #{id}
+    </delete>
+
+    <update id="update" parameterType="Post">
+        UPDATE posts
+        SET title = #{title},
+            content = #{content},
+            images = #{images},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultType="Post">
+        SELECT p.*, u.nickname as author_name,
+               (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) as like_count
+        FROM posts p
+        LEFT JOIN users u ON p.author_id = u.id
+        WHERE p.id = #{id}
+    </select>
+
+    <select id="selectAllWithAuthor" resultType="Post">
+        SELECT p.*, u.nickname as author_name,
+               (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count,
+               (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) as like_count
+        FROM posts p
+        LEFT JOIN users u ON p.author_id = u.id
+        ORDER BY p.created_at DESC
+    </select>
+
+    <select id="selectByAuthorId" resultType="Post">
+        SELECT p.*,
+               (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count,
+               (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) as like_count
+        FROM posts p
+        WHERE p.author_id = #{authorId}
+        ORDER BY p.created_at DESC
+    </select>
+
+    <update id="incrementViewCount">
+        UPDATE posts
+        SET view_count = view_count + 1
+        WHERE id = #{id}
+    </update>
+
+</mapper>
+
+

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudcom.blog.mapper.UserMapper">
+
+    <insert id="insert" parameterType="User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, password, email, nickname, avatar, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{email}, #{nickname}, #{avatar}, 
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    </insert>
+
+    <delete id="deleteById">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+
+    <update id="update" parameterType="User">
+        UPDATE users
+        SET email = #{email},
+            nickname = #{nickname},
+            avatar = #{avatar},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultType="User">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+
+    <select id="selectByUsername" resultType="User">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+
+    <select id="selectAll" resultType="User">
+        SELECT * FROM users ORDER BY created_at DESC
+    </select>
+
+</mapper>
+
+

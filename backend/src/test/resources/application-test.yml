@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: blog-system-test
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password: 
+    hikari:
+      maximum-pool-size: 5
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  h2:
+    console:
+      enabled: true
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.cloudcom.blog.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+# JWT配置
+jwt:
+  secret: test-secret-key-for-jwt-token-generation-2025
+  expiration: 86400000  # 24小时（毫秒）
+
+logging:
+  level:
+    com.cloudcom.blog: DEBUG
+    org.springframework: INFO
+    org.mybatis: DEBUG
+

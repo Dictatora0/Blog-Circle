@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudcom.blog.mapper.CommentMapper">
+
+    <insert id="insert" parameterType="Comment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comments (post_id, user_id, content, created_at)
+        VALUES (#{postId}, #{userId}, #{content}, CURRENT_TIMESTAMP)
+    </insert>
+
+    <delete id="deleteById">
+        DELETE FROM comments WHERE id = #{id}
+    </delete>
+
+    <update id="update" parameterType="Comment">
+        UPDATE comments
+        SET content = #{content}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultType="Comment">
+        SELECT * FROM comments WHERE id = #{id}
+    </select>
+
+    <select id="selectByPostIdWithUser" resultType="Comment">
+        SELECT c.*, u.username, u.nickname
+        FROM comments c
+        LEFT JOIN users u ON c.user_id = u.id
+        WHERE c.post_id = #{postId}
+        ORDER BY c.created_at DESC
+    </select>
+
+    <select id="selectByUserId" resultType="Comment">
+        SELECT * FROM comments
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="countByPostId" resultType="int">
+        SELECT COUNT(*) FROM comments WHERE post_id = #{postId}
+    </select>
+
+</mapper>
+
+
