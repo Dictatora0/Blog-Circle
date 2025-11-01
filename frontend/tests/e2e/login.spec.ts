@@ -115,15 +115,8 @@ test.describe('用户登录场景', () => {
 
   test('登录后显示用户信息', async ({ page }) => {
     // Given: 用户已登录
-    await page.goto('/login')
-    await page.locator('input[placeholder="用户名"]').fill('admin')
-    await page.locator('input[placeholder="密码"]').fill('admin123')
-    await page.locator('button:has-text("登录")').click()
-    await page.waitForURL(/.*\/home/, { timeout: 10000 })
-    
-    // 等待页面DOM加载完成
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(2000)
+    const { loginUser } = await import('./utils/helpers')
+    await loginUser(page)
 
     // Then: 验证token已设置
     const token = await page.evaluate(() => localStorage.getItem('token'))

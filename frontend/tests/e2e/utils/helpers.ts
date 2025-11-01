@@ -18,12 +18,41 @@ export async function loginUser(
   password: string = 'admin123'
 ): Promise<void> {
   await page.goto('/login')
+  await page.waitForLoadState('domcontentloaded')
+  
+  // 等待输入框可见
+  await page.waitForSelector('input[placeholder="用户名"], input[placeholder*="用户名"]', { timeout: 5000 })
+  await page.waitForSelector('input[placeholder="密码"], input[placeholder*="密码"]', { timeout: 5000 })
+  
   await page.locator('input[placeholder="用户名"]').fill(username)
   await page.locator('input[placeholder="密码"]').fill(password)
+  
+  // 等待登录 API 响应（在点击按钮之前启动监听）
+  const loginResponsePromise = page.waitForResponse(
+    (response) => response.url().includes('/api/auth/login') && response.request().method() === 'POST',
+    { timeout: 15000 }
+  )
+  
   await page.locator('button:has-text("登录")').click()
   
-  // 等待登录完成（成功或失败）
-  await page.waitForURL(/.*\/home/, { timeout: 10000 })
+  // 等待登录 API 响应完成
+  const loginResponse = await loginResponsePromise
+  const status = loginResponse.status()
+  
+  // 读取响应数据（只能读取一次）
+  const responseData = await loginResponse.json().catch(() => ({ code: -1, message: '无法解析响应数据' }))
+  
+  if (status !== 200) {
+    throw new Error(`登录失败: HTTP ${status}, ${responseData.message || '未知错误'}`)
+  }
+  
+  // 验证响应数据
+  if (responseData.code !== 200 || !responseData.data?.token) {
+    throw new Error(`登录失败: ${responseData.message || '响应数据格式错误'}`)
+  }
+  
+  // 等待登录完成并跳转到首页（增加超时时间）
+  await page.waitForURL(/.*\/home/, { timeout: 15000 })
   
   // 等待页面完全加载和状态更新
   await page.waitForLoadState('domcontentloaded')

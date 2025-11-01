@@ -15,21 +15,8 @@ test.describe('发布动态场景', () => {
 
   test.beforeEach(async ({ page }) => {
     // 每次测试前先登录
-    await page.goto('/login')
-    await page.locator('input[placeholder="用户名"]').fill('admin')
-    await page.locator('input[placeholder="密码"]').fill('admin123')
-    await page.locator('button:has-text("登录")').click()
-    await page.waitForURL(/.*\/home/, { timeout: 10000 })
-    
-    // 等待页面 DOM 加载完成（不等待网络空闲，避免无限滚动导致的超时）
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(2000)
-    
-    // 验证登录状态
-    const token = await page.evaluate(() => localStorage.getItem('token'))
-    if (!token) {
-      throw new Error('登录失败：token未设置')
-    }
+    const { loginUser } = await import('./utils/helpers')
+    await loginUser(page)
     
     // 生成随机测试内容
     testContent = `E2E测试动态 - ${new Date().toLocaleString()}`

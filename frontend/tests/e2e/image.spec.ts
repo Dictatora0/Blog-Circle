@@ -12,13 +12,8 @@ import { waitForMomentsLoad } from './utils/helpers'
 test.describe('图片展示交互场景', () => {
   test.beforeEach(async ({ page }) => {
     // 每次测试前先登录
-    await page.goto('/login')
-    await page.locator('input[placeholder="用户名"]').fill('admin')
-    await page.locator('input[placeholder="密码"]').fill('admin123')
-    await page.locator('button:has-text("登录")').click()
-    await page.waitForURL(/.*\/home/, { timeout: 10000 })
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(2000)
+    const { loginUser } = await import('./utils/helpers')
+    await loginUser(page)
   })
 
   test('点击图片打开预览', async ({ page }) => {
