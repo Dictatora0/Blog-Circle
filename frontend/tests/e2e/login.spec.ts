@@ -108,4 +108,5 @@ test.describe('用户登录场景', () => {
       // Then: 应该跳转到登录页
       await expect(page).toHaveURL(/.*\/login/, { timeout: 5000 })
     } else {
-      // 如果链接不存在，跳过此测试
+      // 如果链接不存在，至少验证注册页存在
+      await expect(page).toHaveURL(/.*\/register/, { timeout: 5000 })

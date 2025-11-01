@@ -252,4 +252,13 @@ test.describe('发布动态场景', () => {
           await expect(imagePreview).not.toBeVisible({ timeout: 2000 })
         }
       } catch (error) {
-        console.log('图片上传功能不可用，跳过此测试')
+        console.log('图片上传功能不可用，至少验证页面结构')
+        // 至少验证发表页面存在
+        const contentInput = page.locator('textarea[placeholder="分享你的想法..."]')
+        await expect(contentInput).toBeVisible({ timeout: 5000 })
+      }
+    } else {
+      // 如果没有上传占位符，至少验证发表页面存在
+      const contentInput = page.locator('textarea[placeholder="分享你的想法..."]')
+      await expect(contentInput).toBeVisible({ timeout: 5000 })
+    }
