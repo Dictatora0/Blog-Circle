@@ -113,8 +113,8 @@ test.describe('点赞功能场景', () => {
     await waitForMomentsLoad(page)
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
+    await expect(firstMoment).toBeVisible({ timeout: 10000 })
     
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
     const likeButton = firstMoment.locator('button.action-btn').first()
     
     // 如果未点赞，先点赞
@@ -192,8 +192,8 @@ test.describe('点赞功能场景', () => {
     await waitForMomentsLoad(page)
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
+    await expect(firstMoment).toBeVisible({ timeout: 10000 })
     
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
     const likeButton = firstMoment.locator('button.action-btn').first()
 
     // When: 检查按钮状态（未登录时应该被禁用）
@@ -209,8 +209,8 @@ test.describe('点赞功能场景', () => {
     await waitForMomentsLoad(page)
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
+    await expect(firstMoment).toBeVisible({ timeout: 10000 })
     
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
     const likeButton = firstMoment.locator('button.action-btn').first()
 
     // When: 悬停在点赞按钮上
