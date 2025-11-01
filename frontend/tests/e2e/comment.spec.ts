@@ -14,8 +14,11 @@ test.describe('评论功能场景', () => {
 
   test.beforeEach(async ({ page }) => {
     // 每次测试前先登录
-    const { loginUser } = await import('./utils/helpers')
+    const { loginUser, createTestPost } = await import('./utils/helpers')
     await loginUser(page)
+    
+    // 确保至少有一条动态用于测试
+    await createTestPost(page)
     
     // 生成随机测试评论
     testComment = `E2E测试评论 - ${new Date().toLocaleString()}`
@@ -27,12 +30,7 @@ test.describe('评论功能场景', () => {
     await waitForMomentsLoad(page)
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
-    
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
+    await expect(firstMoment).toBeVisible({ timeout: 10000 })
 
     await expect(firstMoment).toBeVisible()
 
@@ -112,11 +110,6 @@ test.describe('评论功能场景', () => {
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
     
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
     
     const actionButtons = firstMoment.locator('button.action-btn')
     const commentButton = actionButtons.filter({ hasText: '💬' }).first() || actionButtons.nth(1)
@@ -143,11 +136,6 @@ test.describe('评论功能场景', () => {
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
     
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
     
     const actionButtons = firstMoment.locator('button.action-btn')
     const commentButton = actionButtons.filter({ hasText: '💬' }).first() || actionButtons.nth(1)
@@ -184,11 +172,6 @@ test.describe('评论功能场景', () => {
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
     
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
     
     const actionButtons = firstMoment.locator('button.action-btn')
     const commentButton = actionButtons.filter({ hasText: '💬' }).first() || actionButtons.nth(1)
@@ -207,11 +190,6 @@ test.describe('评论功能场景', () => {
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
     
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
     
     // 检查是否有评论
     const commentList = firstMoment.locator('.moment-comments .comment-item')

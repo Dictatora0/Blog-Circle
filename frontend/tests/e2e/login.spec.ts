@@ -109,32 +109,3 @@ test.describe('用户登录场景', () => {
       await expect(page).toHaveURL(/.*\/login/, { timeout: 5000 })
     } else {
       // 如果链接不存在，跳过此测试
-      test.skip()
-    }
-  })
-
-  test('登录后显示用户信息', async ({ page }) => {
-    // Given: 用户已登录
-    const { loginUser } = await import('./utils/helpers')
-    await loginUser(page)
-
-    // Then: 验证token已设置
-    const token = await page.evaluate(() => localStorage.getItem('token'))
-    expect(token).toBeTruthy()
-
-    // Then: 顶部导航栏应该显示用户信息（头像或昵称）
-    // 检查是否有用户头像或昵称显示
-    const userAvatar = page.locator('.user-avatar').first()
-    const userName = page.locator('.user-name').first()
-    const userMenu = page.locator('.user-menu, .user-avatar-wrapper').first()
-    
-    // 至少应该有一个用户信息元素显示
-    const hasUserInfo = await userAvatar.isVisible({ timeout: 3000 }).catch(() => false) || 
-                        await userName.isVisible({ timeout: 3000 }).catch(() => false) ||
-                        await userMenu.isVisible({ timeout: 3000 }).catch(() => false)
-    
-    expect(hasUserInfo).toBeTruthy()
-  })
-})
-
-

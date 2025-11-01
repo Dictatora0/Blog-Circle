@@ -12,8 +12,11 @@ import { waitForMomentsLoad } from './utils/helpers'
 test.describe('点赞功能场景', () => {
   test.beforeEach(async ({ page }) => {
     // 每次测试前先登录
-    const { loginUser } = await import('./utils/helpers')
+    const { loginUser, createTestPost } = await import('./utils/helpers')
     await loginUser(page)
+    
+    // 确保至少有一条动态用于测试
+    await createTestPost(page)
   })
 
   test('点赞动态', async ({ page }) => {
@@ -25,13 +28,7 @@ test.describe('点赞功能场景', () => {
     
     // 获取第一条动态（注意：实际DOM结构是 .moment-wrapper 包裹 .moment-item）
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
-    
-    // 如果动态列表为空，跳过此测试
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
+    await expect(firstMoment).toBeVisible({ timeout: 10000 })
 
     await expect(firstMoment).toBeVisible()
 
@@ -118,11 +115,6 @@ test.describe('点赞功能场景', () => {
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
     
     const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
-    
     const likeButton = firstMoment.locator('button.action-btn').first()
     
     // 如果未点赞，先点赞
@@ -147,10 +139,6 @@ test.describe('点赞功能场景', () => {
           break
         }
         await page.waitForTimeout(500)
-      }
-      if (!verified) {
-        test.skip()
-        return
       }
     }
 
@@ -206,11 +194,6 @@ test.describe('点赞功能场景', () => {
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
     
     const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
-    
     const likeButton = firstMoment.locator('button.action-btn').first()
 
     // When: 检查按钮状态（未登录时应该被禁用）
@@ -228,11 +211,6 @@ test.describe('点赞功能场景', () => {
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
     
     const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
-    
     const likeButton = firstMoment.locator('button.action-btn').first()
 
     // When: 悬停在点赞按钮上

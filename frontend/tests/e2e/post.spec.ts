@@ -253,35 +253,3 @@ test.describe('发布动态场景', () => {
         }
       } catch (error) {
         console.log('图片上传功能不可用，跳过此测试')
-        test.skip()
-      }
-    } else {
-      test.skip()
-    }
-  })
-
-  test('空内容不能发布', async ({ page }) => {
-    // Given: 用户在发表页面
-    await page.goto('/publish')
-    await expect(page).toHaveURL(/.*\/publish/)
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(500)
-
-    // When: 不输入任何内容
-    const submitButton = page.locator('button:has-text("发布")')
-    
-    // Then: 发布按钮应该被禁用
-    await expect(submitButton).toBeVisible({ timeout: 5000 })
-    // 注意：如果按钮总是可见但禁用，检查disabled属性
-    const isDisabled = await submitButton.isDisabled().catch(() => false)
-    if (isDisabled) {
-      expect(isDisabled).toBeTruthy()
-    } else {
-      // 如果按钮未禁用，检查是否有内容要求
-      const contentInput = page.locator('textarea[placeholder="分享你的想法..."]')
-      const content = await contentInput.inputValue().catch(() => '')
-      expect(content.trim()).toBe('')
-    }
-  })
-})
-

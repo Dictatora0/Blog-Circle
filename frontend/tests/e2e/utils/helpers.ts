@@ -171,3 +171,51 @@ export async function waitForApiRequest(
   )
 }
 
+/**
+ * 创建一条测试动态（用于确保测试数据存在）
+ * @param page Playwright Page 对象
+ * @param content 动态内容，默认为随机内容
+ * @returns 创建的动态ID（如果有）
+ */
+export async function createTestPost(
+  page: Page,
+  content?: string
+): Promise<void> {
+  const testContent = content || generateRandomText('测试动态')
+  
+  // 导航到发布页面
+  await page.goto('/publish')
+  await page.waitForLoadState('domcontentloaded')
+  await page.waitForTimeout(500)
+  
+  // 输入内容
+  const contentInput = page.locator('textarea[placeholder="分享你的想法..."]')
+  await contentInput.waitFor({ state: 'visible', timeout: 5000 })
+  await contentInput.fill(testContent)
+  
+  // 等待发布 API 响应
+  const publishResponsePromise = page.waitForResponse(
+    (response) => response.url().includes('/api/posts') && response.request().method() === 'POST',
+    { timeout: 15000 }
+  )
+  
+  // 点击发布按钮
+  const submitButton = page.locator('button:has-text("发布")')
+  await submitButton.waitFor({ state: 'visible', timeout: 5000 })
+  await submitButton.click()
+  
+  // 等待 API 响应
+  const publishResponse = await publishResponsePromise
+  const status = publishResponse.status()
+  
+  if (status !== 200) {
+    const responseData = await publishResponse.json().catch(() => ({ code: -1, message: '无法解析响应数据' }))
+    throw new Error(`创建测试动态失败: HTTP ${status}, ${responseData.message || '未知错误'}`)
+  }
+  
+  // 等待跳转回首页
+  await page.waitForURL(/.*\/home/, { timeout: 15000 })
+  await page.waitForLoadState('domcontentloaded')
+  await page.waitForTimeout(1000)
+}
+
