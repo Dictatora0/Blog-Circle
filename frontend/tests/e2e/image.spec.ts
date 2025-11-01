@@ -20,47 +20,8 @@ test.describe('图片展示交互场景', () => {
   })
 
   test('点击图片打开预览', async ({ page }) => {
-    // Given: 用户在首页，尝试创建一条带图片的动态
+    // Given: 用户在首页
     await expect(page).toHaveURL(/.*\/home/)
-    
-    // 先创建一条带图片的动态（如果可能）
-    try {
-      await page.goto('/publish')
-      await page.waitForLoadState('domcontentloaded')
-      const contentInput = page.locator('textarea[placeholder="分享你的想法..."]')
-      await contentInput.waitFor({ state: 'visible', timeout: 5000 })
-      await contentInput.fill('测试图片动态')
-      
-      // 尝试上传图片（如果有测试图片文件）
-      const testImagePath = 'tests/e2e/fixtures/test-image.jpg'
-      try {
-        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 2000 })
-        const fileInput = page.locator('input[type="file"]')
-        await fileInput.click().catch(() => {})
-        const fileChooser = await fileChooserPromise.catch(() => null)
-        if (fileChooser) {
-          await fileChooser.setFiles(testImagePath)
-          await page.waitForTimeout(1000)
-        }
-      } catch {
-        // 如果图片上传失败，继续发布纯文字动态
-      }
-      
-      // 发布动态
-      const publishResponsePromise = page.waitForResponse(
-        (response) => response.url().includes('/api/posts') && response.request().method() === 'POST',
-        { timeout: 15000 }
-      )
-      const submitButton = page.locator('button:has-text("发布")')
-      await submitButton.click()
-      await publishResponsePromise
-      await page.waitForURL(/.*\/home/, { timeout: 15000 })
-      await page.waitForLoadState('domcontentloaded')
-      await page.waitForTimeout(1000)
-    } catch (error) {
-      // 如果创建失败，继续执行测试（可能已经有其他动态）
-    }
-    
     await waitForMomentsLoad(page)
     
     // 查找包含图片的动态

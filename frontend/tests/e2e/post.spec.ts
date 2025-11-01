@@ -265,10 +265,7 @@ test.describe('发布动态场景', () => {
   })
 
   test('空内容不能发布', async ({ page }) => {
-    // Given: 用户已登录并在发表页面
-    const { loginUser } = await import('./utils/helpers')
-    await loginUser(page)
-    
+    // Given: 用户已登录并在发表页面（beforeEach 已经登录）
     await page.goto('/publish')
     await expect(page).toHaveURL(/.*\/publish/)
     await page.waitForLoadState('domcontentloaded')
