@@ -35,6 +35,17 @@ CREATE TABLE IF NOT EXISTS comments (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- 创建点赞表
+CREATE TABLE IF NOT EXISTS likes (
+    id SERIAL PRIMARY KEY,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(post_id, user_id)
+);
+
 -- 创建访问日志表（用于Spark分析）
 CREATE TABLE IF NOT EXISTS access_logs (
     id SERIAL PRIMARY KEY,
@@ -59,13 +70,15 @@ CREATE TABLE IF NOT EXISTS statistics (
 CREATE INDEX idx_posts_author ON posts(author_id);
 CREATE INDEX idx_comments_post ON comments(post_id);
 CREATE INDEX idx_comments_user ON comments(user_id);
+CREATE INDEX idx_likes_post ON likes(post_id);
+CREATE INDEX idx_likes_user ON likes(user_id);
 CREATE INDEX idx_access_logs_user ON access_logs(user_id);
 CREATE INDEX idx_access_logs_post ON access_logs(post_id);
 CREATE INDEX idx_statistics_type ON statistics(stat_type);
 
--- 插入测试数据
+-- 插入测试数据（密码均为 admin123，使用 BCrypt 加密）
 INSERT INTO users (username, password, email, nickname) VALUES 
-('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'admin@cloudcom.com', '管理员'),
-('user1', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'user1@cloudcom.com', '用户1')
+('admin', '$2a$10$R9twLfa1VCMKgDQIv92xYeM7iyrztE2XWJvD4Y.iFFNJ6qg9hfmJK', 'admin@cloudcom.com', '管理员'),
+('user1', '$2a$10$R9twLfa1VCMKgDQIv92xYeM7iyrztE2XWJvD4Y.iFFNJ6qg9hfmJK', 'user1@cloudcom.com', '用户1')
 ON CONFLICT (username) DO NOTHING;
 
