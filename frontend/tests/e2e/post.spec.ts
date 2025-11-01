@@ -265,3 +265,50 @@ test.describe('发布动态场景', () => {
   })
 
   test('空内容不能发布', async ({ page }) => {
+    // Given: 用户已登录并在发表页面
+    const { loginUser } = await import('./utils/helpers')
+    await loginUser(page)
+    
+    await page.goto('/publish')
+    await expect(page).toHaveURL(/.*\/publish/)
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(500)
+
+    // When: 不输入内容（或输入空白字符）并尝试发布
+    const contentInput = page.locator('textarea[placeholder="分享你的想法..."]')
+    await expect(contentInput).toBeVisible({ timeout: 5000 })
+    
+    // 不填写内容，或填写空格
+    await contentInput.fill('   ')
+
+    // When: 点击发布按钮
+    const submitButton = page.locator('button:has-text("发布")')
+    await expect(submitButton).toBeVisible()
+    
+    // 监听是否发送了请求
+    let requestSent = false
+    page.on('request', (request) => {
+      if (request.url().includes('/api/posts') && request.method() === 'POST') {
+        requestSent = true
+      }
+    })
+    
+    await submitButton.click()
+    
+    // 等待一下，检查是否有错误提示或按钮被禁用
+    await page.waitForTimeout(2000)
+    
+    // Then: 应该显示错误提示，或按钮被禁用，或请求没有被发送
+    const errorMessage = page.locator('.el-message--error, .el-message__content, .el-form-item__error')
+    const hasError = await errorMessage.isVisible({ timeout: 3000 }).catch(() => false)
+    
+    // 或者按钮被禁用
+    const isButtonDisabled = await submitButton.isDisabled().catch(() => false)
+    
+    // 或者仍在发表页面（没有跳转）
+    const isStillOnPublishPage = page.url().includes('/publish')
+    
+    // 至少应该满足其中一个条件
+    expect(hasError || isButtonDisabled || (isStillOnPublishPage && !requestSent)).toBeTruthy()
+  })
+})
