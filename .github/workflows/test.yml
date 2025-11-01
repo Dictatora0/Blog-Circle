@@ -57,6 +57,21 @@ jobs:
     name: Frontend Tests
     runs-on: ubuntu-latest
     
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: lying
+          POSTGRES_PASSWORD: 456789
+          POSTGRES_DB: blog_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -68,10 +83,84 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Initialize database
+        run: |
+          PGPASSWORD=456789 psql -h localhost -U lying -d blog_db -f backend/src/main/resources/db/init.sql
+        env:
+          PGPASSWORD: 456789
+
+      - name: Start backend server
+        run: |
+          cd backend
+          mvn clean package -DskipTests -q
+          java -jar target/blog-system-1.0.0.jar > ../backend.log 2>&1 &
+          echo $! > ../backend.pid
+          # 等待后端完全启动（包括 API 可用）
+          echo "等待后端服务启动..."
+          for i in {1..60}; do
+            if curl -f http://localhost:8080/ > /dev/null 2>&1; then
+              echo "后端服务已启动"
+              # 再次等待确保 API 完全就绪
+              sleep 3
+              # 测试登录 API 是否可用
+              if curl -f -X POST http://localhost:8080/api/auth/login \
+                -H "Content-Type: application/json" \
+                -d '{"username":"admin","password":"admin123"}' > /dev/null 2>&1; then
+                echo "后端 API 已就绪"
+                break
+              fi
+            fi
+            if [ $i -eq 60 ]; then
+              echo "后端启动超时，查看日志："
+              tail -n 50 ../backend.log || true
+              exit 1
+            fi
+            sleep 2
+          done
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/blog_db
+          SPRING_DATASOURCE_USERNAME: lying
+          SPRING_DATASOURCE_PASSWORD: 456789
+
+      - name: Install frontend dependencies
         run: |
           cd frontend
           npm ci
+
+      - name: Install Playwright browsers
+        run: |
+          cd frontend
+          npx playwright install --with-deps chromium
+
+      - name: Start frontend server
+        run: |
+          cd frontend
+          npm run dev > ../frontend.log 2>&1 &
+          echo $! > ../frontend.pid
+          # 等待前端启动
+          echo "等待前端服务启动..."
+          for i in {1..30}; do
+            if curl -f http://localhost:5173 > /dev/null 2>&1; then
+              echo "前端服务已启动"
+              sleep 2
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "前端启动超时，查看日志："
+              tail -n 50 ../frontend.log || true
+              exit 1
+            fi
+            sleep 1
+          done
+        env:
+          CI: true
 
       - name: Run unit tests
         run: |
@@ -84,6 +173,18 @@ jobs:
           npm run test:e2e
         env:
           CI: true
+          # 禁用 Playwright 自动启动服务器
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 0
+
+      - name: Stop servers
+        if: always()
+        run: |
+          if [ -f backend.pid ]; then
+            kill $(cat backend.pid) || true
+          fi
+          if [ -f frontend.pid ]; then
+            kill $(cat frontend.pid) || true
+          fi
 
       - name: Upload test coverage
         if: always()
@@ -98,6 +199,15 @@ jobs:
         with:
           name: playwright-report
           path: frontend/playwright-report/
+
+      - name: Upload server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            backend.log
+            frontend.log
 
   test-summary:
     name: Test Summary

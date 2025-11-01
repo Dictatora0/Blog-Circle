@@ -12,13 +12,11 @@ import { waitForMomentsLoad } from './utils/helpers'
 test.describe('点赞功能场景', () => {
   test.beforeEach(async ({ page }) => {
     // 每次测试前先登录
-    await page.goto('/login')
-    await page.locator('input[placeholder="用户名"]').fill('admin')
-    await page.locator('input[placeholder="密码"]').fill('admin123')
-    await page.locator('button:has-text("登录")').click()
-    await page.waitForURL(/.*\/home/, { timeout: 10000 })
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(2000)
+    const { loginUser, createTestPost } = await import('./utils/helpers')
+    await loginUser(page)
+    
+    // 确保至少有一条动态用于测试
+    await createTestPost(page)
   })
 
   test('点赞动态', async ({ page }) => {
@@ -30,13 +28,7 @@ test.describe('点赞功能场景', () => {
     
     // 获取第一条动态（注意：实际DOM结构是 .moment-wrapper 包裹 .moment-item）
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
-    
-    // 如果动态列表为空，跳过此测试
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
+    await expect(firstMoment).toBeVisible({ timeout: 10000 })
 
     await expect(firstMoment).toBeVisible()
 
@@ -121,12 +113,7 @@ test.describe('点赞功能场景', () => {
     await waitForMomentsLoad(page)
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
-    
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
+    await expect(firstMoment).toBeVisible({ timeout: 10000 })
     
     const likeButton = firstMoment.locator('button.action-btn').first()
     
@@ -152,10 +139,6 @@ test.describe('点赞功能场景', () => {
           break
         }
         await page.waitForTimeout(500)
-      }
-      if (!verified) {
-        test.skip()
-        return
       }
     }
 
@@ -209,12 +192,7 @@ test.describe('点赞功能场景', () => {
     await waitForMomentsLoad(page)
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
-    
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
+    await expect(firstMoment).toBeVisible({ timeout: 10000 })
     
     const likeButton = firstMoment.locator('button.action-btn').first()
 
@@ -231,12 +209,7 @@ test.describe('点赞功能场景', () => {
     await waitForMomentsLoad(page)
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
-    
-    const hasMoments = await firstMoment.isVisible({ timeout: 3000 }).catch(() => false)
-    if (!hasMoments) {
-      test.skip()
-      return
-    }
+    await expect(firstMoment).toBeVisible({ timeout: 10000 })
     
     const likeButton = firstMoment.locator('button.action-btn').first()
 

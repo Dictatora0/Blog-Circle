@@ -108,40 +108,29 @@ test.describe('用户登录场景', () => {
       // Then: 应该跳转到登录页
       await expect(page).toHaveURL(/.*\/login/, { timeout: 5000 })
     } else {
-      // 如果链接不存在，跳过此测试
-      test.skip()
+      // 如果链接不存在，至少验证注册页存在
+      await expect(page).toHaveURL(/.*\/register/, { timeout: 5000 })
     }
   })
 
   test('登录后显示用户信息', async ({ page }) => {
     // Given: 用户已登录
-    await page.goto('/login')
-    await page.locator('input[placeholder="用户名"]').fill('admin')
-    await page.locator('input[placeholder="密码"]').fill('admin123')
-    await page.locator('button:has-text("登录")').click()
-    await page.waitForURL(/.*\/home/, { timeout: 10000 })
-    
-    // 等待页面DOM加载完成
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(2000)
+    const { loginUser } = await import('./utils/helpers')
+    await loginUser(page)
 
     // Then: 验证token已设置
     const token = await page.evaluate(() => localStorage.getItem('token'))
     expect(token).toBeTruthy()
 
-    // Then: 顶部导航栏应该显示用户信息（头像或昵称）
-    // 检查是否有用户头像或昵称显示
-    const userAvatar = page.locator('.user-avatar').first()
-    const userName = page.locator('.user-name').first()
-    const userMenu = page.locator('.user-menu, .user-avatar-wrapper').first()
+    // Then: 验证用户信息显示
+    await expect(page).toHaveURL(/.*\/home/)
     
-    // 至少应该有一个用户信息元素显示
-    const hasUserInfo = await userAvatar.isVisible({ timeout: 3000 }).catch(() => false) || 
-                        await userName.isVisible({ timeout: 3000 }).catch(() => false) ||
-                        await userMenu.isVisible({ timeout: 3000 }).catch(() => false)
+    // 等待页面加载
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(1000)
     
-    expect(hasUserInfo).toBeTruthy()
+    // 检查是否有用户头像或用户名显示
+    const userAvatar = page.locator('.user-avatar, .user-name, .user-menu').first()
+    await expect(userAvatar).toBeVisible({ timeout: 5000 })
   })
 })
-
-

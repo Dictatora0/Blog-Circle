@@ -22,6 +22,18 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: ['./tests/setup.js'],
+    // 排除 E2E 测试文件，避免 Vitest 加载 Playwright 测试
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/playwright-report/**',
+      '**/test-results/**',
+      '**/tests/e2e/**',
+      '**/*.e2e.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+    ],
+    include: [
+      '**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

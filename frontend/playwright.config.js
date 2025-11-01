@@ -68,10 +68,11 @@ export default defineConfig({
   ],
 
   // Web 服务器配置（自动启动开发服务器）
-  webServer: {
+  // 在 CI 环境中禁用自动启动，由 GitHub Actions 手动管理
+  webServer: process.env.CI ? undefined : {
     command: 'npm run dev',
     url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120 * 1000,
   },
 })
