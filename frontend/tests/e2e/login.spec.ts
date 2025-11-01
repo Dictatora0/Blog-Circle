@@ -112,3 +112,25 @@ test.describe('用户登录场景', () => {
       await expect(page).toHaveURL(/.*\/register/, { timeout: 5000 })
     }
   })
+
+  test('登录后显示用户信息', async ({ page }) => {
+    // Given: 用户已登录
+    const { loginUser } = await import('./utils/helpers')
+    await loginUser(page)
+
+    // Then: 验证token已设置
+    const token = await page.evaluate(() => localStorage.getItem('token'))
+    expect(token).toBeTruthy()
+
+    // Then: 验证用户信息显示
+    await expect(page).toHaveURL(/.*\/home/)
+    
+    // 等待页面加载
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(1000)
+    
+    // 检查是否有用户头像或用户名显示
+    const userAvatar = page.locator('.user-avatar, .user-name, .user-menu').first()
+    await expect(userAvatar).toBeVisible({ timeout: 5000 })
+  })
+})
