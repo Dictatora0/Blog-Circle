@@ -102,8 +102,28 @@ jobs:
           mvn clean package -DskipTests -q
           java -jar target/blog-system-1.0.0.jar > ../backend.log 2>&1 &
           echo $! > ../backend.pid
-          # 等待后端启动
-          timeout 120 bash -c 'until curl -f http://localhost:8080/api/health || curl -f http://localhost:8080/; do sleep 2; done'
+          # 等待后端完全启动（包括 API 可用）
+          echo "等待后端服务启动..."
+          for i in {1..60}; do
+            if curl -f http://localhost:8080/ > /dev/null 2>&1; then
+              echo "后端服务已启动"
+              # 再次等待确保 API 完全就绪
+              sleep 3
+              # 测试登录 API 是否可用
+              if curl -f -X POST http://localhost:8080/api/auth/login \
+                -H "Content-Type: application/json" \
+                -d '{"username":"admin","password":"admin123"}' > /dev/null 2>&1; then
+                echo "后端 API 已就绪"
+                break
+              fi
+            fi
+            if [ $i -eq 60 ]; then
+              echo "后端启动超时，查看日志："
+              tail -n 50 ../backend.log || true
+              exit 1
+            fi
+            sleep 2
+          done
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/blog_db
           SPRING_DATASOURCE_USERNAME: lying
@@ -119,6 +139,29 @@ jobs:
           cd frontend
           npx playwright install --with-deps chromium
 
+      - name: Start frontend server
+        run: |
+          cd frontend
+          npm run dev > ../frontend.log 2>&1 &
+          echo $! > ../frontend.pid
+          # 等待前端启动
+          echo "等待前端服务启动..."
+          for i in {1..30}; do
+            if curl -f http://localhost:5173 > /dev/null 2>&1; then
+              echo "前端服务已启动"
+              sleep 2
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "前端启动超时，查看日志："
+              tail -n 50 ../frontend.log || true
+              exit 1
+            fi
+            sleep 1
+          done
+        env:
+          CI: true
+
       - name: Run unit tests
         run: |
           cd frontend
@@ -130,12 +173,17 @@ jobs:
           npm run test:e2e
         env:
           CI: true
+          # 禁用 Playwright 自动启动服务器
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 0
 
-      - name: Stop backend server
+      - name: Stop servers
         if: always()
         run: |
           if [ -f backend.pid ]; then
             kill $(cat backend.pid) || true
+          fi
+          if [ -f frontend.pid ]; then
+            kill $(cat frontend.pid) || true
           fi
 
       - name: Upload test coverage
@@ -151,6 +199,15 @@ jobs:
         with:
           name: playwright-report
           path: frontend/playwright-report/
+
+      - name: Upload server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            backend.log
+            frontend.log
 
   test-summary:
     name: Test Summary
