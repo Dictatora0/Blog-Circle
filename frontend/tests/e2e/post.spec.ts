@@ -271,41 +271,41 @@ test.describe('发布动态场景', () => {
     await page.waitForLoadState('domcontentloaded')
     await page.waitForTimeout(500)
 
-    // When: 不输入内容（或输入空白字符）并尝试发布
+    // When: 不输入内容（或输入空白字符）
     const contentInput = page.locator('textarea[placeholder="分享你的想法..."]')
     await expect(contentInput).toBeVisible({ timeout: 5000 })
     
-    // 不填写内容，或填写空格
+    // 清空内容或填写空格
     await contentInput.fill('   ')
+    await page.waitForTimeout(300) // 等待输入事件处理
 
-    // When: 点击发布按钮
+    // Then: 发布按钮应该被禁用
     const submitButton = page.locator('button:has-text("发布")')
     await expect(submitButton).toBeVisible()
+    await expect(submitButton).toBeDisabled()
     
-    // 监听是否发送了请求
+    // 验证按钮确实被禁用（不应该尝试点击）
+    const isButtonDisabled = await submitButton.isDisabled()
+    expect(isButtonDisabled).toBeTruthy()
+    
+    // 监听是否发送了请求（不应该发送）
     let requestSent = false
-    page.on('request', (request) => {
+    const requestListener = (request) => {
       if (request.url().includes('/api/posts') && request.method() === 'POST') {
         requestSent = true
       }
-    })
+    }
+    page.on('request', requestListener)
     
-    await submitButton.click()
+    // 等待一下，确保没有请求被发送（因为按钮被禁用）
+    await page.waitForTimeout(1000)
     
-    // 等待一下，检查是否有错误提示或按钮被禁用
-    await page.waitForTimeout(2000)
-    
-    // Then: 应该显示错误提示，或按钮被禁用，或请求没有被发送
-    const errorMessage = page.locator('.el-message--error, .el-message__content, .el-form-item__error')
-    const hasError = await errorMessage.isVisible({ timeout: 3000 }).catch(() => false)
-    
-    // 或者按钮被禁用
-    const isButtonDisabled = await submitButton.isDisabled().catch(() => false)
-    
-    // 或者仍在发表页面（没有跳转）
+    // Then: 应该仍在发表页面，且没有发送请求
     const isStillOnPublishPage = page.url().includes('/publish')
+    expect(isStillOnPublishPage).toBeTruthy()
+    expect(requestSent).toBeFalsy()
     
-    // 至少应该满足其中一个条件
-    expect(hasError || isButtonDisabled || (isStillOnPublishPage && !requestSent)).toBeTruthy()
+    // 清理监听器
+    page.off('request', requestListener)
   })
 })
