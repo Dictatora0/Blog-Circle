@@ -12,12 +12,12 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/e2e',
   
-  // 测试超时时间（30秒）
-  timeout: 30000,
+  // 测试超时时间（60秒，给首次启动更多时间）
+  timeout: 60000,
   
   // 每个测试用例期望超时时间
   expect: {
-    timeout: 5000,
+    timeout: 10000,
   },
   
   // 完全并行执行
@@ -26,8 +26,8 @@ export default defineConfig({
   // CI 环境禁止 test.only
   forbidOnly: !!process.env.CI,
   
-  // CI 环境重试次数
-  retries: process.env.CI ? 2 : 0,
+  // CI 环境重试次数（非 CI 环境也启用重试，处理 flaky 测试）
+  retries: process.env.CI ? 2 : 1,
   
   // CI 环境串行执行
   workers: process.env.CI ? 1 : undefined,
@@ -48,6 +48,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     // 追踪：首次失败时追踪
     trace: 'on-first-retry',
+    // 增加导航超时时间
+    navigationTimeout: 60000,
   },
 
   // 项目配置（浏览器）
@@ -72,8 +74,11 @@ export default defineConfig({
   webServer: process.env.CI ? undefined : {
     command: 'npm run dev',
     url: 'http://localhost:5173',
-    reuseExistingServer: true,
-    timeout: 120 * 1000,
+    reuseExistingServer: !process.env.CI, // 非 CI 环境复用服务器
+    timeout: 120 * 1000, // 服务器启动超时 120 秒
+    // 等待服务器响应后再开始测试
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 })
 

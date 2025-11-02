@@ -10,8 +10,22 @@ import { test, expect } from '@playwright/test'
  */
 test.describe('用户登录场景', () => {
   test.beforeEach(async ({ page }) => {
-    // 访问首页
-    await page.goto('/')
+    // 访问首页，使用重试逻辑确保服务器就绪
+    try {
+      await page.goto('/', { 
+        waitUntil: 'domcontentloaded',
+        timeout: 60000 
+      })
+      // 等待页面基本元素加载
+      await page.waitForLoadState('domcontentloaded')
+    } catch (error) {
+      // 如果首次加载失败，等待一下再重试
+      await page.waitForTimeout(2000)
+      await page.goto('/', { 
+        waitUntil: 'domcontentloaded',
+        timeout: 60000 
+      })
+    }
   })
 
   test('成功登录并跳转到主页', async ({ page }) => {

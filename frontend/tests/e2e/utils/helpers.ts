@@ -7,6 +7,36 @@
 import { Page } from '@playwright/test'
 
 /**
+ * 等待服务器就绪（通过访问首页并检查响应）
+ * @param page Playwright Page 对象
+ * @param maxRetries 最大重试次数，默认 3
+ * @param retryDelay 重试延迟（毫秒），默认 2000
+ */
+export async function waitForServerReady(
+  page: Page,
+  maxRetries: number = 3,
+  retryDelay: number = 2000
+): Promise<void> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      await page.goto('/', { 
+        waitUntil: 'domcontentloaded',
+        timeout: 30000 
+      })
+      // 验证页面已加载（检查是否有基本元素）
+      await page.waitForLoadState('domcontentloaded')
+      return // 成功则返回
+    } catch (error) {
+      if (i === maxRetries - 1) {
+        throw new Error(`服务器未就绪，已重试 ${maxRetries} 次: ${error}`)
+      }
+      // 等待后重试
+      await page.waitForTimeout(retryDelay)
+    }
+  }
+}
+
+/**
  * 登录用户
  * @param page Playwright Page 对象
  * @param username 用户名，默认为 'admin'
