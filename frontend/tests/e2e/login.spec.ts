@@ -54,11 +54,23 @@ test.describe('用户登录场景', () => {
     const submitButton = page.locator('button:has-text("登录")')
     await expect(submitButton).toBeVisible()
     
-    // 等待导航完成（使用 Promise.all 等待 URL 变化和页面加载）
-    await Promise.all([
-      page.waitForURL(/.*\/home/, { timeout: 15000 }),
-      submitButton.click()
-    ])
+    // 点击登录按钮并等待导航
+    const navigationPromise = page.waitForURL(/.*\/home/, { timeout: 15000 }).catch(async () => {
+      // 如果 waitForURL 超时，检查是否已经导航到 /home
+      await page.waitForFunction(
+        () => window.location.pathname.includes('/home'),
+        { timeout: 5000 }
+      ).catch(() => {
+        // 如果仍然失败，抛出错误
+        throw new Error('登录后未跳转到首页')
+      })
+    })
+    
+    await submitButton.click()
+    await navigationPromise
+    
+    // 验证已导航到 /home
+    await expect(page).toHaveURL(/.*\/home/, { timeout: 5000 })
     
     // 等待页面DOM加载完成
     await page.waitForLoadState('domcontentloaded')
