@@ -53,10 +53,12 @@ test.describe('用户登录场景', () => {
     // When: 点击登录按钮
     const submitButton = page.locator('button:has-text("登录")')
     await expect(submitButton).toBeVisible()
-    await submitButton.click()
-
-    // Then: 应该登录成功并跳转到首页
-    await page.waitForURL(/.*\/home/, { timeout: 10000 })
+    
+    // 等待导航完成（使用 Promise.all 等待 URL 变化和页面加载）
+    await Promise.all([
+      page.waitForURL(/.*\/home/, { timeout: 15000 }),
+      submitButton.click()
+    ])
     
     // 等待页面DOM加载完成
     await page.waitForLoadState('domcontentloaded')

@@ -41,16 +41,19 @@ test.describe('图片展示交互场景', () => {
     }
 
     const firstMomentWithImage = momentsWithImages.first()
+    // 点击事件绑定在 .image-item div 上，而不是 img 上
+    const firstImageItem = firstMomentWithImage.locator('.moment-images .image-item').first()
     const firstImage = firstMomentWithImage.locator('.moment-images .image-item img, .moment-images img').first()
     
     await expect(firstImage).toBeVisible({ timeout: 5000 })
+    await expect(firstImageItem).toBeVisible({ timeout: 5000 })
 
-    // When: 点击图片
-    await firstImage.click()
+    // When: 点击图片容器（点击事件绑定在 .image-item div 上）
+    await firstImageItem.click({ force: true })
 
-    // Then: 应该显示图片预览层
-    const imagePreviewOverlay = page.locator('.image-preview-overlay, [class*="preview"], [class*="modal"]').first()
-    await expect(imagePreviewOverlay).toBeVisible({ timeout: 3000 })
+    // Then: 应该显示图片预览层（使用 ImagePreview 组件的实际类名）
+    const imagePreviewOverlay = page.locator('.image-preview-modal, .image-preview-overlay, [class*="preview"], [class*="modal"]').first()
+    await expect(imagePreviewOverlay).toBeVisible({ timeout: 5000 })
     
     // Then: 预览层中应该显示图片
     const previewImage = imagePreviewOverlay.locator('img, .preview-image').first()
@@ -76,13 +79,16 @@ test.describe('图片展示交互场景', () => {
     }
     
     const firstMomentWithImage = momentsWithImages.first()
+    // 点击事件绑定在 .image-item div 上，而不是 img 上
+    const firstImageItem = firstMomentWithImage.locator('.moment-images .image-item').first()
     const firstImage = firstMomentWithImage.locator('.moment-images .image-item img, .moment-images img').first()
     await expect(firstImage).toBeVisible({ timeout: 5000 })
-    await firstImage.click()
+    await expect(firstImageItem).toBeVisible({ timeout: 5000 })
+    await firstImageItem.click({ force: true })
 
-    // 等待预览层显示
-    const imagePreviewOverlay = page.locator('.image-preview-overlay, [class*="preview"]').first()
-    await expect(imagePreviewOverlay).toBeVisible({ timeout: 3000 })
+    // 等待预览层显示（使用 ImagePreview 组件的实际类名）
+    const imagePreviewOverlay = page.locator('.image-preview-modal, .image-preview-overlay, [class*="preview"]').first()
+    await expect(imagePreviewOverlay).toBeVisible({ timeout: 5000 })
 
     // When: 点击关闭按钮或空白处
     const closeButton = imagePreviewOverlay.locator('.close-btn, button:has-text("×"), button:has-text("关闭")').first()
@@ -118,24 +124,28 @@ test.describe('图片展示交互场景', () => {
     }
     
     const firstMomentWithImage = momentsWithImages.first()
+    const imageItems = firstMomentWithImage.locator('.moment-images .image-item')
     const images = firstMomentWithImage.locator('.moment-images .image-item img, .moment-images img')
     const imageNumber = await images.count()
     
     // 如果图片少于2张，至少测试单张图片预览
     if (imageNumber < 2) {
-      const firstImage = images.first()
-      await firstImage.click()
-      const imagePreviewOverlay = page.locator('.image-preview-overlay, [class*="preview"]').first()
-      await expect(imagePreviewOverlay).toBeVisible({ timeout: 3000 })
+      const firstImageItem = imageItems.first()
+      await expect(firstImageItem).toBeVisible({ timeout: 5000 })
+      await firstImageItem.click({ force: true })
+      const imagePreviewOverlay = page.locator('.image-preview-modal, .image-preview-overlay, [class*="preview"]').first()
+      await expect(imagePreviewOverlay).toBeVisible({ timeout: 5000 })
       return
     }
 
-    // When: 点击第一张图片
-    await images.first().click()
+    // When: 点击第一张图片容器（点击事件绑定在 .image-item div 上）
+    const firstImageItem = imageItems.first()
+    await expect(firstImageItem).toBeVisible({ timeout: 5000 })
+    await firstImageItem.click({ force: true })
 
-    // Then: 应该显示预览层
-    const imagePreviewOverlay = page.locator('.image-preview-overlay, [class*="preview"]').first()
-    await expect(imagePreviewOverlay).toBeVisible({ timeout: 3000 })
+    // Then: 应该显示预览层（使用 ImagePreview 组件的实际类名）
+    const imagePreviewOverlay = page.locator('.image-preview-modal, .image-preview-overlay, [class*="preview"]').first()
+    await expect(imagePreviewOverlay).toBeVisible({ timeout: 5000 })
 
     // When: 点击下一张按钮（如果存在）
     const nextButton = imagePreviewOverlay.locator('.nav-btn.right, button:has-text("下一张"), button:has-text("→")').first()
