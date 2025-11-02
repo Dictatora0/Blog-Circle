@@ -306,21 +306,43 @@ onMounted(() => {
 .moment-item {
   background: var(--bg-primary);
   border-radius: var(--radius-md);
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s;
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
+  transition: all var(--transition-base);
+  border: 1px solid var(--border-light);
+  position: relative;
+  overflow: hidden;
+}
+
+.moment-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transition: opacity var(--transition-base);
 }
 
 .moment-item:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+.moment-item:hover::before {
+  opacity: 1;
 }
 
 .moment-header {
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .moment-info {
@@ -328,14 +350,17 @@ onMounted(() => {
 }
 
 .moment-author {
-  font-weight: 500;
+  font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
   margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-md);
+  letter-spacing: -0.01em;
 }
 
 .moment-time {
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
+  font-weight: var(--font-weight-normal);
 }
 
 .moment-content {
@@ -344,10 +369,12 @@ onMounted(() => {
 
 .moment-text {
   color: var(--text-primary);
-  line-height: 1.6;
+  line-height: 1.75;
   white-space: pre-wrap;
   word-break: break-word;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  font-size: var(--font-size-md);
+  letter-spacing: 0.01em;
 }
 
 .moment-images {
@@ -372,70 +399,121 @@ onMounted(() => {
 .image-item {
   aspect-ratio: 1;
   overflow: hidden;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all var(--transition-base);
+  background: var(--bg-tertiary);
+  position: relative;
+}
+
+.image-item::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(42, 183, 169, 0) 0%, rgba(26, 188, 156, 0) 100%);
+  opacity: 0;
+  transition: opacity var(--transition-base);
 }
 
 .image-item:hover {
-  transform: scale(1.02);
+  transform: scale(1.03);
+  box-shadow: var(--shadow-md);
+}
+
+.image-item:hover::after {
+  opacity: 0.1;
 }
 
 .image-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform var(--transition-base);
+}
+
+.image-item:hover img {
+  transform: scale(1.05);
 }
 
 .moment-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: var(--spacing-sm);
+  padding-top: var(--spacing-md);
+  margin-top: var(--spacing-md);
   border-top: 1px solid var(--border-light);
 }
 
 .moment-stats {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--spacing-lg);
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
+  font-weight: var(--font-weight-medium);
 }
 
 .stat-item {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  transition: color var(--transition-fast);
+}
+
+.stat-item:hover {
+  color: var(--primary-color);
 }
 
 .stat-icon {
   font-size: var(--font-size-sm);
+  transition: transform var(--transition-fast);
+}
+
+.stat-item:hover .stat-icon {
+  transform: scale(1.1);
 }
 
 .moment-actions {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
 }
 
 .action-btn {
   background: none;
   border: none;
   cursor: pointer;
-  padding: var(--spacing-xs);
-  border-radius: var(--radius-sm);
-  transition: all 0.2s;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
-.action-btn:hover:not(:disabled) {
-  background: var(--bg-hover);
+.action-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--primary-light);
+  border-radius: var(--radius-md);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.action-btn:hover:not(:disabled)::before {
+  opacity: 1;
 }
 
 .action-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+.action-btn.active .action-icon {
+  animation: heartBeat 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .action-btn.active {
@@ -445,55 +523,81 @@ onMounted(() => {
 .action-icon {
   font-size: var(--font-size-lg);
   line-height: 1;
+  position: relative;
+  z-index: 1;
+  transition: transform var(--transition-fast);
+}
+
+.action-btn:hover .action-icon {
+  transform: scale(1.15);
 }
 
 .moment-comments {
-  margin-top: var(--spacing-md);
-  padding-top: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
   border-top: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
 }
 
 .comment-item {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   margin-bottom: var(--spacing-md);
-  padding: var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  transition: background 0.2s;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+}
+
+.comment-item:last-child {
+  margin-bottom: 0;
 }
 
 .comment-item:hover {
   background: var(--bg-hover);
+  border-color: var(--border-color);
+  transform: translateX(4px);
+  box-shadow: var(--shadow-sm);
 }
 
 .comment-content {
   flex: 1;
+  min-width: 0;
 }
 
 .comment-author {
-  color: var(--text-secondary);
-  font-weight: 500;
+  color: var(--primary-color);
+  font-weight: var(--font-weight-semibold);
   margin-right: var(--spacing-xs);
+  font-size: var(--font-size-sm);
 }
 
 .comment-text {
   color: var(--text-primary);
   word-break: break-word;
+  line-height: 1.6;
+  font-size: var(--font-size-sm);
 }
 
 .comment-time {
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
   margin-top: var(--spacing-xs);
+  font-weight: var(--font-weight-normal);
 }
 
 .comment-input-wrapper {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   align-items: flex-start;
-  padding: var(--spacing-sm);
-  background: var(--bg-secondary);
+  padding: var(--spacing-md);
+  background: var(--bg-primary);
   border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  margin-top: var(--spacing-md);
 }
 
 .comment-input {
@@ -501,29 +605,49 @@ onMounted(() => {
 }
 
 .comment-input :deep(.el-input__wrapper) {
+  background: var(--bg-secondary);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.comment-input :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1.5px var(--primary-color) inset;
   background: var(--bg-primary);
-  box-shadow: none;
+}
+
+.comment-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px var(--primary-color) inset, 0 0 0 4px var(--primary-light);
 }
 
 .btn-send {
-  background: var(--primary-color);
-  color: white;
+  background: var(--primary-gradient);
+  color: var(--text-white);
   border: none;
   border-radius: var(--radius-md);
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
   white-space: nowrap;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-send:hover:not(:disabled) {
   background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), var(--primary-glow);
+}
+
+.btn-send:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-send:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 @media (max-width: 768px) {

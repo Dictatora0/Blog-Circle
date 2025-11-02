@@ -171,29 +171,31 @@ onUnmounted(() => {
 .home-page {
   min-height: 100vh;
   background: var(--bg-secondary);
-  padding-top: 72px;
+  padding-top: 80px;
   position: relative;
 }
 
 .refresh-indicator {
   position: fixed;
-  top: 72px;
+  top: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--primary-color);
-  color: white;
+  background: var(--primary-gradient);
+  color: var(--text-white);
   padding: var(--spacing-sm) var(--spacing-lg);
   border-radius: 0 0 var(--radius-md) var(--radius-md);
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   z-index: 100;
-  animation: slideDown 0.3s ease-out;
+  animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-md), var(--primary-glow);
 }
 
 .refresh-icon {
-  animation: rotate 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes slideDown {
@@ -231,25 +233,47 @@ onUnmounted(() => {
 
 .loading-more {
   text-align: center;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-xl);
   color: var(--text-tertiary);
   font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.loading-more::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-light);
+  border-top-color: var(--primary-color);
+  border-radius: var(--radius-full);
+  animation: spin 0.6s linear infinite;
 }
 
 .empty-state {
   text-align: center;
-  padding: var(--spacing-xl) var(--spacing-md);
+  padding: var(--spacing-2xl) var(--spacing-md);
   color: var(--text-tertiary);
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  margin-top: var(--spacing-lg);
 }
 
 .empty-icon {
-  font-size: 64px;
-  margin-bottom: var(--spacing-md);
-  opacity: 0.5;
+  font-size: 72px;
+  margin-bottom: var(--spacing-lg);
+  opacity: 0.6;
+  animation: pulse 2s ease-in-out infinite;
 }
 
 .empty-text {
   font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-md);
 }
 
 @media (max-width: 768px) {
