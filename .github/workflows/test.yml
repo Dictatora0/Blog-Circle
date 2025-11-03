@@ -254,14 +254,24 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-test]
     if: always()
+    permissions:
+      contents: write
+      pull-requests: write
     
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Download test artifacts
         uses: actions/download-artifact@v4
         with:
           path: test-artifacts
 
       - name: Check test results
+        id: test_results
         run: |
           echo "========================================="
           echo "          测试结果总结"
@@ -295,10 +305,36 @@ jobs:
           # 如果有测试失败，退出并返回错误码
           if [ "${{ needs.backend-test.result }}" != "success" ] || [ "${{ needs.frontend-test.result }}" != "success" ]; then
             echo "⚠️  部分测试失败，请查看详细报告"
+            echo "tests_passed=false" >> $GITHUB_OUTPUT
             exit 1
           else
             echo "🎉 所有测试通过！"
+            echo "tests_passed=true" >> $GITHUB_OUTPUT
           fi
+
+      - name: Auto merge dev to main (if tests pass)
+        if: |
+          github.ref == 'refs/heads/dev' && 
+          steps.test_results.outputs.tests_passed == 'true' &&
+          github.event_name == 'push'
+        run: |
+          echo "所有测试通过，准备合并 dev 到 main..."
+          
+          # 配置git
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          
+          # 切换到main分支
+          git checkout main
+          git pull origin main
+          
+          # 合并dev分支
+          git merge dev --no-edit -m "chore: 自动合并 dev 到 main (测试通过)"
+          
+          # 推送到main分支
+          git push origin main
+          
+          echo "✅ dev 分支已成功合并到 main 分支"
 
       - name: Comment PR with test results
         if: github.event_name == 'pull_request'
