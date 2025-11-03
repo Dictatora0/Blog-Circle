@@ -58,7 +58,8 @@ const loadTimeline = async (reset = false) => {
   loading.value = true
   try {
     const res = await getFriendTimeline()
-    const responseData = res.data || []
+    // 处理响应数据：res.data是{code, message, data}，真正的数据在res.data.data
+    const responseData = res.data?.data || res.data || []
     const newMoments = Array.isArray(responseData) ? responseData : []
     
     const processedMoments = newMoments.map(post => {
