@@ -87,7 +87,7 @@ test.describe('好友动态时间线核心功能', () => {
 
     // 验证UI与API数据一致
     await page.waitForTimeout(1000)
-    const uiMomentCount = await page.locator('.moment-item, .moment-wrapper').count()
+    const uiMomentCount = await page.locator('.moment-wrapper').count()
     const emptyState = await page.locator('.empty-state').isVisible({ timeout: 1000 }).catch(() => false)
     
     if (apiData.data.length > 0) {
@@ -194,7 +194,7 @@ test.describe('好友动态时间线交互验证', () => {
 
     // 验证UI展示与API数据一致
     const apiPostCount = apiData.data.length
-    const uiPostCount = await page.locator('.moment-item, .moment-wrapper').count()
+    const uiPostCount = await page.locator('.moment-wrapper').count()
     const emptyState = await page.locator('.empty-state').isVisible({ timeout: 1000 }).catch(() => false)
 
     if (apiPostCount > 0) {
@@ -202,7 +202,7 @@ test.describe('好友动态时间线交互验证', () => {
       console.log(`✓ UI显示 ${uiPostCount} 条动态，与API数据(${apiPostCount})一致`)
 
       // 验证第一条动态的完整性
-      const firstMoment = page.locator('.moment-item, .moment-wrapper').first()
+      const firstMoment = page.locator('.moment-wrapper').first()
       
       // 必须有作者信息
       const authorName = firstMoment.locator('.moment-author, .author-name')
@@ -217,7 +217,7 @@ test.describe('好友动态时间线交互验证', () => {
       expect(timeText!.trim().length).toBeGreaterThan(0)
       
       // 必须有内容
-      const content = firstMoment.locator('.moment-content, .moment-text')
+      const content = firstMoment.locator('.moment-content').first()
       await expect(content).toBeVisible()
       
       console.log(`✓ 第一条动态显示完整: 作者=${authorText}, 时间=${timeText}`)
@@ -475,7 +475,7 @@ test.describe('时间线数据一致性', () => {
     console.log(`API返回 ${apiPosts.length} 条动态`)
 
     // 获取UI显示的数据
-    const uiPosts = await page.locator('.moment-item, .moment-wrapper').count()
+    const uiPosts = await page.locator('.moment-wrapper').count()
     const emptyState = await page.locator('.empty-state').isVisible({ timeout: 1000 }).catch(() => false)
 
     // 数据一致性验证
@@ -487,7 +487,7 @@ test.describe('时间线数据一致性', () => {
       // 验证每条动态的作者信息显示正确
       for (let i = 0; i < Math.min(apiPosts.length, 3); i++) {
         const apiPost = apiPosts[i]
-        const uiMoment = page.locator('.moment-item, .moment-wrapper').nth(i)
+        const uiMoment = page.locator('.moment-wrapper').nth(i)
         
         const uiAuthor = await uiMoment.locator('.moment-author, .author-name').textContent()
         expect(uiAuthor).toContain(apiPost.authorName)
