@@ -49,7 +49,7 @@
         <result property="status" column="status"/>
         <result property="createdAt" column="created_at"/>
         <association property="requester" javaType="com.cloudcom.blog.entity.User">
-            <id property="id" column="requester_id"/>
+            <id property="id" column="requester_user_id"/>
             <result property="nickname" column="requester_nickname"/>
             <result property="username" column="requester_username"/>
             <result property="avatar" column="requester_avatar"/>
@@ -59,8 +59,9 @@
 
     <select id="selectPendingRequestsByReceiverId" resultMap="FriendshipWithRequesterMap">
         SELECT f.id, f.requester_id, f.receiver_id, f.status, f.created_at,
-               u1.nickname as requester_nickname, u1.username as requester_username,
-               u1.avatar as requester_avatar, u1.email as requester_email
+               u1.id as requester_user_id, u1.nickname as requester_nickname, 
+               u1.username as requester_username, u1.avatar as requester_avatar, 
+               u1.email as requester_email
         FROM friendship f
         LEFT JOIN users u1 ON f.requester_id = u1.id
         WHERE f.receiver_id = #{receiverId} AND f.status = 'PENDING'

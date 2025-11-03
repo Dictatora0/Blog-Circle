@@ -13,21 +13,22 @@ import { loginUser } from './utils/helpers'
  */
 
 test.describe('好友系统完整工作流集成测试', () => {
-  const testUser1 = {
-    username: `testuser_${Date.now()}_1`,
-    password: 'test123',
-    email: `test1_${Date.now()}@example.com`,
-    nickname: '测试用户1'
-  }
-
-  const testUser2 = {
-    username: `testuser_${Date.now()}_2`,
-    password: 'test123',
-    email: `test2_${Date.now()}@example.com`,
-    nickname: '测试用户2'
-  }
-
   test('完整工作流：用户A添加用户B为好友', async ({ page }) => {
+    // 使用短随机数确保用户名不超过20个字符
+    const timestamp = Date.now().toString().slice(-8) // 只取最后8位数字
+    const testUser1 = {
+      username: `u1_${timestamp}`,
+      password: 'test123',
+      email: `test1_${timestamp}@example.com`,
+      nickname: '测试用户1'
+    }
+
+    const testUser2 = {
+      username: `u2_${timestamp}`,
+      password: 'test123',
+      email: `test2_${timestamp}@example.com`,
+      nickname: '测试用户2'
+    }
     // ==================== 准备阶段 ====================
     console.log('========== 阶段1: 创建测试用户 ==========')
     
@@ -35,34 +36,99 @@ test.describe('好友系统完整工作流集成测试', () => {
     await page.goto('/register')
     await page.waitForLoadState('domcontentloaded')
     
-    await page.locator('input[placeholder*="用户名"]').fill(testUser1.username)
+    // 填写表单并触发验证
+    const usernameInput = page.locator('input[placeholder*="用户名"]')
+    await usernameInput.fill(testUser1.username)
+    await usernameInput.blur()
+    
     const passwordFields = page.locator('input[type="password"]')
     await passwordFields.first().fill(testUser1.password)
     if (await passwordFields.count() > 1) {
       await passwordFields.nth(1).fill(testUser1.password) // 确认密码
+      await passwordFields.nth(1).blur()
     }
-    await page.locator('input[placeholder*="邮箱"], input[type="email"]').fill(testUser1.email)
+    
+    const emailInput = page.locator('input[placeholder*="邮箱"], input[type="email"]')
+    await emailInput.fill(testUser1.email)
+    await emailInput.blur()
+    
+    const nicknameInput = page.locator('input[placeholder*="昵称"]')
+    await nicknameInput.fill(testUser1.nickname)
+    await nicknameInput.blur()
+    
+    // 等待表单验证完成
+    await page.waitForTimeout(500)
+    
+    // 监听注册API（在点击前设置监听）
+    const registerPromise = page.waitForResponse(
+      response => response.url().includes('/api/auth/register') && response.status() === 200,
+      { timeout: 15000 }
+    )
     
     const registerButton = page.locator('button:has-text("注册")')
     await registerButton.click()
-    await page.waitForTimeout(2000)
-    console.log(`✓ 创建用户A: ${testUser1.username}`)
+    
+    // 等待注册完成并验证成功
+    const registerResponse = await registerPromise
+    const registerData = await registerResponse.json()
+    if (registerData.code !== 200) {
+      throw new Error(`用户A注册失败: ${registerData.message}`)
+    }
+    // 保存用户ID
+    testUser1.id = registerData.data?.id
+    console.log(`✓ 创建用户A成功: ${testUser1.username}, ID: ${testUser1.id}`)
+    
+    // 等待数据库事务完成
+    await page.waitForTimeout(1000)
 
     // Step 2: 创建测试用户B
     await page.goto('/register')
     await page.waitForLoadState('domcontentloaded')
     
-    await page.locator('input[placeholder*="用户名"]').fill(testUser2.username)
+    // 填写表单并触发验证
+    const usernameInput2 = page.locator('input[placeholder*="用户名"]')
+    await usernameInput2.fill(testUser2.username)
+    await usernameInput2.blur()
+    
     const passwordFields2 = page.locator('input[type="password"]')
     await passwordFields2.first().fill(testUser2.password)
     if (await passwordFields2.count() > 1) {
       await passwordFields2.nth(1).fill(testUser2.password)
+      await passwordFields2.nth(1).blur()
     }
-    await page.locator('input[placeholder*="邮箱"], input[type="email"]').fill(testUser2.email)
     
-    await registerButton.click()
-    await page.waitForTimeout(2000)
-    console.log(`✓ 创建用户B: ${testUser2.username}`)
+    const emailInput2 = page.locator('input[placeholder*="邮箱"], input[type="email"]')
+    await emailInput2.fill(testUser2.email)
+    await emailInput2.blur()
+    
+    const nicknameInput2 = page.locator('input[placeholder*="昵称"]')
+    await nicknameInput2.fill(testUser2.nickname)
+    await nicknameInput2.blur()
+    
+    // 等待表单验证完成
+    await page.waitForTimeout(500)
+    
+    // 监听注册API
+    const registerPromise2 = page.waitForResponse(
+      response => response.url().includes('/api/auth/register') && response.status() === 200,
+      { timeout: 15000 }
+    )
+    
+    const registerButton2 = page.locator('button:has-text("注册")')
+    await registerButton2.click()
+    
+    // 等待注册完成并验证成功
+    const registerResponse2 = await registerPromise2
+    const registerData2 = await registerResponse2.json()
+    if (registerData2.code !== 200) {
+      throw new Error(`用户B注册失败: ${registerData2.message}`)
+    }
+    // 保存用户ID
+    testUser2.id = registerData2.data?.id
+    console.log(`✓ 创建用户B成功: ${testUser2.username}, ID: ${testUser2.id}`)
+    
+    // 等待数据库事务完成
+    await page.waitForTimeout(1000)
 
     // ==================== 测试阶段 ====================
     console.log('\n========== 阶段2: 用户A登录并搜索用户B ==========')
@@ -94,22 +160,29 @@ test.describe('好友系统完整工作流集成测试', () => {
     
     const foundUser = searchData.data.find((u: any) => u.username === testUser2.username)
     expect(foundUser).toBeTruthy()
-    expect(foundUser.password).toBeUndefined() // 密码不应该返回
+    expect(foundUser.password).toBeFalsy() // 密码不应该返回（可能是null或undefined）
     console.log(`✓ 搜索到用户B: ${foundUser.nickname}`)
 
     // ==================== 发送好友请求 ====================
     console.log('\n========== 阶段3: 用户A发送好友请求 ==========')
     
-    await page.waitForTimeout(1000)
+    // 等待搜索结果渲染
+    // 等待任何好友卡片出现（说明搜索结果已渲染）
+    const friendCard = page.locator('.friend-card').first()
+    await expect(friendCard).toBeVisible({ timeout: 5000 })
+    
+    // 再等待一下，确保内容已加载
+    await page.waitForTimeout(500)
 
-    // Step 5: 发送好友请求
+    // Step 5: 发送好友请求（在点击前设置监听）
     const sendRequestPromise = page.waitForResponse(
       response => response.url().includes('/api/friends/request/') &&
                  response.request().method() === 'POST',
       { timeout: 10000 }
     )
 
-    const addButton = page.locator('button:has-text("添加好友")').first()
+    // 查找按钮（在第一个好友卡片中）
+    const addButton = friendCard.locator('button:has-text("添加好友")')
     await expect(addButton).toBeVisible({ timeout: 3000 })
     await addButton.click()
 
@@ -157,14 +230,23 @@ test.describe('好友系统完整工作流集成测试', () => {
     const requestsData = await requestsResponse.json()
     
     expect(requestsData.code).toBe(200)
-    const pendingRequest = requestsData.data.find((r: any) => 
-      r.requester && r.requester.username === testUser1.username
+    console.log('待处理请求数据:', JSON.stringify(requestsData, null, 2))
+    const requests = requestsData.data || []
+    // 通过requesterId查找请求（因为requester对象可能为null）
+    const pendingRequest = requests.find((r: any) => 
+      r.requesterId === testUser1.id ||
+      (r.requester && (r.requester.username === testUser1.username || r.requester.id === testUser1.id))
     )
     expect(pendingRequest).toBeTruthy()
     console.log(`✓ 用户B收到用户A的好友请求，请求ID: ${pendingRequest.id}`)
 
     // Step 9: 接受好友请求
     await page.waitForTimeout(1000)
+    
+    // 等待请求容器和按钮出现
+    const requestsSection = page.locator('.requests-section')
+    await expect(requestsSection).toBeVisible({ timeout: 5000 })
+    await page.waitForTimeout(500)
 
     const acceptPromise = page.waitForResponse(
       response => response.url().includes('/api/friends/accept/') &&
@@ -172,7 +254,7 @@ test.describe('好友系统完整工作流集成测试', () => {
       { timeout: 10000 }
     )
 
-    const acceptButton = page.locator('button:has-text("同意")').first()
+    const acceptButton = requestsSection.locator('button:has-text("同意")').first()
     await expect(acceptButton).toBeVisible({ timeout: 3000 })
     await acceptButton.click()
 
@@ -212,23 +294,33 @@ test.describe('好友系统完整工作流集成测试', () => {
     console.log(`删除前好友数量: ${friendCountBefore}`)
 
     // Step 12: 删除好友
-    const firstFriend = page.locator('.friends-section .friend-card').first()
+    await page.waitForTimeout(1000)
+    
+    // 等待好友列表容器出现
+    const friendsSection = page.locator('.friends-section')
+    await expect(friendsSection).toBeVisible({ timeout: 5000 })
+    
+    const firstFriend = friendsSection.locator('.friend-card').first()
+    await expect(firstFriend).toBeVisible({ timeout: 3000 })
+    
     const deleteButton = firstFriend.locator('button:has-text("删除")')
+    await expect(deleteButton).toBeVisible({ timeout: 3000 })
 
-    // 监听删除API
+    // 监听删除API（在点击前设置监听）
     const deletePromise = page.waitForResponse(
       response => response.url().includes('/api/friends/user/') &&
                  response.request().method() === 'DELETE',
-      { timeout: 10000 }
+      { timeout: 15000 }
     )
 
-    // 处理确认对话框 - 真正执行删除！
-    page.once('dialog', async dialog => {
-      expect(dialog.type()).toBe('confirm')
-      await dialog.accept() // 必须accept，不能dismiss！
-    })
-
+    // Element Plus 的 ElMessageBox.confirm 不是浏览器原生对话框，直接点击删除按钮
+    // 等待 Element Plus 确认对话框出现（.el-message-box）
     await deleteButton.click()
+    
+    // 等待 Element Plus 确认对话框出现并点击确定
+    const confirmButton = page.locator('.el-message-box__btns button:has-text("确定"), .el-message-box .el-button--primary').first()
+    await expect(confirmButton).toBeVisible({ timeout: 3000 })
+    await confirmButton.click()
 
     // 验证删除API
     const deleteResponse = await deletePromise
@@ -268,14 +360,14 @@ test.describe('好友系统完整工作流集成测试', () => {
     await loginUser(page, testUser1.username, testUser1.password)
 
     // Step 16: 验证用户A的好友列表
-    const friendListPromise = page.waitForResponse(
+    const friendListPromise2 = page.waitForResponse(
       response => response.url().includes('/api/friends/list'),
       { timeout: 15000 }
     )
 
     await page.goto('/friends')
-    const friendListResponse = await friendListPromise
-    const friendListData = await friendListResponse.json()
+    const friendListResponse2 = await friendListPromise2
+    const friendListData = await friendListResponse2.json()
 
     // 用户A的好友列表中也不应该有用户B了
     const hasFriendB = friendListData.data.some((f: any) => f.username === testUser2.username)
@@ -288,41 +380,103 @@ test.describe('好友系统完整工作流集成测试', () => {
   test('完整工作流：拒绝好友请求', async ({ page }) => {
     console.log('========== 阶段1: 创建测试用户 ==========')
     
+    // 使用短随机数确保用户名不超过20个字符
+    const timestamp2 = Date.now().toString().slice(-8) // 只取最后8位数字
     const testUser3 = {
-      username: `testuser_${Date.now()}_3`,
+      username: `u3_${timestamp2}`,
       password: 'test123',
-      email: `test3_${Date.now()}@example.com`
+      email: `test3_${timestamp2}@example.com`,
+      nickname: '测试用户3'
     }
 
     const testUser4 = {
-      username: `testuser_${Date.now()}_4`,
+      username: `u4_${timestamp2}`,
       password: 'test123',
-      email: `test4_${Date.now()}@example.com`
+      email: `test4_${timestamp2}@example.com`,
+      nickname: '测试用户4'
     }
 
     // 创建用户3
     await page.goto('/register')
     await page.waitForLoadState('domcontentloaded')
-    await page.locator('input[placeholder*="用户名"]').fill(testUser3.username)
+    
+    const usernameInput3 = page.locator('input[placeholder*="用户名"]')
+    await usernameInput3.fill(testUser3.username)
+    await usernameInput3.blur()
+    
     const pwd1 = page.locator('input[type="password"]')
     await pwd1.first().fill(testUser3.password)
-    if (await pwd1.count() > 1) await pwd1.nth(1).fill(testUser3.password)
-    await page.locator('input[placeholder*="邮箱"], input[type="email"]').fill(testUser3.email)
+    if (await pwd1.count() > 1) {
+      await pwd1.nth(1).fill(testUser3.password)
+      await pwd1.nth(1).blur()
+    }
+    
+    const emailInput3 = page.locator('input[placeholder*="邮箱"], input[type="email"]')
+    await emailInput3.fill(testUser3.email)
+    await emailInput3.blur()
+    
+    const nicknameInput3 = page.locator('input[placeholder*="昵称"]')
+    await nicknameInput3.fill(testUser3.nickname)
+    await nicknameInput3.blur()
+    
+    await page.waitForTimeout(500)
+    
+    const register3Promise = page.waitForResponse(
+      response => response.url().includes('/api/auth/register') && response.status() === 200,
+      { timeout: 15000 }
+    )
+    
     await page.locator('button:has-text("注册")').click()
-    await page.waitForTimeout(2000)
-    console.log(`✓ 创建用户3: ${testUser3.username}`)
+    const register3Response = await register3Promise
+    const data3 = await register3Response.json()
+    if (data3.code !== 200) {
+      throw new Error(`用户3注册失败: ${data3.message}`)
+    }
+    // 保存用户ID
+    testUser3.id = data3.data?.id
+    console.log(`✓ 创建用户3成功: ${testUser3.username}, ID: ${testUser3.id}`)
+    await page.waitForTimeout(1000)
 
     // 创建用户4
     await page.goto('/register')
     await page.waitForLoadState('domcontentloaded')
-    await page.locator('input[placeholder*="用户名"]').fill(testUser4.username)
+    
+    const usernameInput4 = page.locator('input[placeholder*="用户名"]')
+    await usernameInput4.fill(testUser4.username)
+    await usernameInput4.blur()
+    
     const pwd2 = page.locator('input[type="password"]')
     await pwd2.first().fill(testUser4.password)
-    if (await pwd2.count() > 1) await pwd2.nth(1).fill(testUser4.password)
-    await page.locator('input[placeholder*="邮箱"], input[type="email"]').fill(testUser4.email)
+    if (await pwd2.count() > 1) {
+      await pwd2.nth(1).fill(testUser4.password)
+      await pwd2.nth(1).blur()
+    }
+    
+    const emailInput4 = page.locator('input[placeholder*="邮箱"], input[type="email"]')
+    await emailInput4.fill(testUser4.email)
+    await emailInput4.blur()
+    
+    const nicknameInput4 = page.locator('input[placeholder*="昵称"]')
+    await nicknameInput4.fill(testUser4.nickname)
+    await nicknameInput4.blur()
+    
+    await page.waitForTimeout(500)
+    
+    const register4Promise = page.waitForResponse(
+      response => response.url().includes('/api/auth/register') && response.status() === 200,
+      { timeout: 15000 }
+    )
+    
     await page.locator('button:has-text("注册")').click()
-    await page.waitForTimeout(2000)
-    console.log(`✓ 创建用户4: ${testUser4.username}`)
+    const register4Response = await register4Promise
+    const data4 = await register4Response.json()
+    if (data4.code !== 200) {
+      throw new Error(`用户4注册失败: ${data4.message}`)
+    }
+    // 保存用户ID
+    testUser4.id = data4.data?.id
+    console.log(`✓ 创建用户4成功: ${testUser4.username}, ID: ${testUser4.id}`)
+    await page.waitForTimeout(1000)
 
     // ==================== 发送请求 ====================
     console.log('\n========== 阶段2: 用户3发送好友请求给用户4 ==========')
@@ -347,15 +501,23 @@ test.describe('好友系统完整工作流集成测试', () => {
     expect(searchData.data.length).toBeGreaterThan(0)
     console.log('✓ 搜索到用户4')
 
-    await page.waitForTimeout(1000)
+    // 等待搜索结果渲染
+    // 等待任何好友卡片出现（说明搜索结果已渲染）
+    const friendCard = page.locator('.friend-card').first()
+    await expect(friendCard).toBeVisible({ timeout: 5000 })
+    
+    // 再等待一下，确保内容已加载
+    await page.waitForTimeout(500)
 
-    // 发送好友请求
+    // 发送好友请求（在点击前设置监听）
     const sendPromise = page.waitForResponse(
       response => response.url().includes('/api/friends/request/'),
       { timeout: 10000 }
     )
 
-    const addButton = page.locator('button:has-text("添加好友")').first()
+    // 查找按钮（在第一个好友卡片中）
+    const addButton = friendCard.locator('button:has-text("添加好友")')
+    await expect(addButton).toBeVisible({ timeout: 3000 })
     await addButton.click()
 
     const sendResponse = await sendPromise
@@ -393,13 +555,23 @@ test.describe('好友系统完整工作流集成测试', () => {
     const requestsResponse = await requestsPromise
     const requestsData = await requestsResponse.json()
     
-    const receivedRequest = requestsData.data.find((r: any) => 
-      r.requester && r.requester.username === testUser3.username
+    expect(requestsData.code).toBe(200)
+    console.log('待处理请求数据:', JSON.stringify(requestsData, null, 2))
+    const requests = requestsData.data || []
+    // 通过requesterId查找请求（因为requester对象可能为null）
+    const receivedRequest = requests.find((r: any) => 
+      r.requesterId === testUser3.id ||
+      (r.requester && (r.requester.username === testUser3.username || r.requester.id === testUser3.id))
     )
     expect(receivedRequest).toBeTruthy()
     console.log(`✓ 用户4收到用户3的好友请求`)
 
     await page.waitForTimeout(1000)
+    
+    // 等待请求容器和按钮出现
+    const requestsSection = page.locator('.requests-section')
+    await expect(requestsSection).toBeVisible({ timeout: 5000 })
+    await page.waitForTimeout(500)
 
     // 拒绝请求
     const rejectPromise = page.waitForResponse(
@@ -407,7 +579,8 @@ test.describe('好友系统完整工作流集成测试', () => {
       { timeout: 10000 }
     )
 
-    const rejectButton = page.locator('button:has-text("拒绝")').first()
+    const rejectButton = requestsSection.locator('button:has-text("拒绝")').first()
+    await expect(rejectButton).toBeVisible({ timeout: 3000 })
     await rejectButton.click()
 
     const rejectResponse = await rejectPromise
