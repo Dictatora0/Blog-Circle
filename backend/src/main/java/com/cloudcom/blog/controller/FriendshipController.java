@@ -31,7 +31,7 @@ public class FriendshipController {
         try {
             Long currentUserId = (Long) request.getAttribute("userId");
             Friendship friendship = friendshipService.sendFriendRequest(currentUserId, receiverId);
-            return Result.success(friendship, "好友请求已发送");
+            return Result.success("好友请求已发送", friendship);
         } catch (IllegalArgumentException e) {
             return Result.error(e.getMessage());
         } catch (Exception e) {
@@ -48,7 +48,7 @@ public class FriendshipController {
         try {
             Long currentUserId = (Long) request.getAttribute("userId");
             friendshipService.acceptFriendRequest(requestId, currentUserId);
-            return Result.success(null, "已接受好友请求");
+            return Result.success("已接受好友请求", null);
         } catch (IllegalArgumentException e) {
             return Result.error(e.getMessage());
         } catch (Exception e) {
@@ -65,7 +65,7 @@ public class FriendshipController {
         try {
             Long currentUserId = (Long) request.getAttribute("userId");
             friendshipService.rejectFriendRequest(requestId, currentUserId);
-            return Result.success(null, "已拒绝好友请求");
+            return Result.success("已拒绝好友请求", null);
         } catch (IllegalArgumentException e) {
             return Result.error(e.getMessage());
         } catch (Exception e) {
@@ -82,7 +82,7 @@ public class FriendshipController {
         try {
             Long currentUserId = (Long) request.getAttribute("userId");
             friendshipService.deleteFriend(friendshipId, currentUserId);
-            return Result.success(null, "已删除好友");
+            return Result.success("已删除好友", null);
         } catch (IllegalArgumentException e) {
             return Result.error(e.getMessage());
         } catch (Exception e) {
