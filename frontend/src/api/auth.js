@@ -18,4 +18,30 @@ export const register = (data) => {
   })
 }
 
+// 获取当前用户信息
+export const getCurrentUser = () => {
+  return request({
+    url: '/users/current',
+    method: 'get'
+  })
+}
+
+// 更新用户信息
+export const updateUser = (userId, data) => {
+  return request({
+    url: `/users/${userId}`,
+    method: 'put',
+    data
+  })
+}
+
+// 更新用户封面
+export const updateUserCover = (coverUrl) => {
+  return request({
+    url: '/users/cover',
+    method: 'put',
+    data: { coverUrl }
+  })
+}
+
 

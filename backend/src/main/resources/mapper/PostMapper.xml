@@ -22,7 +22,7 @@
     </update>
 
     <select id="selectById" resultType="Post">
-        SELECT p.*, u.nickname as author_name,
+        SELECT p.*, u.nickname as author_name, u.avatar as author_avatar,
                (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) as like_count
         FROM posts p
         LEFT JOIN users u ON p.author_id = u.id
@@ -30,7 +30,7 @@
     </select>
 
     <select id="selectAllWithAuthor" resultType="Post">
-        SELECT p.*, u.nickname as author_name,
+        SELECT p.*, u.nickname as author_name, u.avatar as author_avatar,
                (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count,
                (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) as like_count
         FROM posts p
@@ -39,10 +39,11 @@
     </select>
 
     <select id="selectByAuthorId" resultType="Post">
-        SELECT p.*,
+        SELECT p.*, u.nickname as author_name, u.avatar as author_avatar,
                (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count,
                (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) as like_count
         FROM posts p
+        LEFT JOIN users u ON p.author_id = u.id
         WHERE p.author_id = #{authorId}
         ORDER BY p.created_at DESC
     </select>

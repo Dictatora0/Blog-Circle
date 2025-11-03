@@ -43,7 +43,6 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/posts/list",
                         "/api/posts/*/detail",
                         "/api/comments/post/*",
-                        "/api/upload/**",
                         "/uploads/**"
                 );
     }

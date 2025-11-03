@@ -61,6 +61,16 @@ public class UserService {
      * 更新用户信息
      */
     public void updateUser(User user) {
+        // 验证用户是否存在
+        if (user.getId() == null) {
+            throw new RuntimeException("用户ID不能为空");
+        }
+        User existingUser = userMapper.selectById(user.getId());
+        if (existingUser == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        
+        // 执行更新
         userMapper.update(user);
     }
 

@@ -14,6 +14,7 @@ public class User {
     private String email;
     private String nickname;
     private String avatar;
+    private String coverImage;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

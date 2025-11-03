@@ -8,10 +8,8 @@ export const uploadImage = (file) => {
   return request({
     url: '/upload/image',
     method: 'post',
-    data: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+    data: formData
+    // 注意：不要手动设置 Content-Type，让浏览器自动设置（包含 boundary）
   })
 }
 

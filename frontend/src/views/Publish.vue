@@ -188,7 +188,7 @@ const handlePublish = async () => {
 .publish-page {
   min-height: 100vh;
   background: var(--bg-secondary);
-  padding-top: 72px;
+  padding-top: 80px;
 }
 
 .page-container {
@@ -200,19 +200,31 @@ const handlePublish = async () => {
 .publish-card {
   background: var(--bg-primary);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
+  border: 1px solid var(--border-light);
+  transition: all var(--transition-base);
+}
+
+.publish-card:hover {
+  box-shadow: var(--shadow-card-hover);
 }
 
 .card-header {
-  padding: var(--spacing-lg);
+  padding: var(--spacing-lg) var(--spacing-xl);
   border-bottom: 1px solid var(--border-light);
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
 }
 
 .card-header h2 {
-  font-size: var(--font-size-xl);
-  font-weight: 600;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
   color: var(--text-primary);
+  letter-spacing: -0.02em;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .card-body {
@@ -236,16 +248,28 @@ const handlePublish = async () => {
 }
 
 .content-input :deep(.el-textarea__inner) {
-  border: none;
-  box-shadow: none;
+  border: 1.5px solid var(--border-color);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
   resize: none;
   font-size: var(--font-size-md);
-  line-height: 1.6;
-  padding: 0;
+  line-height: 1.75;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  background: var(--bg-secondary);
+  min-height: 200px;
+}
+
+.content-input :deep(.el-textarea__inner):hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1.5px var(--primary-color) inset;
+  background: var(--bg-primary);
 }
 
 .content-input :deep(.el-textarea__inner):focus {
-  box-shadow: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-color) inset, 0 0 0 4px var(--primary-light);
+  background: var(--bg-primary);
 }
 
 .image-upload-section {
@@ -264,35 +288,51 @@ const handlePublish = async () => {
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  transition: all var(--transition-base);
+}
+
+.image-preview:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-md);
 }
 
 .image-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform var(--transition-base);
+}
+
+.image-preview:hover img {
+  transform: scale(1.05);
 }
 
 .remove-btn {
   position: absolute;
   top: var(--spacing-xs);
   right: var(--spacing-xs);
-  width: 24px;
-  height: 24px;
-  background: rgba(0, 0, 0, 0.6);
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.7);
   color: white;
   border: none;
   border-radius: var(--radius-full);
   cursor: pointer;
   font-size: 18px;
+  font-weight: var(--font-weight-bold);
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all var(--transition-base);
+  backdrop-filter: blur(4px);
+  z-index: 2;
 }
 
 .remove-btn:hover {
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--primary-color);
+  transform: scale(1.1) rotate(90deg);
 }
 
 .upload-placeholder {
@@ -304,23 +344,54 @@ const handlePublish = async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
   background: var(--bg-secondary);
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-placeholder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transition: opacity var(--transition-base);
 }
 
 .upload-placeholder:hover {
   border-color: var(--primary-color);
-  background: var(--primary-light);
+  transform: scale(1.02);
+  box-shadow: var(--shadow-sm);
+}
+
+.upload-placeholder:hover::before {
+  opacity: 0.05;
 }
 
 .upload-icon {
-  font-size: 32px;
-  margin-bottom: var(--spacing-xs);
+  font-size: 40px;
+  margin-bottom: var(--spacing-sm);
+  position: relative;
+  z-index: 1;
+  transition: transform var(--transition-base);
+}
+
+.upload-placeholder:hover .upload-icon {
+  transform: scale(1.1);
 }
 
 .upload-text {
   font-size: var(--font-size-sm);
   color: var(--text-tertiary);
+  font-weight: var(--font-weight-medium);
+  position: relative;
+  z-index: 1;
+  transition: color var(--transition-base);
+}
+
+.upload-placeholder:hover .upload-text {
+  color: var(--primary-color);
 }
 
 .publish-footer {
@@ -337,27 +408,49 @@ const handlePublish = async () => {
 }
 
 .btn-publish {
-  background: var(--primary-color);
-  color: white;
+  background: var(--primary-gradient);
+  color: var(--text-white);
   border: none;
   border-radius: var(--radius-full);
-  padding: var(--spacing-sm) var(--spacing-xl);
+  padding: var(--spacing-md) var(--spacing-2xl);
   font-size: var(--font-size-md);
-  font-weight: 500;
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
   box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-publish::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left var(--transition-slow);
 }
 
 .btn-publish:hover:not(:disabled) {
   background: var(--primary-hover);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), var(--primary-glow);
+  transform: translateY(-2px);
+}
+
+.btn-publish:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.btn-publish:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-publish:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 @media (max-width: 768px) {

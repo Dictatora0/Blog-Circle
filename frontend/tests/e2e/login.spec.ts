@@ -10,8 +10,22 @@ import { test, expect } from '@playwright/test'
  */
 test.describe('用户登录场景', () => {
   test.beforeEach(async ({ page }) => {
-    // 访问首页
-    await page.goto('/')
+    // 访问首页，使用重试逻辑确保服务器就绪
+    try {
+      await page.goto('/', { 
+        waitUntil: 'domcontentloaded',
+        timeout: 60000 
+      })
+      // 等待页面基本元素加载
+      await page.waitForLoadState('domcontentloaded')
+    } catch (error) {
+      // 如果首次加载失败，等待一下再重试
+      await page.waitForTimeout(2000)
+      await page.goto('/', { 
+        waitUntil: 'domcontentloaded',
+        timeout: 60000 
+      })
+    }
   })
 
   test('成功登录并跳转到主页', async ({ page }) => {
@@ -39,10 +53,24 @@ test.describe('用户登录场景', () => {
     // When: 点击登录按钮
     const submitButton = page.locator('button:has-text("登录")')
     await expect(submitButton).toBeVisible()
+    
+    // 点击登录按钮并等待导航
+    const navigationPromise = page.waitForURL(/.*\/home/, { timeout: 15000 }).catch(async () => {
+      // 如果 waitForURL 超时，检查是否已经导航到 /home
+      await page.waitForFunction(
+        () => window.location.pathname.includes('/home'),
+        { timeout: 5000 }
+      ).catch(() => {
+        // 如果仍然失败，抛出错误
+        throw new Error('登录后未跳转到首页')
+      })
+    })
+    
     await submitButton.click()
-
-    // Then: 应该登录成功并跳转到首页
-    await page.waitForURL(/.*\/home/, { timeout: 10000 })
+    await navigationPromise
+    
+    // 验证已导航到 /home
+    await expect(page).toHaveURL(/.*\/home/, { timeout: 5000 })
     
     // 等待页面DOM加载完成
     await page.waitForLoadState('domcontentloaded')

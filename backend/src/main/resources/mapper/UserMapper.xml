@@ -4,8 +4,8 @@
 <mapper namespace="com.cloudcom.blog.mapper.UserMapper">
 
     <insert id="insert" parameterType="User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO users (username, password, email, nickname, avatar, created_at, updated_at)
-        VALUES (#{username}, #{password}, #{email}, #{nickname}, #{avatar}, 
+        INSERT INTO users (username, password, email, nickname, avatar, cover_image, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{email}, #{nickname}, #{avatar}, #{coverImage},
                 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     </insert>
 
@@ -15,10 +15,13 @@
 
     <update id="update" parameterType="User">
         UPDATE users
-        SET email = #{email},
-            nickname = #{nickname},
-            avatar = #{avatar},
+        <set>
+            <if test="email != null">email = #{email},</if>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="coverImage != null">cover_image = #{coverImage},</if>
             updated_at = CURRENT_TIMESTAMP
+        </set>
         WHERE id = #{id}
     </update>
 
