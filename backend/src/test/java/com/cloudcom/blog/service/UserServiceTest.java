@@ -186,5 +186,93 @@ class UserServiceTest {
         // Then: 验证mapper被调用
         verify(userMapper).update(updatedUser);
     }
+
+    @Test
+    @DisplayName("场景8: 更新用户头像")
+    void testUpdateUserAvatar() {
+        // Given: 准备更新的用户数据（仅更新头像）
+        User updatedUser = new User();
+        updatedUser.setId(1L);
+        updatedUser.setAvatar("http://localhost:8080/uploads/new-avatar.jpg");
+        
+        when(userMapper.update(any(User.class))).thenReturn(1);
+
+        // When: 执行更新
+        userService.updateUser(updatedUser);
+
+        // Then: 验证mapper被调用，且传入的用户对象包含正确的头像URL
+        verify(userMapper).update(argThat(user -> 
+            user.getId().equals(1L) && 
+            "http://localhost:8080/uploads/new-avatar.jpg".equals(user.getAvatar())
+        ));
+    }
+
+    @Test
+    @DisplayName("场景9: 更新用户封面")
+    void testUpdateUserCoverImage() {
+        // Given: 准备更新的用户数据（仅更新封面）
+        User updatedUser = new User();
+        updatedUser.setId(1L);
+        updatedUser.setCoverImage("http://localhost:8080/uploads/new-cover.jpg");
+        
+        when(userMapper.update(any(User.class))).thenReturn(1);
+
+        // When: 执行更新
+        userService.updateUser(updatedUser);
+
+        // Then: 验证mapper被调用，且传入的用户对象包含正确的封面URL
+        verify(userMapper).update(argThat(user -> 
+            user.getId().equals(1L) && 
+            "http://localhost:8080/uploads/new-cover.jpg".equals(user.getCoverImage())
+        ));
+    }
+
+    @Test
+    @DisplayName("场景10: 同时更新头像和封面")
+    void testUpdateUserAvatarAndCover() {
+        // Given: 准备更新的用户数据（同时更新头像和封面）
+        User updatedUser = new User();
+        updatedUser.setId(1L);
+        updatedUser.setAvatar("http://localhost:8080/uploads/new-avatar.jpg");
+        updatedUser.setCoverImage("http://localhost:8080/uploads/new-cover.jpg");
+        
+        when(userMapper.update(any(User.class))).thenReturn(1);
+
+        // When: 执行更新
+        userService.updateUser(updatedUser);
+
+        // Then: 验证mapper被调用，且传入的用户对象包含正确的头像和封面URL
+        verify(userMapper).update(argThat(user -> 
+            user.getId().equals(1L) && 
+            "http://localhost:8080/uploads/new-avatar.jpg".equals(user.getAvatar()) &&
+            "http://localhost:8080/uploads/new-cover.jpg".equals(user.getCoverImage())
+        ));
+    }
+
+    @Test
+    @DisplayName("场景11: 更新用户信息（包含头像、封面和其他字段）")
+    void testUpdateUserWithAllFields() {
+        // Given: 准备更新的用户数据（包含所有字段）
+        User updatedUser = new User();
+        updatedUser.setId(1L);
+        updatedUser.setNickname("更新后的昵称");
+        updatedUser.setEmail("updated@example.com");
+        updatedUser.setAvatar("http://localhost:8080/uploads/new-avatar.jpg");
+        updatedUser.setCoverImage("http://localhost:8080/uploads/new-cover.jpg");
+        
+        when(userMapper.update(any(User.class))).thenReturn(1);
+
+        // When: 执行更新
+        userService.updateUser(updatedUser);
+
+        // Then: 验证mapper被调用，且传入的用户对象包含所有更新的字段
+        verify(userMapper).update(argThat(user -> 
+            user.getId().equals(1L) && 
+            "更新后的昵称".equals(user.getNickname()) &&
+            "updated@example.com".equals(user.getEmail()) &&
+            "http://localhost:8080/uploads/new-avatar.jpg".equals(user.getAvatar()) &&
+            "http://localhost:8080/uploads/new-cover.jpg".equals(user.getCoverImage())
+        ));
+    }
 }
 
