@@ -183,7 +183,16 @@ public class FriendshipService {
      * 获取待处理的好友请求
      */
     public List<Friendship> getPendingRequests(Long userId) {
-        return friendshipMapper.selectPendingRequestsByReceiverId(userId);
+        List<Friendship> friendships = friendshipMapper.selectPendingRequestsByReceiverId(userId);
+        
+        // 清理 requester 对象中的密码字段
+        for (Friendship friendship : friendships) {
+            if (friendship.getRequester() != null) {
+                friendship.getRequester().setPassword(null);
+            }
+        }
+        
+        return friendships;
     }
 
     /**

@@ -128,8 +128,11 @@ const loadFriendList = async () => {
   try {
     loading.value = true
     const res = await getFriendList()
-    if (res.code === 200) {
-      friendList.value = res.data || []
+    // 处理响应数据：axios返回的response对象，业务数据在res.data中
+    // res.data是{code, message, data}，真正的数据在res.data.data
+    const responseBody = res.data || res
+    if (responseBody.code === 200) {
+      friendList.value = responseBody.data || []
     }
   } catch (error) {
     console.error('加载好友列表失败:', error)
@@ -142,8 +145,11 @@ const loadFriendList = async () => {
 const loadPendingRequests = async () => {
   try {
     const res = await getPendingRequests()
-    if (res.code === 200) {
-      pendingRequests.value = res.data || []
+    // 处理响应数据：axios返回的response对象，业务数据在res.data中
+    // res.data是{code, message, data}，真正的数据在res.data.data
+    const responseBody = res.data || res
+    if (responseBody.code === 200) {
+      pendingRequests.value = responseBody.data || []
     }
   } catch (error) {
     console.error('加载好友请求失败:', error)
@@ -158,11 +164,14 @@ const handleSearch = async () => {
   
   try {
     const res = await searchUsers(searchKeyword.value)
-    if (res.code === 200) {
-      searchResults.value = res.data || []
+    // 处理响应数据：axios返回的response对象，业务数据在res.data中
+    // res.data是{code, message, data}，真正的数据在res.data.data
+    const responseBody = res.data || res
+    if (responseBody.code === 200) {
+      searchResults.value = responseBody.data || []
       searched.value = true
     } else {
-      ElMessage.error(res.message || '搜索失败')
+      ElMessage.error(responseBody.message || '搜索失败')
     }
   } catch (error) {
     console.error('搜索用户失败:', error)
@@ -174,16 +183,25 @@ const handleSendRequest = async (receiverId) => {
   try {
     requestingSending.value = true
     const res = await sendFriendRequest(receiverId)
-    if (res.code === 200) {
+    // 处理响应数据：axios返回的response对象，业务数据在res.data中
+    // res.data是{code, message, data}，真正的数据在res.data.data
+    const responseBody = res.data || res
+    if (responseBody.code === 200) {
       ElMessage.success('好友请求已发送')
       // 从搜索结果中移除该用户
       searchResults.value = searchResults.value.filter(u => u.id !== receiverId)
     } else {
-      ElMessage.error(res.message || '发送请求失败')
+      ElMessage.error(responseBody.message || '发送请求失败')
     }
   } catch (error) {
     console.error('发送好友请求失败:', error)
-    ElMessage.error('发送请求失败')
+    // 打印更详细的错误信息
+    if (error.response?.data) {
+      console.error('错误详情:', error.response.data)
+      ElMessage.error(error.response.data.message || '发送请求失败')
+    } else {
+      ElMessage.error('发送请求失败')
+    }
   } finally {
     requestingSending.value = false
   }
@@ -193,16 +211,22 @@ const handleAcceptRequest = async (requestId) => {
   try {
     processing.value = true
     const res = await acceptFriendRequest(requestId)
-    if (res.code === 200) {
+    // 处理响应数据：axios返回的response对象，业务数据在res.data中
+    const responseBody = res.data || res
+    if (responseBody.code === 200) {
       ElMessage.success('已接受好友请求')
       loadPendingRequests()
       loadFriendList()
     } else {
-      ElMessage.error(res.message || '操作失败')
+      ElMessage.error(responseBody.message || '操作失败')
     }
   } catch (error) {
     console.error('接受好友请求失败:', error)
-    ElMessage.error('操作失败')
+    if (error.response?.data) {
+      ElMessage.error(error.response.data.message || '操作失败')
+    } else {
+      ElMessage.error('操作失败')
+    }
   } finally {
     processing.value = false
   }
@@ -212,15 +236,21 @@ const handleRejectRequest = async (requestId) => {
   try {
     processing.value = true
     const res = await rejectFriendRequest(requestId)
-    if (res.code === 200) {
+    // 处理响应数据：axios返回的response对象，业务数据在res.data中
+    const responseBody = res.data || res
+    if (responseBody.code === 200) {
       ElMessage.success('已拒绝好友请求')
       loadPendingRequests()
     } else {
-      ElMessage.error(res.message || '操作失败')
+      ElMessage.error(responseBody.message || '操作失败')
     }
   } catch (error) {
     console.error('拒绝好友请求失败:', error)
-    ElMessage.error('操作失败')
+    if (error.response?.data) {
+      ElMessage.error(error.response.data.message || '操作失败')
+    } else {
+      ElMessage.error('操作失败')
+    }
   } finally {
     processing.value = false
   }
@@ -236,11 +266,13 @@ const handleDeleteFriend = async (friendId) => {
     
     deleting.value = true
     const res = await deleteFriend(friendId)
-    if (res.code === 200) {
+    // 处理响应数据：axios返回的response对象，业务数据在res.data中
+    const responseBody = res.data || res
+    if (responseBody.code === 200) {
       ElMessage.success('已删除好友')
       loadFriendList()
     } else {
-      ElMessage.error(res.message || '删除失败')
+      ElMessage.error(responseBody.message || '删除失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
