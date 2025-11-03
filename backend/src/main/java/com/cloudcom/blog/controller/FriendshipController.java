@@ -75,13 +75,13 @@ public class FriendshipController {
     }
 
     /**
-     * 删除好友
+     * 删除好友（通过用户ID）
      */
-    @DeleteMapping("/{friendshipId}")
-    public Result<?> deleteFriend(@PathVariable Long friendshipId, HttpServletRequest request) {
+    @DeleteMapping("/user/{friendUserId}")
+    public Result<?> deleteFriendByUserId(@PathVariable Long friendUserId, HttpServletRequest request) {
         try {
             Long currentUserId = (Long) request.getAttribute("userId");
-            friendshipService.deleteFriend(friendshipId, currentUserId);
+            friendshipService.deleteFriendByUserId(currentUserId, friendUserId);
             return Result.success("已删除好友", null);
         } catch (IllegalArgumentException e) {
             return Result.error(e.getMessage());

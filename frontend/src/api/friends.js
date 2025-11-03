@@ -24,10 +24,10 @@ export const rejectFriendRequest = (requestId) => {
   })
 }
 
-// 删除好友
-export const deleteFriend = (friendshipId) => {
+// 删除好友（通过用户ID）
+export const deleteFriend = (friendUserId) => {
   return request({
-    url: `/friends/${friendshipId}`,
+    url: `/friends/user/${friendUserId}`,
     method: 'delete'
   })
 }
