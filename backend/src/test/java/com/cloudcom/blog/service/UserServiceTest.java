@@ -177,6 +177,8 @@ class UserServiceTest {
         updatedUser.setId(1L);
         updatedUser.setNickname("更新后的昵称");
         
+        // Mock用户存在性检查
+        when(userMapper.selectById(1L)).thenReturn(testUser);
         // update 方法返回 int，不是 void
         when(userMapper.update(any(User.class))).thenReturn(1);
 
@@ -184,6 +186,7 @@ class UserServiceTest {
         userService.updateUser(updatedUser);
 
         // Then: 验证mapper被调用
+        verify(userMapper).selectById(1L);
         verify(userMapper).update(updatedUser);
     }
 
@@ -195,12 +198,15 @@ class UserServiceTest {
         updatedUser.setId(1L);
         updatedUser.setAvatar("http://localhost:8080/uploads/new-avatar.jpg");
         
+        // Mock用户存在性检查
+        when(userMapper.selectById(1L)).thenReturn(testUser);
         when(userMapper.update(any(User.class))).thenReturn(1);
 
         // When: 执行更新
         userService.updateUser(updatedUser);
 
         // Then: 验证mapper被调用，且传入的用户对象包含正确的头像URL
+        verify(userMapper).selectById(1L);
         verify(userMapper).update(argThat(user -> 
             user.getId().equals(1L) && 
             "http://localhost:8080/uploads/new-avatar.jpg".equals(user.getAvatar())
@@ -215,12 +221,15 @@ class UserServiceTest {
         updatedUser.setId(1L);
         updatedUser.setCoverImage("http://localhost:8080/uploads/new-cover.jpg");
         
+        // Mock用户存在性检查
+        when(userMapper.selectById(1L)).thenReturn(testUser);
         when(userMapper.update(any(User.class))).thenReturn(1);
 
         // When: 执行更新
         userService.updateUser(updatedUser);
 
         // Then: 验证mapper被调用，且传入的用户对象包含正确的封面URL
+        verify(userMapper).selectById(1L);
         verify(userMapper).update(argThat(user -> 
             user.getId().equals(1L) && 
             "http://localhost:8080/uploads/new-cover.jpg".equals(user.getCoverImage())
@@ -236,12 +245,15 @@ class UserServiceTest {
         updatedUser.setAvatar("http://localhost:8080/uploads/new-avatar.jpg");
         updatedUser.setCoverImage("http://localhost:8080/uploads/new-cover.jpg");
         
+        // Mock用户存在性检查
+        when(userMapper.selectById(1L)).thenReturn(testUser);
         when(userMapper.update(any(User.class))).thenReturn(1);
 
         // When: 执行更新
         userService.updateUser(updatedUser);
 
         // Then: 验证mapper被调用，且传入的用户对象包含正确的头像和封面URL
+        verify(userMapper).selectById(1L);
         verify(userMapper).update(argThat(user -> 
             user.getId().equals(1L) && 
             "http://localhost:8080/uploads/new-avatar.jpg".equals(user.getAvatar()) &&
@@ -260,12 +272,15 @@ class UserServiceTest {
         updatedUser.setAvatar("http://localhost:8080/uploads/new-avatar.jpg");
         updatedUser.setCoverImage("http://localhost:8080/uploads/new-cover.jpg");
         
+        // Mock用户存在性检查
+        when(userMapper.selectById(1L)).thenReturn(testUser);
         when(userMapper.update(any(User.class))).thenReturn(1);
 
         // When: 执行更新
         userService.updateUser(updatedUser);
 
         // Then: 验证mapper被调用，且传入的用户对象包含所有更新的字段
+        verify(userMapper).selectById(1L);
         verify(userMapper).update(argThat(user -> 
             user.getId().equals(1L) && 
             "更新后的昵称".equals(user.getNickname()) &&
