@@ -107,6 +107,20 @@ public class PostController {
             return Result.error(e.getMessage());
         }
     }
+
+    /**
+     * 获取好友时间线（自己+好友的动态）
+     */
+    @GetMapping("/timeline")
+    public Result<List<Post>> getFriendTimeline(HttpServletRequest request) {
+        try {
+            Long userId = (Long) request.getAttribute("userId");
+            List<Post> posts = postService.getFriendTimeline(userId);
+            return Result.success(posts);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
 }
 
 

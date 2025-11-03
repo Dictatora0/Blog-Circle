@@ -103,6 +103,11 @@ jobs:
           if [ -f backend/src/main/resources/db/migration_add_cover_image.sql ]; then
             PGPASSWORD=456789 psql -h localhost -U lying -d blog_db -f backend/src/main/resources/db/migration_add_cover_image.sql || true
           fi
+          
+          # 运行数据库迁移（创建好友关系表）
+          if [ -f backend/src/main/resources/db/friendship.sql ]; then
+            PGPASSWORD=456789 psql -h localhost -U lying -d blog_db -f backend/src/main/resources/db/friendship.sql || true
+          fi
         env:
           PGPASSWORD: 456789
 
@@ -182,6 +187,17 @@ jobs:
           cd frontend
           echo "运行新功能测试：头像上传和个人主页"
           npx playwright test tests/e2e/avatar.spec.ts tests/e2e/profile.spec.ts --reporter=list,html
+        env:
+          CI: true
+          BASE_URL: http://localhost:5173
+          API_BASE_URL: http://localhost:8080/api
+        continue-on-error: true
+
+      - name: Run E2E tests - Friends System
+        run: |
+          cd frontend
+          echo "运行好友系统测试：好友管理和好友时间线"
+          npx playwright test tests/e2e/friends.spec.ts tests/e2e/timeline.spec.ts --reporter=list,html
         env:
           CI: true
           BASE_URL: http://localhost:5173
@@ -356,6 +372,8 @@ jobs:
             
             - ✅ 头像上传功能测试 (\`avatar.spec.ts\`)
             - ✅ 个人主页功能测试 (\`profile.spec.ts\`) - 封面、布局、动态显示
+            - ✅ 好友系统功能测试 (\`friends.spec.ts\`) - 搜索、添加、管理好友
+            - ✅ 好友时间线测试 (\`timeline.spec.ts\`) - 查看好友动态、点赞评论
             - ✅ 用户登录测试
             - ✅ 动态发布测试
             - ✅ 评论和点赞测试
