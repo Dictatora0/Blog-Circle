@@ -60,14 +60,34 @@ const loadMoments = async (reset = false) => {
     const responseData = res.data?.data || res.data || []
     const newMoments = Array.isArray(responseData) ? responseData : []
     
-    const processedMoments = newMoments.map(post => ({
-      ...post,
-      content: post.content || post.title,
-      images: post.images || null,
-      liked: post.liked || false,
-      likeCount: post.likeCount || 0,
-      commentCount: post.commentCount || 0
-    }))
+    const processedMoments = newMoments.map(post => {
+      // 处理作者头像URL（相对路径转绝对路径）
+      let authorAvatar = post.authorAvatar || null
+      if (authorAvatar && authorAvatar.startsWith("/")) {
+        authorAvatar = `http://localhost:8080${authorAvatar}`
+      }
+      
+      // 处理图片列表
+      let images = post.images || null
+      if (images && typeof images === "string") {
+        try {
+          images = JSON.parse(images)
+        } catch (e) {
+          console.warn("解析图片数据失败:", e)
+          images = []
+        }
+      }
+      
+      return {
+        ...post,
+        content: post.content || post.title,
+        authorAvatar, // 处理后的头像URL
+        images,
+        liked: post.liked || false,
+        likeCount: post.likeCount || 0,
+        commentCount: post.commentCount || 0
+      }
+    })
     
     if (reset) {
       moments.value = processedMoments

@@ -19,6 +19,7 @@ public class Post {
     
     // 关联查询字段（非数据库字段）
     private String authorName;
+    private String authorAvatar; // 作者头像
     private Integer commentCount;
     private Integer likeCount; // 点赞数
     private Boolean liked; // 当前用户是否已点赞

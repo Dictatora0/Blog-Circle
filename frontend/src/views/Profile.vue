@@ -363,6 +363,13 @@ const loadUserMoments = async () => {
     const posts = res.data?.data || res.data || [];
 
     userMoments.value = posts.map((post) => {
+      // 处理作者头像URL（相对路径转绝对路径）
+      let authorAvatar = post.authorAvatar || null
+      if (authorAvatar && authorAvatar.startsWith("/")) {
+        authorAvatar = `http://localhost:8080${authorAvatar}`
+      }
+      
+      // 处理图片列表
       let images = [];
       if (post.images) {
         if (typeof post.images === "string") {
@@ -380,7 +387,8 @@ const loadUserMoments = async () => {
       return {
         ...post,
         content: post.content || post.title,
-        authorName: userInfo.value?.nickname || userInfo.value?.username,
+        authorName: post.authorName || userInfo.value?.nickname || userInfo.value?.username,
+        authorAvatar, // 使用后端返回的头像，或从用户信息获取
         images,
         liked: post.liked || false,
         commentCount: post.commentCount || 0,

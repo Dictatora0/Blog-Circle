@@ -5,7 +5,7 @@
   >
     <div class="moment-header">
       <img
-        :src="moment.authorAvatar || defaultAvatar"
+        :src="authorAvatarUrl"
         :alt="moment.authorName"
         class="avatar"
         @error="handleAvatarError"
@@ -191,12 +191,27 @@ const imageList = computed(() => {
   }
 });
 
+// 处理作者头像URL（相对路径转绝对路径）
+const authorAvatarUrl = computed(() => {
+  let avatar = props.moment.authorAvatar || null
+  if (avatar && avatar.startsWith("/")) {
+    avatar = `http://localhost:8080${avatar}`
+  }
+  return avatar || defaultAvatar
+});
+
 const loadComments = async () => {
   try {
     const res = await getCommentsByPostId(props.moment.id);
     // 后端返回格式: { code: 200, message: "...", data: [...] }
     const responseData = res.data?.data || res.data || [];
-    comments.value = Array.isArray(responseData) ? responseData : [];
+    // 处理评论者头像URL（相对路径转绝对路径）
+    comments.value = Array.isArray(responseData) ? responseData.map(comment => {
+      if (comment.avatar && comment.avatar.startsWith("/")) {
+        comment.avatar = `http://localhost:8080${comment.avatar}`
+      }
+      return comment
+    }) : [];
   } catch (error) {
     console.error("加载评论失败:", error);
   }

@@ -17,6 +17,7 @@ public class Comment {
     // 关联查询字段（非数据库字段）
     private String username;
     private String nickname;
+    private String avatar; // 评论者头像
 }
 
 
