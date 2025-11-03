@@ -286,25 +286,58 @@ test.describe('个人主页功能', () => {
     await page.waitForLoadState('domcontentloaded')
     await page.waitForTimeout(1000)
 
-    // When: 点击导航栏中的用户头像或用户名
-    const userButton = page.locator('button:has-text("管理员"), .user-avatar, .user-name').first()
-    const userButtonExists = await userButton.isVisible({ timeout: 5000 }).catch(() => false)
+    // When: 点击导航栏中的用户头像或用户名（Element Plus下拉菜单触发器）
+    // 先尝试找到用户头像包装器
+    const userAvatarWrapper = page.locator('.user-avatar-wrapper').first()
+    const userAvatar = page.locator('.user-avatar').first()
+    const userName = page.locator('.user-name').first()
     
-    if (userButtonExists) {
-      await userButton.click()
-      await page.waitForTimeout(1000)
+    // 检查哪个元素可见
+    let clickTarget = null
+    if (await userAvatarWrapper.isVisible({ timeout: 5000 }).catch(() => false)) {
+      clickTarget = userAvatarWrapper
+    } else if (await userAvatar.isVisible({ timeout: 5000 }).catch(() => false)) {
+      clickTarget = userAvatar
+    } else if (await userName.isVisible({ timeout: 5000 }).catch(() => false)) {
+      clickTarget = userName
+    }
+    
+    if (clickTarget) {
+      // 点击用户头像区域，打开下拉菜单
+      await clickTarget.click()
+      await page.waitForTimeout(500) // 等待下拉菜单动画
       
-      // Then: 应该跳转到个人主页或显示下拉菜单
-      const isProfilePage = page.url().includes('/profile')
-      const dropdownMenu = page.locator('.el-dropdown-menu, .user-menu').first()
-      const hasDropdown = await dropdownMenu.isVisible({ timeout: 2000 }).catch(() => false)
+      // 等待下拉菜单显示（Element Plus的下拉菜单）
+      // Element Plus的下拉菜单可能通过popper或teleport渲染到body
+      const dropdownMenu = page.locator('.el-dropdown-menu, .el-popper').filter({ hasText: /个人主页|数据统计|退出登录/ }).first()
       
-      // 如果显示下拉菜单，点击个人主页选项
-      if (hasDropdown) {
-        const profileOption = dropdownMenu.locator('text=/个人|主页|Profile/').first()
-        if (await profileOption.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await profileOption.click()
-          await page.waitForURL(/.*\/profile/, { timeout: 5000 })
+      // 等待下拉菜单可见
+      await dropdownMenu.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {
+        // 如果找不到下拉菜单，尝试直接点击包含"个人主页"的元素
+        const profileItem = page.locator('.el-dropdown-menu__item, [role="menuitem"]').filter({ hasText: /个人主页/ }).first()
+        return profileItem.waitFor({ state: 'visible', timeout: 3000 })
+      })
+      
+      // 点击"个人主页"选项
+      // Element Plus的下拉菜单项可能是 .el-dropdown-menu__item 或通过command属性
+      const profileOption = page.locator('.el-dropdown-menu__item:has-text("个人主页"), [role="menuitem"]:has-text("个人主页"), text=/个人主页/').first()
+      
+      if (await profileOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await profileOption.click()
+        // 等待路由跳转
+        await page.waitForURL(/.*\/profile/, { timeout: 5000 })
+      } else {
+        // 如果找不到精确的选择器，尝试通过文本内容查找
+        const allMenuItems = page.locator('.el-dropdown-menu__item, [role="menuitem"]')
+        const itemCount = await allMenuItems.count()
+        for (let i = 0; i < itemCount; i++) {
+          const item = allMenuItems.nth(i)
+          const text = await item.textContent()
+          if (text && text.includes('个人主页')) {
+            await item.click()
+            await page.waitForURL(/.*\/profile/, { timeout: 5000 })
+            break
+          }
         }
       }
       
