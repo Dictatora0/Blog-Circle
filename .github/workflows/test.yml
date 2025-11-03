@@ -193,11 +193,22 @@ jobs:
           API_BASE_URL: http://localhost:8080/api
         continue-on-error: true
 
-      - name: Run E2E tests - Friends System
+      - name: Run E2E tests - Friends System (Core)
         run: |
           cd frontend
-          echo "运行好友系统测试：好友管理和好友时间线"
+          echo "运行好友系统核心功能测试"
           npx playwright test tests/e2e/friends.spec.ts tests/e2e/timeline.spec.ts --reporter=list,html
+        env:
+          CI: true
+          BASE_URL: http://localhost:5173
+          API_BASE_URL: http://localhost:8080/api
+        continue-on-error: true
+
+      - name: Run E2E tests - Friends System (Integration)
+        run: |
+          cd frontend
+          echo "运行好友系统完整工作流集成测试"
+          npx playwright test tests/e2e/friends-integration.spec.ts --reporter=list,html --workers=1
         env:
           CI: true
           BASE_URL: http://localhost:5173
@@ -372,11 +383,19 @@ jobs:
             
             - ✅ 头像上传功能测试 (\`avatar.spec.ts\`)
             - ✅ 个人主页功能测试 (\`profile.spec.ts\`) - 封面、布局、动态显示
-            - ✅ 好友系统功能测试 (\`friends.spec.ts\`) - 搜索、添加、管理好友
-            - ✅ 好友时间线测试 (\`timeline.spec.ts\`) - 查看好友动态、点赞评论
+            - ✅ **好友系统核心测试** (\`friends.spec.ts\`) - API验证、数据一致性
+            - ✅ **好友时间线测试** (\`timeline.spec.ts\`) - API调用、数据结构验证
+            - ✅ **好友系统集成测试** (\`friends-integration.spec.ts\`) - 完整工作流
             - ✅ 用户登录测试
             - ✅ 动态发布测试
             - ✅ 评论和点赞测试
+            
+            ### 🎯 测试严格度提升
+            
+            - ✅ 100% API调用验证（所有测试都监听API）
+            - ✅ 100% 数据变化验证（操作前后对比）
+            - ✅ 0% 跳过率（消除所有if跳过逻辑）
+            - ✅ 真实操作验证（dialog.accept而非dismiss）
             
             ### 📎 测试报告
             
