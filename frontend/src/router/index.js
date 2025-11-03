@@ -49,6 +49,18 @@ const routes = [
         name: 'Statistics',
         component: () => import('@/views/Statistics.vue'),
         meta: { requiresAuth: true }
+      },
+      {
+        path: '/friends',
+        name: 'Friends',
+        component: () => import('@/views/Friends.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: '/timeline',
+        name: 'Timeline',
+        component: () => import('@/views/Timeline.vue'),
+        meta: { requiresAuth: true }
       }
     ]
   }

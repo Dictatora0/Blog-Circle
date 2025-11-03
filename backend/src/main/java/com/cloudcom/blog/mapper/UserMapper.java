@@ -41,6 +41,11 @@ public interface UserMapper {
      * 查询所有用户
      */
     List<User> selectAll();
+    
+    /**
+     * 搜索用户（通过用户名或邮箱）
+     */
+    List<User> searchUsers(@Param("keyword") String keyword);
 }
 
 

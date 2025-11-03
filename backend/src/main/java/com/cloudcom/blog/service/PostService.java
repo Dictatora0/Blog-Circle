@@ -3,12 +3,14 @@ package com.cloudcom.blog.service;
 import com.cloudcom.blog.entity.AccessLog;
 import com.cloudcom.blog.entity.Post;
 import com.cloudcom.blog.mapper.AccessLogMapper;
+import com.cloudcom.blog.mapper.FriendshipMapper;
 import com.cloudcom.blog.mapper.LikeMapper;
 import com.cloudcom.blog.mapper.PostMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -25,6 +27,9 @@ public class PostService {
 
     @Autowired
     private LikeMapper likeMapper;
+
+    @Autowired
+    private FriendshipMapper friendshipMapper;
 
     /**
      * 创建文章
@@ -106,6 +111,31 @@ public class PostService {
                 post.setLiked(likeMapper.selectByPostIdAndUserId(post.getId(), currentUserId) != null);
             }
         }
+        return posts;
+    }
+
+    /**
+     * 获取好友时间线（自己+好友的动态）
+     */
+    public List<Post> getFriendTimeline(Long userId) {
+        // 获取所有好友ID
+        List<Long> friendIds = friendshipMapper.selectFriendIdsByUserId(userId);
+        
+        // 添加自己的ID
+        List<Long> userIds = new ArrayList<>();
+        userIds.add(userId);
+        if (friendIds != null && !friendIds.isEmpty()) {
+            userIds.addAll(friendIds);
+        }
+        
+        // 查询这些用户的动态
+        List<Post> posts = postMapper.selectFriendTimeline(userIds);
+        
+        // 设置点赞状态
+        for (Post post : posts) {
+            post.setLiked(likeMapper.selectByPostIdAndUserId(post.getId(), userId) != null);
+        }
+        
         return posts;
     }
 }

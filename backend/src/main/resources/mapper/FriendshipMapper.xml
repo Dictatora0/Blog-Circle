@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudcom.blog.mapper.FriendshipMapper">
+
+    <insert id="insert" parameterType="Friendship" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO friendship (requester_id, receiver_id, status, created_at)
+        VALUES (#{requesterId}, #{receiverId}, #{status}, CURRENT_TIMESTAMP)
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE friendship
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM friendship WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultType="Friendship">
+        SELECT * FROM friendship WHERE id = #{id}
+    </select>
+
+    <select id="selectByUsers" resultType="Friendship">
+        SELECT * FROM friendship
+        WHERE (requester_id = #{userId1} AND receiver_id = #{userId2})
+           OR (requester_id = #{userId2} AND receiver_id = #{userId1})
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectFriendsByUserId" resultType="Friendship">
+        SELECT f.*, 
+               u1.id as requester_id, u1.nickname as requester_nickname, u1.avatar as requester_avatar,
+               u2.id as receiver_id, u2.nickname as receiver_nickname, u2.avatar as receiver_avatar
+        FROM friendship f
+        LEFT JOIN users u1 ON f.requester_id = u1.id
+        LEFT JOIN users u2 ON f.receiver_id = u2.id
+        WHERE f.status = 'ACCEPTED'
+          AND (f.requester_id = #{userId} OR f.receiver_id = #{userId})
+        ORDER BY f.created_at DESC
+    </select>
+
+    <select id="selectPendingRequestsByReceiverId" resultType="Friendship">
+        SELECT f.*,
+               u1.id as requester_id, u1.nickname as requester_nickname, u1.avatar as requester_avatar,
+               u1.email as requester_email
+        FROM friendship f
+        LEFT JOIN users u1 ON f.requester_id = u1.id
+        WHERE f.receiver_id = #{receiverId} AND f.status = 'PENDING'
+        ORDER BY f.created_at DESC
+    </select>
+
+    <select id="selectPendingRequestsByRequesterId" resultType="Friendship">
+        SELECT f.*,
+               u2.id as receiver_id, u2.nickname as receiver_nickname, u2.avatar as receiver_avatar,
+               u2.email as receiver_email
+        FROM friendship f
+        LEFT JOIN users u2 ON f.receiver_id = u2.id
+        WHERE f.requester_id = #{requesterId} AND f.status = 'PENDING'
+        ORDER BY f.created_at DESC
+    </select>
+
+    <select id="selectFriendIdsByUserId" resultType="Long">
+        SELECT CASE 
+            WHEN requester_id = #{userId} THEN receiver_id
+            ELSE requester_id
+        END as friend_id
+        FROM friendship
+        WHERE status = 'ACCEPTED'
+          AND (requester_id = #{userId} OR receiver_id = #{userId})
+    </select>
+
+</mapper>
+
+
+

@@ -46,6 +46,11 @@ public interface PostMapper {
      * 增加浏览次数
      */
     int incrementViewCount(Long id);
+    
+    /**
+     * 查询好友时间线（自己+好友的动态）
+     */
+    List<Post> selectFriendTimeline(@Param("userIds") List<Long> userIds);
 }
 
 

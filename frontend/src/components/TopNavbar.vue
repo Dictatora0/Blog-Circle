@@ -11,6 +11,26 @@
       <div class="navbar-right">
         <button 
           v-if="userStore.token" 
+          class="btn-nav"
+          @click="goToTimeline"
+          title="好友动态"
+        >
+          <span class="btn-icon">🌟</span>
+          <span class="btn-text">好友动态</span>
+        </button>
+
+        <button 
+          v-if="userStore.token" 
+          class="btn-nav"
+          @click="goToFriends"
+          title="好友管理"
+        >
+          <span class="btn-icon">👥</span>
+          <span class="btn-text">好友</span>
+        </button>
+
+        <button 
+          v-if="userStore.token" 
           class="btn-publish"
           @click="handlePublish"
         >
@@ -70,6 +90,14 @@ const goToHome = () => {
 
 const handlePublish = () => {
   router.push('/publish')
+}
+
+const goToTimeline = () => {
+  router.push('/timeline')
+}
+
+const goToFriends = () => {
+  router.push('/friends')
 }
 
 const handleCommand = (command) => {
@@ -163,6 +191,32 @@ const goToLogin = () => {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+}
+
+.btn-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.btn-nav:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.btn-nav:active {
+  transform: translateY(0);
 }
 
 .btn-publish {
@@ -268,13 +322,19 @@ const goToLogin = () => {
     display: none;
   }
   
-  .btn-text {
+  .btn-nav .btn-text,
+  .btn-publish .btn-text {
     display: none;
   }
   
+  .btn-nav,
   .btn-publish {
     padding: var(--spacing-sm);
     border-radius: var(--radius-full);
+  }
+  
+  .navbar-right {
+    gap: var(--spacing-sm);
   }
   
   .user-name {
