@@ -101,6 +101,7 @@ class UserControllerTest {
     @DisplayName("场景2: 更新用户信息成功")
     void testUpdateUserSuccess() throws Exception {
         // Given: 模拟用户服务更新成功
+        when(userService.getUserById(1L)).thenReturn(testUser);
         doNothing().when(userService).updateUser(any(User.class));
 
         // When: 发送更新用户信息请求
@@ -116,6 +117,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("更新成功"));
 
+        verify(userService).getUserById(1L);
         verify(userService).updateUser(any(User.class));
     }
 
@@ -149,6 +151,7 @@ class UserControllerTest {
     @DisplayName("场景4: 更新用户头像成功")
     void testUpdateUserAvatar() throws Exception {
         // Given: 模拟用户服务更新成功
+        when(userService.getUserById(1L)).thenReturn(testUser);
         doNothing().when(userService).updateUser(any(User.class));
 
         // When: 发送更新头像请求
@@ -164,6 +167,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.message").value("更新成功"));
 
         // 验证传递给service的用户对象包含正确的头像URL
+        verify(userService).getUserById(1L);
         verify(userService).updateUser(argThat(user -> 
             user.getId().equals(1L) && 
             "http://localhost:8080/uploads/new-avatar.jpg".equals(user.getAvatar())
@@ -174,6 +178,7 @@ class UserControllerTest {
     @DisplayName("场景5: 更新用户封面成功")
     void testUpdateUserCoverImage() throws Exception {
         // Given: 模拟用户服务更新成功
+        when(userService.getUserById(1L)).thenReturn(testUser);
         doNothing().when(userService).updateUser(any(User.class));
 
         // When: 发送更新封面请求
@@ -189,6 +194,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.message").value("更新成功"));
 
         // 验证传递给service的用户对象包含正确的封面URL
+        verify(userService).getUserById(1L);
         verify(userService).updateUser(argThat(user -> 
             user.getId().equals(1L) && 
             "http://localhost:8080/uploads/new-cover.jpg".equals(user.getCoverImage())
@@ -199,6 +205,7 @@ class UserControllerTest {
     @DisplayName("场景6: 同时更新头像和封面成功")
     void testUpdateUserAvatarAndCover() throws Exception {
         // Given: 模拟用户服务更新成功
+        when(userService.getUserById(1L)).thenReturn(testUser);
         doNothing().when(userService).updateUser(any(User.class));
 
         // When: 发送同时更新头像和封面的请求
@@ -215,6 +222,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.message").value("更新成功"));
 
         // 验证传递给service的用户对象包含正确的头像和封面URL
+        verify(userService).getUserById(1L);
         verify(userService).updateUser(argThat(user -> 
             user.getId().equals(1L) && 
             "http://localhost:8080/uploads/new-avatar.jpg".equals(user.getAvatar()) &&
