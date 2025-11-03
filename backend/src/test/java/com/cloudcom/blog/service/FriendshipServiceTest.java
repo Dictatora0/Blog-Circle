@@ -233,6 +233,49 @@ class FriendshipServiceTest {
     }
 
     @Test
+    @DisplayName("场景17: 通过用户ID删除好友成功")
+    void testDeleteFriendByUserIdSuccess() {
+        // Given: 两个用户是好友关系
+        when(friendshipMapper.selectByUsers(1L, 2L)).thenReturn(acceptedFriendship);
+        when(friendshipMapper.deleteById(2L)).thenReturn(1);
+
+        // When: 删除好友（通过用户ID）
+        friendshipService.deleteFriendByUserId(1L, 2L);
+
+        // Then: 验证已删除
+        verify(friendshipMapper).selectByUsers(1L, 2L);
+        verify(friendshipMapper).deleteById(2L);
+    }
+
+    @Test
+    @DisplayName("场景18: 通过用户ID删除好友失败 - 不是好友关系")
+    void testDeleteFriendByUserIdFailed_NotFriends() {
+        // Given: 两个用户之间没有好友关系
+        when(friendshipMapper.selectByUsers(1L, 3L)).thenReturn(null);
+
+        // When & Then: 尝试删除应该抛出异常
+        assertThatThrownBy(() -> friendshipService.deleteFriendByUserId(1L, 3L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("好友关系不存在");
+
+        verify(friendshipMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
+    @DisplayName("场景19: 通过用户ID删除好友失败 - 关系状态不是ACCEPTED")
+    void testDeleteFriendByUserIdFailed_NotAccepted() {
+        // Given: 两个用户之间有好友请求，但未接受
+        when(friendshipMapper.selectByUsers(1L, 2L)).thenReturn(pendingFriendship);
+
+        // When & Then: 尝试删除应该抛出异常
+        assertThatThrownBy(() -> friendshipService.deleteFriendByUserId(1L, 2L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("不是好友关系");
+
+        verify(friendshipMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
     @DisplayName("场景11: 获取好友列表")
     void testGetFriendList() {
         // Given: 用户有多个好友
