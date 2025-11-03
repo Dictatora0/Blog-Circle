@@ -135,6 +135,27 @@ public class FriendshipService {
     }
 
     /**
+     * 删除好友（通过用户ID）
+     */
+    @Transactional
+    public void deleteFriendByUserId(Long currentUserId, Long friendUserId) {
+        // 查找两个用户之间的好友关系
+        Friendship friendship = friendshipMapper.selectByUsers(currentUserId, friendUserId);
+        
+        if (friendship == null) {
+            throw new IllegalArgumentException("好友关系不存在");
+        }
+
+        // 只能删除已接受的好友关系
+        if (!"ACCEPTED".equals(friendship.getStatus())) {
+            throw new IllegalArgumentException("不是好友关系");
+        }
+
+        // 删除好友关系
+        friendshipMapper.deleteById(friendship.getId());
+    }
+
+    /**
      * 获取好友列表（返回User对象列表）
      */
     public List<User> getFriendList(Long userId) {
