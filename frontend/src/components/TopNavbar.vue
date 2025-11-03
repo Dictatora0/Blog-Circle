@@ -19,7 +19,7 @@
         </button>
         
         <div v-if="userStore.token" class="user-menu">
-          <el-dropdown @command="handleCommand" trigger="click">
+          <el-dropdown @command="handleCommand" trigger="click" placement="bottom-end">
             <div class="user-avatar-wrapper">
               <img 
                 :src="userStore.userInfo?.avatar || defaultAvatar" 
@@ -229,6 +229,9 @@ const goToLogin = () => {
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-md);
   transition: background 0.2s;
+  user-select: none; /* 防止文本选择干扰点击 */
+  -webkit-user-select: none;
+  pointer-events: auto; /* 确保可以接收点击事件 */
 }
 
 .user-avatar-wrapper:hover {
@@ -241,12 +244,14 @@ const goToLogin = () => {
   border-radius: var(--radius-full);
   object-fit: cover;
   border: 1px solid var(--border-light);
+  pointer-events: none; /* 让点击事件穿透到父元素 */
 }
 
 .user-name {
   font-size: var(--font-size-sm);
   color: var(--text-primary);
   font-weight: 500;
+  pointer-events: none; /* 让点击事件穿透到父元素 */
 }
 
 .auth-buttons {
