@@ -150,22 +150,16 @@ describe('Profile', () => {
       expect(coverElement).toBeInTheDocument()
       expect(fileInput).toBeInTheDocument()
       
-      // 验证文件输入存在且配置正确
-      expect(fileInput).not.toBeNull()
-      expect(fileInput.type).toBe('file')
-      expect(fileInput.accept).toBe('image/*')
-      
-      // Mock fileInput.click()方法，防止真实点击导致递归
-      let clickCalled = false
+      // Mock fileInput.click()方法，验证是否被调用
       const clickSpy = vi.spyOn(fileInput, 'click').mockImplementation(() => {
-        clickCalled = true
-        // 不调用原始实现，避免递归
+        // Mock实现，防止真实文件选择对话框弹出
       })
       
-      // 模拟点击封面元素（但不触发Vue事件处理器）
-      // 只验证元素存在和click方法可访问
-      expect(coverElement).toBeInTheDocument()
-      expect(typeof fileInput.click).toBe('function')
+      // 模拟点击封面元素
+      coverElement.click()
+      
+      // Then: 文件输入应该被触发
+      expect(clickSpy).toHaveBeenCalled()
       
       // 清理spy
       clickSpy.mockRestore()
@@ -188,22 +182,16 @@ describe('Profile', () => {
       expect(avatarWrapper).toBeInTheDocument()
       expect(avatarInput).toBeInTheDocument()
       
-      // 验证文件输入存在且配置正确
-      expect(avatarInput).not.toBeNull()
-      expect(avatarInput.type).toBe('file')
-      expect(avatarInput.accept).toBe('image/*')
-      
-      // Mock avatarInput.click()方法，防止真实点击导致递归
-      let clickCalled = false
+      // Mock avatarInput.click()方法，验证是否被调用
       const clickSpy = vi.spyOn(avatarInput, 'click').mockImplementation(() => {
-        clickCalled = true
-        // 不调用原始实现，避免递归
+        // Mock实现，防止真实文件选择对话框弹出
       })
       
-      // 模拟点击头像元素（但不触发Vue事件处理器）
-      // 只验证元素存在和click方法可访问
-      expect(avatarWrapper).toBeInTheDocument()
-      expect(typeof avatarInput.click).toBe('function')
+      // 模拟点击头像元素
+      avatarWrapper.click()
+      
+      // Then: 文件输入应该被触发
+      expect(clickSpy).toHaveBeenCalled()
       
       // 清理spy
       clickSpy.mockRestore()

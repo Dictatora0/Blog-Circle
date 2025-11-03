@@ -10,6 +10,7 @@
           accept="image/*"
           style="display: none"
           @change="handleCoverUpload"
+          @click.stop
         />
 
         <!-- 上传提示（仅在无封面或hover时显示） -->
@@ -36,6 +37,7 @@
             accept="image/*"
             style="display: none"
             @change="handleAvatarUpload"
+            @click.stop
           />
 
           <img
@@ -155,14 +157,22 @@ const coverStyle = computed(() => {
 });
 
 // 触发封面上传
-const triggerCoverUpload = () => {
+const triggerCoverUpload = (event) => {
   if (coverUploading.value) return;
+  // 阻止事件冒泡，防止递归
+  if (event) {
+    event.stopPropagation();
+  }
   coverInput.value?.click();
 };
 
 // 触发头像上传
-const triggerAvatarUpload = () => {
+const triggerAvatarUpload = (event) => {
   if (avatarUploading.value) return;
+  // 阻止事件冒泡，防止递归
+  if (event) {
+    event.stopPropagation();
+  }
   avatarInput.value?.click();
 };
 
