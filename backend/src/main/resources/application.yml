@@ -56,12 +56,3 @@ logging:
   level:
     com.cloudcom.blog: DEBUG
 
-
-  
-server:
-  port: 8080
-
-logging:
-  level:
-    com.cloudcom.blog: DEBUG
-
