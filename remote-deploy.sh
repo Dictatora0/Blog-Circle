@@ -126,7 +126,9 @@ main() {
     
     # 2. 配置 Git 安全目录（解决 dubious ownership 问题）
     log_info "2. 配置 Git 安全目录..."
-    execute_remote "git config --global --add safe.directory ${PROJECT_DIR}" || true
+    # 使用绝对路径配置 Git 安全目录
+    execute_remote "cd ${PROJECT_DIR} && pwd | xargs -I {} git config --global --add safe.directory {}" || true
+    execute_remote "git config --global --add safe.directory /root/${PROJECT_DIR}" || true
     log_success "Git 安全目录配置完成"
     
     # 3. 拉取最新代码
