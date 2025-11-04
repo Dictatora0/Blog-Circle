@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 统计分析控制器
@@ -34,12 +35,13 @@ public class StatisticsController {
 
     /**
      * 获取所有统计结果
+     * 返回聚合统计数据（包含 postCount, viewCount, likeCount, commentCount, userCount）
      */
     @GetMapping
-    public Result<List<Statistic>> getAllStatistics() {
+    public Result<Map<String, Object>> getAllStatistics() {
         try {
-            List<Statistic> statistics = sparkAnalyticsService.getAllStatistics();
-            return Result.success(statistics);
+            Map<String, Object> aggregated = sparkAnalyticsService.getAggregatedStatistics();
+            return Result.success(aggregated);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
@@ -58,5 +60,7 @@ public class StatisticsController {
         }
     }
 }
+
+
 
 

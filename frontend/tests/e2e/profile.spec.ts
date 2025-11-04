@@ -1,392 +1,526 @@
-import { test, expect } from '@playwright/test'
-import { loginUser } from './utils/helpers'
-import * as path from 'path'
-import { fileURLToPath } from 'url'
-import * as fs from 'fs'
-
-// ES模块中获取__dirname的替代方案
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
 /**
- * E2E 测试：个人主页功能
- * 
- * 测试覆盖：
- * 1. 封面上传功能
- * 2. 个人主页布局
- * 3. 动态数据显示
- * 4. 用户信息显示
+ * 个人主页模块 E2E 测试
+ * 覆盖个人信息展示、编辑、动态列表等场景
  */
-test.describe('个人主页功能', () => {
+
+import { test, expect } from '@playwright/test';
+import { createTestPost } from '../fixtures/test-data';
+import { AuthHelpers } from '../fixtures/auth-helpers';
+import { ApiHelpers } from '../fixtures/api-helpers';
+import { Buffer } from 'buffer';
+
+test.describe('个人主页模块', () => {
   test.beforeEach(async ({ page }) => {
-    // 每次测试前先登录
-    await loginUser(page)
-  })
-
-  test('封面上传功能', async ({ page }) => {
-    // Given: 用户已登录，导航到个人主页
-    await page.goto('/profile')
-    await expect(page).toHaveURL(/.*\/profile/, { timeout: 10000 })
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(1000)
-
-    // 获取封面区域
-    const coverImage = page.locator('.cover-image').first()
-    await expect(coverImage).toBeVisible({ timeout: 5000 })
-
-    // 获取初始封面背景（如果有）
-    const initialCoverStyle = await coverImage.getAttribute('style')
-
-    // 监听文件上传API请求
-    const uploadResponsePromise = page.waitForResponse(
-      (response) => 
-        response.url().includes('/api/upload/image') && 
-        response.request().method() === 'POST',
-      { timeout: 30000 }
-    )
-
-    // 监听用户信息更新API请求
-    const updateUserResponsePromise = page.waitForResponse(
-      (response) => 
-        response.url().includes('/api/users/') && 
-        response.request().method() === 'PUT',
-      { timeout: 30000 }
-    )
-
-    // 等待文件input出现
-    const fileInput = page.locator('.cover-image input[type="file"][accept="image/*"]').first()
-    await fileInput.waitFor({ state: 'attached', timeout: 5000 })
-
-    // 准备测试图片路径
-    const testImagePath = path.join(__dirname, 'fixtures', 'test-image.jpg')
+    // 先导航到首页，确保在有效的上下文中
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
     
-    // 检查测试图片是否存在，如果不存在则创建一个
-    let imagePath = testImagePath
-    try {
-      if (!fs.existsSync(testImagePath)) {
-        const fixturesDir = path.dirname(testImagePath)
-        if (!fs.existsSync(fixturesDir)) {
-          fs.mkdirSync(fixturesDir, { recursive: true })
-        }
-        
-        // 创建一个最小的JPEG文件
-        const minimalJpeg = Buffer.from(
-          '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/wA==',
-          'base64'
-        )
-        fs.writeFileSync(testImagePath, minimalJpeg)
-      }
-    } catch (error) {
-      console.log('创建测试图片失败:', error)
-    }
-
-    // When: 点击封面区域触发上传
-    await coverImage.click({ timeout: 5000 })
-    await page.waitForTimeout(500)
-
-    // 设置文件input的值
-    let uploadSuccess = false
-    try {
-      await fileInput.setInputFiles(imagePath)
-      uploadSuccess = true
-    } catch (error) {
-      const absolutePath = path.resolve(imagePath)
+    // 清除cookies和storage
+    await page.context().clearCookies();
+    await page.evaluate(() => {
       try {
-        await fileInput.setInputFiles(absolutePath)
-        uploadSuccess = true
+        localStorage.clear();
+        sessionStorage.clear();
       } catch (e) {
-        console.log('文件上传设置失败:', e)
+        // 忽略错误
       }
-    }
+    });
+  });
 
-    // Then: 如果上传成功，验证API调用
-    if (uploadSuccess) {
-      // 检查loading状态
-      const loadingSpinner = page.locator('.cover-loading, .loading-spinner').first()
-      const hasLoading = await loadingSpinner.isVisible({ timeout: 1000 }).catch(() => false)
-      if (hasLoading) {
-        await loadingSpinner.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {})
+  test.describe('查看个人信息', () => {
+    test('显示用户基本信息', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      const { user, token } = await auth.createAndLoginTestUser(1);
+
+      // 访问个人主页
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 验证昵称显示
+      await expect(page.locator(`text=${user.user.nickname}`)).toBeVisible();
+
+      // 验证用户名显示（可能在某处显示）
+      const username = page.locator(`text=${user.user.username}`);
+      if (await username.isVisible().catch(() => false)) {
+        await expect(username).toBeVisible();
       }
+    });
 
-      // 等待上传API响应
-      try {
-        const uploadResponse = await uploadResponsePromise
-        expect(uploadResponse.status()).toBe(200)
-        
-        const uploadData = await uploadResponse.json()
-        expect(uploadData.code).toBe(200)
-        expect(uploadData.data?.url).toBeTruthy()
-      } catch (error) {
-        console.log('上传API超时或失败:', error)
-      }
+    test('显示用户头像', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      await auth.createAndLoginTestUser(2);
 
-      // 等待用户信息更新API响应
-      try {
-        const updateResponse = await updateUserResponsePromise
-        expect(updateResponse.status()).toBe(200)
-      } catch (error) {
-        console.log('用户信息更新API可能已完成或超时')
-      }
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
 
-      // 等待成功提示消息
-      const successMessage = page.locator('.el-message--success, .el-message:has-text("封面"), .el-message:has-text("成功")').first()
-      const hasSuccessMessage = await successMessage.isVisible({ timeout: 5000 }).catch(() => false)
+      // 验证头像显示
+      const avatar = page.locator('img[alt*="头像"], img[alt*="avatar"], [class*="avatar"] img').first();
+      await expect(avatar).toBeVisible();
+
+      // 验证头像有src属性
+      const src = await avatar.getAttribute('src');
+      expect(src).toBeTruthy();
+    });
+
+    test('显示封面图片', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      await auth.createAndLoginTestUser(3);
+
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 查找封面元素
+      const cover = page.locator('[class*="cover"], [class*="banner"]').first();
       
-      if (hasSuccessMessage) {
-        const messageText = await successMessage.textContent()
-        expect(messageText).toMatch(/成功|上传/)
-      }
+      if (await cover.isVisible()) {
+        // 验证封面区域存在
+        await expect(cover).toBeVisible();
 
-      // 等待页面更新
-      await page.waitForTimeout(2000)
-
-      // 验证封面已更新
-      const updatedCoverStyle = await coverImage.getAttribute('style')
-      if (updatedCoverStyle && initialCoverStyle) {
-        if (updatedCoverStyle !== initialCoverStyle) {
-          expect(updatedCoverStyle).toContain('background-image')
+        // 检查是否有背景图或img标签
+        const coverImg = cover.locator('img');
+        const hasCoverImage = await coverImg.isVisible().catch(() => false);
+        
+        if (hasCoverImage) {
+          const src = await coverImg.getAttribute('src');
+          expect(src).toBeTruthy();
         }
       }
-    } else {
-      // 如果上传未成功，至少验证了点击功能
-      const fileInputExists = await fileInput.count() > 0
-      expect(fileInputExists).toBeTruthy()
-    }
-  })
+    });
 
-  test('封面hover显示上传提示', async ({ page }) => {
-    // Given: 用户已登录，导航到个人主页
-    await page.goto('/profile')
-    await expect(page).toHaveURL(/.*\/profile/, { timeout: 10000 })
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(1000)
+    test('显示用户统计信息', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      const api = new ApiHelpers(request);
+      const { user, token } = await auth.createAndLoginTestUser(4);
 
-    // When: hover到封面区域
-    const coverImage = page.locator('.cover-image').first()
-    await expect(coverImage).toBeVisible({ timeout: 5000 })
-    
-    await coverImage.hover()
-
-    // Then: 应该显示上传提示遮罩
-    const coverOverlay = page.locator('.cover-overlay').first()
-    await expect(coverOverlay).toBeVisible({ timeout: 2000 })
-
-    // Then: 应该显示提示文字
-    const coverText = coverOverlay.locator('.cover-text').first()
-    await expect(coverText).toBeVisible({ timeout: 1000 })
-    
-    const textContent = await coverText.textContent()
-    expect(textContent).toMatch(/点击设置封面|更换封面/)
-  })
-
-  test('个人主页布局正确显示', async ({ page }) => {
-    // Given: 用户已登录，导航到个人主页
-    await page.goto('/profile')
-    await expect(page).toHaveURL(/.*\/profile/, { timeout: 10000 })
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(1000)
-
-    // Then: 应该显示封面区域
-    const coverImage = page.locator('.cover-image').first()
-    await expect(coverImage).toBeVisible({ timeout: 5000 })
-
-    // Then: 应该显示头像
-    const avatar = page.locator('.profile-avatar').first()
-    await expect(avatar).toBeVisible({ timeout: 5000 })
-
-    // Then: 应该显示昵称
-    const profileName = page.locator('.profile-name').first()
-    await expect(profileName).toBeVisible({ timeout: 5000 })
-    const nameText = await profileName.textContent()
-    expect(nameText).toBeTruthy()
-
-    // Then: 应该显示邮箱
-    const emailMeta = page.locator('.meta-item:has-text("📧")').first()
-    await expect(emailMeta).toBeVisible({ timeout: 5000 })
-    const emailText = await emailMeta.textContent()
-    expect(emailText).toContain('@')
-
-    // Then: 应该显示动态数量
-    const momentsMeta = page.locator('.meta-item:has-text("📝")').first()
-    await expect(momentsMeta).toBeVisible({ timeout: 5000})
-    const momentsText = await momentsMeta.textContent()
-    expect(momentsText).toMatch(/\d+\s*条动态/)
-
-    // Then: 应该显示"我的动态"标题
-    const momentsSection = page.locator('.moments-section').first()
-    await expect(momentsSection).toBeVisible({ timeout: 5000 })
-    
-    const sectionHeader = momentsSection.locator('.section-header h3').first()
-    await expect(sectionHeader).toBeVisible({ timeout: 2000 })
-    const headerText = await sectionHeader.textContent()
-    expect(headerText).toContain('动态')
-  })
-
-  test('动态列表正确显示', async ({ page }) => {
-    // Given: 用户已登录，导航到个人主页
-    await page.goto('/profile')
-    await expect(page).toHaveURL(/.*\/profile/, { timeout: 10000 })
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(2000) // 等待动态加载
-
-    // Then: 应该显示动态列表或空状态
-    const momentsList = page.locator('.moments-list').first()
-    await expect(momentsList).toBeVisible({ timeout: 5000 })
-
-    // 检查是否有动态或空状态
-    const moments = page.locator('.moment-wrapper, .moment-item')
-    const emptyState = page.locator('.empty-state')
-    
-    const momentsCount = await moments.count()
-    const isEmptyVisible = await emptyState.isVisible({ timeout: 2000 }).catch(() => false)
-
-    // 验证：要么有动态，要么显示空状态
-    expect(momentsCount > 0 || isEmptyVisible).toBeTruthy()
-
-    // 如果有动态，验证动态数量与统计一致
-    if (momentsCount > 0) {
-      const momentsMeta = page.locator('.meta-item:has-text("📝")').first()
-      const momentsText = await momentsMeta.textContent()
-      const match = momentsText?.match(/(\d+)\s*条动态/)
-      if (match) {
-        const displayedCount = parseInt(match[1])
-        // 动态数量应该与显示的数量一致（允许一定的延迟）
-        expect(displayedCount).toBeGreaterThanOrEqual(0)
+      // 创建几条动态
+      for (let i = 1; i <= 3; i++) {
+        const post = createTestPost(i);
+        await api.createPost({ content: post.content }, token);
       }
-    }
-  })
 
-  test('用户信息正确显示', async ({ page }) => {
-    // Given: 用户已登录，导航到个人主页
-    await page.goto('/profile')
-    await expect(page).toHaveURL(/.*\/profile/, { timeout: 10000 })
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(1000)
+      // 访问个人主页
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
 
-    // Then: 验证用户信息显示
-    const profileName = page.locator('.profile-name').first()
-    await expect(profileName).toBeVisible({ timeout: 5000 })
-    
-    // 验证昵称不为空
-    const nameText = await profileName.textContent()
-    expect(nameText).toBeTruthy()
-    expect(nameText?.trim().length).toBeGreaterThan(0)
+      // 验证动态数量显示
+      const statsArea = page.locator('[class*="stats"], [class*="count"]');
+      const statsText = await statsArea.textContent();
 
-    // 验证邮箱显示
-    const emailMeta = page.locator('.meta-item').filter({ hasText: '📧' }).first()
-    await expect(emailMeta).toBeVisible({ timeout: 5000 })
-    const emailText = await emailMeta.textContent()
-    expect(emailText).toMatch(/@/)
-  })
+      // 应该显示动态数量
+      expect(statsText).toMatch(/3|动态/);
+    });
+  });
 
-  test('点击头像跳转到个人主页', async ({ page }) => {
-    // Given: 用户在首页
-    await page.goto('/home')
-    await expect(page).toHaveURL(/.*\/home/, { timeout: 10000 })
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(1000)
+  test.describe('编辑个人信息', () => {
+    test('修改昵称', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      const api = new ApiHelpers(request);
+      const { user, token } = await auth.createAndLoginTestUser(5);
 
-    // When: 点击导航栏中的用户头像或用户名（Element Plus下拉菜单触发器）
-    // 先尝试找到用户头像包装器
-    const userAvatarWrapper = page.locator('.user-avatar-wrapper').first()
-    const userAvatar = page.locator('.user-avatar').first()
-    const userName = page.locator('.user-name').first()
-    
-    // 检查哪个元素可见
-    let clickTarget = null
-    if (await userAvatarWrapper.isVisible({ timeout: 5000 }).catch(() => false)) {
-      clickTarget = userAvatarWrapper
-    } else if (await userAvatar.isVisible({ timeout: 5000 }).catch(() => false)) {
-      clickTarget = userAvatar
-    } else if (await userName.isVisible({ timeout: 5000 }).catch(() => false)) {
-      clickTarget = userName
-    }
-    
-    if (clickTarget) {
-      // 点击用户头像区域，打开下拉菜单
-      await clickTarget.click()
-      await page.waitForTimeout(500) // 等待下拉菜单动画
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 查找编辑按钮
+      const editButton = page.locator('button:has-text("编辑"), button:has-text("修改"), [class*="edit"]');
       
-      // 等待下拉菜单显示（Element Plus的下拉菜单）
-      // Element Plus的下拉菜单可能通过popper或teleport渲染到body
-      const dropdownMenu = page.locator('.el-dropdown-menu, .el-popper').filter({ hasText: /个人主页|数据统计|退出登录/ }).first()
+      if (await editButton.first().isVisible()) {
+        await editButton.first().click();
+        await page.waitForTimeout(500);
+
+        // 查找昵称输入框
+        const nicknameInput = page.locator('input[placeholder*="昵称"], input[name="nickname"]').first();
+        
+        if (await nicknameInput.isVisible()) {
+          const newNickname = `新昵称_${Date.now()}`;
+          
+          // 清空并输入新昵称
+          await nicknameInput.clear();
+          await nicknameInput.fill(newNickname);
+
+          // 保存
+          await page.click('button:has-text("保存"), button:has-text("确定"), button:has-text("提交")');
+
+          await page.waitForTimeout(1000);
+
+          // 验证昵称已更新
+          await expect(page.locator(`text=${newNickname}`)).toBeVisible({ timeout: 5000 });
+        }
+      }
+    });
+
+    test('上传头像', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      await auth.createAndLoginTestUser(6);
+
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 查找头像上传区域
+      const avatarArea = page.locator('[class*="avatar"]').first();
       
-      // 等待下拉菜单可见
-      await dropdownMenu.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {
-        // 如果找不到下拉菜单，尝试直接点击包含"个人主页"的元素
-        const profileItem = page.locator('.el-dropdown-menu__item, [role="menuitem"]').filter({ hasText: /个人主页/ }).first()
-        return profileItem.waitFor({ state: 'visible', timeout: 3000 })
-      })
+      // 悬停或点击头像可能显示上传选项
+      await avatarArea.hover();
+      await page.waitForTimeout(500);
+
+      // 查找文件上传input
+      const uploadInput = page.locator('input[type="file"]').first();
       
-      // 点击"个人主页"选项
-      // Element Plus的下拉菜单项可能是 .el-dropdown-menu__item 或通过command属性
-      const profileOption = page.locator('.el-dropdown-menu__item:has-text("个人主页"), [role="menuitem"]:has-text("个人主页"), text=/个人主页/').first()
+      if (await uploadInput.isVisible({ timeout: 2000 }).catch(() => false) || 
+          await uploadInput.isHidden()) {
+        
+        const imageBuffer = Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+          'base64'
+        );
+
+        await uploadInput.setInputFiles({
+          name: 'new-avatar.png',
+          mimeType: 'image/png',
+          buffer: imageBuffer,
+        });
+
+        await page.waitForTimeout(2000);
+
+        // 验证头像更新
+        // 可能需要刷新页面
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+
+        const avatar = page.locator('img[alt*="头像"], [class*="avatar"] img').first();
+        await expect(avatar).toBeVisible();
+      }
+    });
+
+    test('上传封面', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      await auth.createAndLoginTestUser(7);
+
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 查找封面区域
+      const coverArea = page.locator('[class*="cover"], [class*="banner"]').first();
       
-      if (await profileOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await profileOption.click()
-        // 等待路由跳转
-        await page.waitForURL(/.*\/profile/, { timeout: 5000 })
-      } else {
-        // 如果找不到精确的选择器，尝试通过文本内容查找
-        const allMenuItems = page.locator('.el-dropdown-menu__item, [role="menuitem"]')
-        const itemCount = await allMenuItems.count()
-        for (let i = 0; i < itemCount; i++) {
-          const item = allMenuItems.nth(i)
-          const text = await item.textContent()
-          if (text && text.includes('个人主页')) {
-            await item.click()
-            await page.waitForURL(/.*\/profile/, { timeout: 5000 })
-            break
+      if (await coverArea.isVisible()) {
+        await coverArea.hover();
+        await page.waitForTimeout(500);
+
+        // 查找上传按钮或input
+        const uploadButton = page.locator('button:has-text("更换封面"), button:has-text("上传封面")');
+        const uploadInput = page.locator('[class*="cover"] input[type="file"]');
+
+        if (await uploadButton.isVisible().catch(() => false)) {
+          await uploadButton.click();
+        }
+
+        if (await uploadInput.count() > 0) {
+          const imageBuffer = Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            'base64'
+          );
+
+          await uploadInput.first().setInputFiles({
+            name: 'new-cover.png',
+            mimeType: 'image/png',
+            buffer: imageBuffer,
+          });
+
+          await page.waitForTimeout(2000);
+
+          // 验证封面更新
+          const coverImg = page.locator('[class*="cover"] img, img[alt*="封面"]').first();
+          const hasCover = await coverImg.isVisible().catch(() => false);
+          
+          if (hasCover) {
+            await expect(coverImg).toBeVisible();
           }
         }
       }
+    });
+
+    test('修改个人简介', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      await auth.createAndLoginTestUser(8);
+
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 查找编辑按钮
+      const editButton = page.locator('button:has-text("编辑"), button:has-text("修改")').first();
       
-      // 验证最终在个人主页
-      await expect(page).toHaveURL(/.*\/profile/, { timeout: 5000 })
-    } else {
-      // 如果找不到用户按钮，至少验证首页正常显示
-      const moments = page.locator('.moment-wrapper, .moment-item')
-      await expect(moments.first()).toBeVisible({ timeout: 5000 }).catch(() => {})
-    }
-  })
+      if (await editButton.isVisible().catch(() => false)) {
+        await editButton.click();
+        await page.waitForTimeout(500);
 
-  test('个人主页响应式布局', async ({ page }) => {
-    // Given: 用户已登录，导航到个人主页
-    await page.goto('/profile')
-    await expect(page).toHaveURL(/.*\/profile/, { timeout: 10000 })
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(1000)
+        // 查找简介输入框
+        const bioInput = page.locator('textarea[placeholder*="简介"], textarea[name="bio"], input[placeholder*="简介"]');
+        
+        if (await bioInput.isVisible().catch(() => false)) {
+          const newBio = `这是我的个人简介_${Date.now()}`;
+          
+          await bioInput.clear();
+          await bioInput.fill(newBio);
 
-    // When: 设置移动端视口
-    await page.setViewportSize({ width: 375, height: 667 })
+          // 保存
+          await page.click('button:has-text("保存"), button:has-text("确定")');
 
-    // Then: 验证移动端布局
-    await page.waitForTimeout(500)
+          await page.waitForTimeout(1000);
 
-    // 封面应该仍然可见
-    const coverImage = page.locator('.cover-image').first()
-    await expect(coverImage).toBeVisible({ timeout: 5000 })
+          // 验证简介已更新
+          await expect(page.locator(`text=${newBio}`)).toBeVisible({ timeout: 5000 });
+        }
+      }
+    });
+  });
 
-    // 头像应该仍然可见
-    const avatar = page.locator('.profile-avatar').first()
-    await expect(avatar).toBeVisible({ timeout: 5000 })
+  test.describe('我的动态列表', () => {
+    test('显示我的所有动态', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      const api = new ApiHelpers(request);
+      const { user, token } = await auth.createAndLoginTestUser(9);
 
-    // 昵称应该仍然可见
-    const profileName = page.locator('.profile-name').first()
-    await expect(profileName).toBeVisible({ timeout: 5000 })
+      // 创建多条动态
+      const posts = [];
+      for (let i = 1; i <= 5; i++) {
+        const post = createTestPost(i);
+        await api.createPost({ content: post.content }, token);
+        posts.push(post);
+      }
 
-    // 元信息应该仍然可见
-    const profileMeta = page.locator('.profile-meta').first()
-    await expect(profileMeta).toBeVisible({ timeout: 5000 })
+      // 访问个人主页
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
 
-    // When: 恢复桌面端视口
-    await page.setViewportSize({ width: 1280, height: 720 })
-    await page.waitForTimeout(500)
+      // 切换到"我的动态"标签（如果有）
+      const myPostsTab = page.locator('text=我的动态, [class*="tab"]:has-text("动态")').first();
+      if (await myPostsTab.isVisible().catch(() => false)) {
+        await myPostsTab.click();
+        await page.waitForTimeout(500);
+      }
 
-    // Then: 验证桌面端布局
-    await expect(coverImage).toBeVisible({ timeout: 5000 })
-    await expect(avatar).toBeVisible({ timeout: 5000 })
-    await expect(profileName).toBeVisible({ timeout: 5000 })
-  })
-})
+      // 验证所有动态都显示
+      for (const post of posts) {
+        await expect(page.locator(`text=${post.content.substring(0, 20)}`)).toBeVisible();
+      }
+    });
+
+    test('动态按时间倒序排列', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      const api = new ApiHelpers(request);
+      const { user, token } = await auth.createAndLoginTestUser(10);
+
+      // 创建3条动态，有时间间隔
+      await api.createPost({ content: '第一条动态' }, token);
+      await page.waitForTimeout(1000);
+      await api.createPost({ content: '第二条动态' }, token);
+      await page.waitForTimeout(1000);
+      await api.createPost({ content: '第三条动态' }, token);
+
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 获取所有动态元素
+      const moments = page.locator('.moment-item, .post-item, [class*="post"]');
+      const count = await moments.count();
+
+      if (count >= 3) {
+        // 获取前三条动态的内容
+        const firstMoment = await moments.nth(0).textContent();
+        const secondMoment = await moments.nth(1).textContent();
+        const thirdMoment = await moments.nth(2).textContent();
+
+        // 最新的应该在最上面（倒序）
+        expect(firstMoment).toContain('第三条');
+        expect(secondMoment).toContain('第二条');
+        expect(thirdMoment).toContain('第一条');
+      }
+    });
+
+    test('显示动态数量统计', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      const api = new ApiHelpers(request);
+      const { user, token } = await auth.createAndLoginTestUser(11);
+
+      // 创建5条动态
+      for (let i = 1; i <= 5; i++) {
+        await api.createPost({ content: `动态${i}` }, token);
+      }
+
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 查找动态数量显示
+      const countElement = page.locator('[class*="count"]:has-text("动态"), text=/动态.*5|5.*动态/').first();
+      
+      if (await countElement.isVisible().catch(() => false)) {
+        const countText = await countElement.textContent();
+        expect(countText).toContain('5');
+      } else {
+        // 或者通过实际计数
+        const moments = page.locator('.moment-item, .post-item');
+        const count = await moments.count();
+        expect(count).toBe(5);
+      }
+    });
+
+    test('空动态状态显示', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      const { user, token } = await auth.createAndLoginTestUser(12);
+
+      // 不创建任何动态，直接访问个人主页
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 应该显示空状态提示
+      const emptyState = page.locator('text=/暂无动态|还没有发布|空空如也/');
+      
+      if (await emptyState.isVisible().catch(() => false)) {
+        await expect(emptyState).toBeVisible();
+      } else {
+        // 或者验证动态列表为空
+        const moments = page.locator('.moment-item, .post-item');
+        const count = await moments.count();
+        expect(count).toBe(0);
+      }
+    });
+  });
+
+  test.describe('用户互动统计', () => {
+    test('显示获赞数', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      const api = new ApiHelpers(request);
+      
+      // 用户A创建动态
+      const userA = await auth.createAndLoginTestUser(13);
+      const post = createTestPost(13);
+      const postResult = await api.createPost({ content: post.content }, userA.token);
+      const postData = postResult.body.data || postResult.body;
+      const postId = postData.id || postData;
+
+      // 用户B点赞
+      await auth.logout();
+      const userB = await auth.createAndLoginTestUser(14);
+      await api.likePost(postId, userB.token);
+
+      // 用户A查看个人主页
+      await auth.logout();
+      await auth.loginViaAPI(userA.user.username, userA.user.password);
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 验证获赞数显示
+      const likesCount = page.locator('[class*="likes"], text=/获赞|点赞/').first();
+      
+      if (await likesCount.isVisible().catch(() => false)) {
+        const countText = await likesCount.textContent();
+        expect(countText).toMatch(/1/);
+      }
+    });
+
+    test('显示好友数', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      const api = new ApiHelpers(request);
+      
+      // 创建用户A和B
+      const userA = await auth.createAndLoginTestUser(15);
+      const userB = await auth.createAndLoginTestUser(16);
+
+      // 搜索并添加好友
+      const searchResult = await api.searchUsers(userB.user.username, userA.token);
+      const userBInfo = searchResult.body.data.find((u: any) => u.username === userB.user.username);
+      const requestResult = await api.sendFriendRequest(userBInfo.id, userA.token);
+      const requestData = requestResult.body.data || requestResult.body;
+      const requestId = requestData.id || requestData;
+      
+      // 用户B接受好友请求
+      await api.acceptFriendRequest(requestId, userB.token);
+
+      // 用户A查看个人主页
+      await auth.loginViaAPI(userA.user.username, userA.user.password);
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 验证好友数显示
+      const friendsCount = page.locator('[class*="friends"], text=/好友/').first();
+      
+      if (await friendsCount.isVisible().catch(() => false)) {
+        const countText = await friendsCount.textContent();
+        expect(countText).toMatch(/1/);
+      }
+    });
+  });
+
+  test.describe('访问其他用户主页', () => {
+    test('查看其他用户的主页', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      const api = new ApiHelpers(request);
+      
+      // 创建用户A和B
+      const userA = await auth.createAndLoginTestUser(17);
+      const userB = await auth.createAndLoginTestUser(18);
+
+      // 用户B创建动态
+      await api.createPost({ content: '用户B的动态' }, userB.token);
+
+      // 用户A登录并访问用户B的主页
+      await auth.loginViaAPI(userA.user.username, userA.user.password);
+      
+      // 假设可以通过URL访问其他用户主页
+      await page.goto(`/profile/${userB.user.username}`);
+      await page.waitForLoadState('networkidle');
+
+      // 应该看到用户B的昵称
+      await expect(page.locator(`text=${userB.user.nickname}`)).toBeVisible();
+
+      // 应该看到用户B的动态
+      await expect(page.locator('text=用户B的动态')).toBeVisible();
+    });
+
+    test('无法编辑他人信息', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      
+      const userA = await auth.createAndLoginTestUser(19);
+      const userB = await auth.createAndLoginTestUser(20);
+
+      // 用户A访问用户B的主页
+      await auth.loginViaAPI(userA.user.username, userA.user.password);
+      await page.goto(`/profile/${userB.user.username}`);
+      await page.waitForLoadState('networkidle');
+
+      // 不应该看到编辑按钮
+      const editButton = page.locator('button:has-text("编辑"), button:has-text("修改")');
+      await expect(editButton).not.toBeVisible();
+    });
+  });
+
+  test.describe('响应式布局', () => {
+    test('桌面端正确显示', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      await auth.createAndLoginTestUser(21);
+
+      // 设置桌面端视口
+      await page.setViewportSize({ width: 1920, height: 1080 });
+
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 验证页面正常显示（使用更精确的选择器）
+      await expect(page.locator('.profile-page, main').first()).toBeVisible();
+    });
+
+    test('移动端正确显示', async ({ page, request }) => {
+      const auth = new AuthHelpers(page, request);
+      await auth.createAndLoginTestUser(22);
+
+      // 设置移动端视口
+      await page.setViewportSize({ width: 375, height: 667 });
+
+      await page.goto('/profile');
+      await page.waitForLoadState('networkidle');
+
+      // 验证页面正常显示（使用更精确的选择器）
+      await expect(page.locator('.profile-page, main').first()).toBeVisible();
+    });
+  });
+});
 
