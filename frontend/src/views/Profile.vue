@@ -340,6 +340,14 @@ const handleAvatarUpload = async (event) => {
     }
 
     ElMessage.success("头像上传成功");
+    
+    // 刷新当前页面的动态列表（确保显示最新头像）
+    await loadUserMoments();
+    
+    // 发送全局事件，通知其他页面刷新
+    window.dispatchEvent(new CustomEvent('user-avatar-updated', {
+      detail: { avatarUrl: uploadedUrl }
+    }));
   } catch (error) {
     console.error("头像上传失败:", error);
     ElMessage.error(error.response?.data?.message || "头像上传失败，请重试");
@@ -386,6 +394,12 @@ const loadUserMoments = async () => {
         }
       }
 
+      // 添加时间戳参数破坏浏览器缓存，确保显示最新头像
+      if (authorAvatar && !authorAvatar.startsWith('data:')) {
+        const separator = authorAvatar.includes('?') ? '&' : '?'
+        authorAvatar = `${authorAvatar}${separator}_v=${Date.now()}`
+      }
+      
       return {
         ...post,
         content: post.content || post.title,

@@ -42,7 +42,7 @@
           <el-dropdown @command="handleCommand" trigger="click" placement="bottom-end">
             <div class="user-avatar-wrapper">
               <img 
-                :src="userStore.userInfo?.avatar || defaultAvatar" 
+                :src="avatarUrl" 
                 :alt="userStore.userInfo?.nickname"
                 class="user-avatar"
               />
@@ -76,6 +76,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
@@ -84,6 +85,17 @@ const router = useRouter()
 const userStore = useUserStore()
 // 使用本地 SVG 默认头像
 const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23E0E7FF'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='14' fill='%23667eea' font-family='Arial, sans-serif'%3E👤%3C/text%3E%3C/svg%3E"
+
+// 计算带缓存破坏参数的头像URL
+const avatarUrl = computed(() => {
+  let avatar = userStore.userInfo?.avatar
+  if (!avatar || avatar.startsWith('data:')) {
+    return avatar || defaultAvatar
+  }
+  // 添加时间戳参数破坏浏览器缓存
+  const separator = avatar.includes('?') ? '&' : '?'
+  return `${avatar}${separator}_v=${Date.now()}`
+})
 
 const goToHome = () => {
   router.push('/home')
