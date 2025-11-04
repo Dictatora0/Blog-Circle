@@ -21,6 +21,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { getResourceUrl } from '@/config'
 
 const props = defineProps({
   friend: {
@@ -34,7 +35,7 @@ const avatarUrl = computed(() => {
     if (props.friend.avatar.startsWith('http')) {
       return props.friend.avatar
     }
-    return `http://localhost:8080${props.friend.avatar}`
+    return getResourceUrl(props.friend.avatar)
   }
   return 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + (props.friend.id || 'default')
 })

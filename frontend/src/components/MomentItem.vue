@@ -136,6 +136,7 @@ import { useUserStore } from "@/stores/user";
 import { getCommentsByPostId, createComment } from "@/api/comment";
 import { toggleLike } from "@/api/upload";
 import ImagePreview from "./ImagePreview.vue";
+import { getResourceUrl } from "@/config";
 
 const props = defineProps({
   moment: {
@@ -195,7 +196,7 @@ const imageList = computed(() => {
 const authorAvatarUrl = computed(() => {
   let avatar = props.moment.authorAvatar || null
   if (avatar && avatar.startsWith("/")) {
-    avatar = `http://localhost:8080${avatar}`
+    avatar = getResourceUrl(avatar)
   }
   return avatar || defaultAvatar
 });
@@ -208,7 +209,7 @@ const loadComments = async () => {
     // 处理评论者头像URL（相对路径转绝对路径）
     comments.value = Array.isArray(responseData) ? responseData.map(comment => {
       if (comment.avatar && comment.avatar.startsWith("/")) {
-        comment.avatar = `http://localhost:8080${comment.avatar}`
+        comment.avatar = getResourceUrl(comment.avatar)
       }
       return comment
     }) : [];
