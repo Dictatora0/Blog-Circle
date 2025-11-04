@@ -34,13 +34,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, watch } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
 import { getFriendTimeline } from '@/api/friends'
 import { useUserStore } from '@/stores/user'
 import MomentItem from '@/components/MomentItem.vue'
 import { getResourceUrl } from '@/config'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const userStore = useUserStore()
 const moments = ref([])
 const loading = ref(false)
@@ -178,6 +180,20 @@ onMounted(() => {
   window.addEventListener('mousedown', handleMouseDown)
   window.addEventListener('mousemove', handleMouseMove)
   window.addEventListener('mouseup', handleMouseUp)
+})
+
+// 页面激活时刷新数据（从其他页面返回时，确保头像等信息最新）
+onActivated(() => {
+  console.log('Home页面激活，刷新动态列表')
+  loadMoments(true)
+})
+
+// 监听用户头像变化
+watch(() => userStore.userInfo?.avatar, (newAvatar, oldAvatar) => {
+  if (newAvatar !== oldAvatar && oldAvatar !== undefined) {
+    console.log('检测到头像更新，刷新动态列表')
+    loadMoments(true)
+  }
 })
 
 onUnmounted(() => {
