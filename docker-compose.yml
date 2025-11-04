@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:15
+    container_name: blogcircle-db
+    environment:
+      POSTGRES_USER: bloguser
+      POSTGRES_PASSWORD: blogpass
+      POSTGRES_DB: blog_db
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backend/src/main/resources/db/01_init.sql:/docker-entrypoint-initdb.d/01_init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bloguser -d blog_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - blogcircle-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: blogcircle-backend
+    volumes:
+      - backend_uploads:/app/uploads
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - blogcircle-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: blogcircle-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - blogcircle-network
+    restart: unless-stopped
+
+volumes:
+  db_data:
+    driver: local
+  backend_uploads:
+    driver: local
+
+networks:
+  blogcircle-network:
+    driver: bridge
+
