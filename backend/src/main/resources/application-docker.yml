@@ -38,7 +38,7 @@ file:
     url-prefix: /uploads
   
 server:
-  port: 8081
+  port: 8080
 
 logging:
   level:
