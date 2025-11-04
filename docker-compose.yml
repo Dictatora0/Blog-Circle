@@ -34,11 +34,14 @@ services:
     ports:
       - "8081:8080"
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     networks:
       - blogcircle-network
     restart: unless-stopped
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/blog_db
+      - SPRING_DATASOURCE_USERNAME=bloguser
+      - SPRING_DATASOURCE_PASSWORD=blogpass
 
   frontend:
     build:
