@@ -78,29 +78,3 @@
 
 </mapper>
 
-
-
-
-    <!-- 聚合统计：总浏览量 -->
-    <select id="countTotalViews" resultType="long">
-        SELECT COALESCE(SUM(view_count), 0) FROM posts
-    </select>
-
-    <!-- 聚合统计：总点赞数 -->
-    <select id="countTotalLikes" resultType="long">
-        SELECT COUNT(*) FROM likes
-    </select>
-
-    <!-- 聚合统计：总评论数 -->
-    <select id="countTotalComments" resultType="long">
-        SELECT COUNT(*) FROM comments
-    </select>
-
-    <!-- 聚合统计：总用户数 -->
-    <select id="countTotalUsers" resultType="long">
-        SELECT COUNT(*) FROM users
-    </select>
-
-</mapper>
-
-
