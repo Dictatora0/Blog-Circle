@@ -7,7 +7,7 @@ set -e
 # ============================================
 SERVER_IP="10.211.55.11"
 SERVER_USER="root"
-SERVER_PASSWORD="747599qw"
+SERVER_PASSWORD="747599qw@"
 PROJECT_DIR="CloudCom"
 
 # ============================================
@@ -124,8 +124,13 @@ main() {
         exit 1
     fi
     
-    # 2. 拉取最新代码
-    log_info "2. 拉取最新代码..."
+    # 2. 配置 Git 安全目录（解决 dubious ownership 问题）
+    log_info "2. 配置 Git 安全目录..."
+    execute_remote "git config --global --add safe.directory ${PROJECT_DIR}" || true
+    log_success "Git 安全目录配置完成"
+    
+    # 3. 拉取最新代码
+    log_info "3. 拉取最新代码..."
     execute_remote "cd ${PROJECT_DIR} && git fetch origin dev && git pull origin dev"
     if [ $? -eq 0 ]; then
         log_success "代码更新成功"
@@ -134,13 +139,13 @@ main() {
         exit 1
     fi
     
-    # 3. 显示最新提交
-    log_info "3. 显示最新提交信息..."
+    # 4. 显示最新提交
+    log_info "4. 显示最新提交信息..."
     execute_remote "cd ${PROJECT_DIR} && git log --oneline -3"
     echo ""
     
-    # 4. 验证 docker-compose.yml
-    log_info "4. 验证 docker-compose.yml..."
+    # 5. 验证 docker-compose.yml
+    log_info "5. 验证 docker-compose.yml..."
     if execute_remote "[ -f \"${PROJECT_DIR}/docker-compose.yml\" ]"; then
         log_success "docker-compose.yml 存在"
     else
@@ -148,13 +153,13 @@ main() {
         exit 1
     fi
     
-    # 5. 停止现有容器
-    log_info "5. 停止现有容器..."
+    # 6. 停止现有容器
+    log_info "6. 停止现有容器..."
     execute_remote "cd ${PROJECT_DIR} && docker-compose down 2>/dev/null || true"
     log_success "容器已停止"
     
-    # 6. 构建并启动服务
-    log_info "6. 构建并启动服务（这可能需要几分钟）..."
+    # 7. 构建并启动服务
+    log_info "7. 构建并启动服务（这可能需要几分钟）..."
     execute_remote "cd ${PROJECT_DIR} && docker-compose up -d --build"
     if [ $? -eq 0 ]; then
         log_success "服务启动成功"
@@ -163,17 +168,17 @@ main() {
         exit 1
     fi
     
-    # 7. 等待服务启动
-    log_info "7. 等待服务启动（15秒）..."
+    # 8. 等待服务启动
+    log_info "8. 等待服务启动（15秒）..."
     sleep 15
     
-    # 8. 检查服务状态
-    log_info "8. 检查服务状态..."
+    # 9. 检查服务状态
+    log_info "9. 检查服务状态..."
     execute_remote "cd ${PROJECT_DIR} && docker-compose ps"
     echo ""
     
-    # 9. 显示服务日志
-    log_info "9. 显示服务日志（最后20行）..."
+    # 10. 显示服务日志
+    log_info "10. 显示服务日志（最后20行）..."
     echo ""
     echo "=== 数据库日志 ==="
     execute_remote "cd ${PROJECT_DIR} && docker-compose logs --tail=20 db 2>/dev/null || echo '数据库日志暂不可用'"
