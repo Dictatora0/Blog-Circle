@@ -137,12 +137,18 @@ main() {
     
     # 3. 拉取最新代码（带重试机制）
     log_info "3. 拉取最新代码..."
+    
+    # 先清理工作区：重置到远程分支并清理未跟踪文件
+    log_info "   清理工作区..."
+    execute_remote "cd ${PROJECT_DIR} && git reset --hard origin/dev 2>/dev/null || true"
+    execute_remote "cd ${PROJECT_DIR} && git clean -fd 2>/dev/null || true"
+    
     MAX_RETRIES=3
     RETRY_COUNT=0
     SUCCESS=false
     
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-        if execute_remote "cd ${PROJECT_DIR} && git fetch origin dev && git pull origin dev"; then
+        if execute_remote "cd ${PROJECT_DIR} && git fetch origin dev && git reset --hard origin/dev"; then
             SUCCESS=true
             break
         else
