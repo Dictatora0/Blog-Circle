@@ -11,17 +11,20 @@
 ### 方式一：从本地远程部署到服务器（最推荐）
 
 **前提条件：**
+
 - 本地需要安装 `sshpass`（用于密码认证）
   - macOS: `brew install hudochenkov/sshpass/sshpass`
   - Linux: `yum install sshpass` 或 `apt-get install sshpass`
 
 **使用方法：**
+
 ```bash
 # 在本地项目目录执行
 ./remote-deploy.sh
 ```
 
 脚本会自动：
+
 1. 连接到服务器 `10.211.55.11`
 2. 进入项目目录并拉取最新代码
 3. 停止现有容器
@@ -30,7 +33,8 @@
 
 **配置说明：**
 脚本中的服务器信息已配置：
-- 服务器IP: `10.211.55.11`
+
+- 服务器 IP: `10.211.55.11`
 - 用户名: `root`
 - 项目目录: `CloudCom`
 

@@ -36,7 +36,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
-import { getPostList } from '@/api/post'
+import { getFriendTimeline } from '@/api/friends'
 import { useUserStore } from '@/stores/user'
 import MomentItem from '@/components/MomentItem.vue'
 import { getResourceUrl } from '@/config'
@@ -56,7 +56,7 @@ const loadMoments = async (reset = false) => {
   
   loading.value = true
   try {
-    const res = await getPostList()
+    const res = await getFriendTimeline()
     // 后端返回格式: { code: 200, message: "...", data: [...] }
     const responseData = res.data?.data || res.data || []
     const newMoments = Array.isArray(responseData) ? responseData : []
@@ -99,6 +99,7 @@ const loadMoments = async (reset = false) => {
     hasMore.value = newMoments.length >= 10
   } catch (error) {
     console.error('加载动态失败:', error)
+    moments.value = []
   } finally {
     loading.value = false
   }

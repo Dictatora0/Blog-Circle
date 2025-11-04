@@ -62,3 +62,12 @@ public interface FriendshipMapper {
 
 
 
+
+
+
+
+
+
+
+
+

@@ -123,6 +123,22 @@ export class ApiHelpers {
   }
 
   /**
+   * 获取评论列表
+   */
+  async getComments(postId: number, token?: string) {
+    const response = await this.request.get(`${API_BASE_URL}/comments/${postId}`, {
+      headers: this.getHeaders(token),
+    });
+
+    const body = await response.json();
+
+    return {
+      status: response.status(),
+      body,
+    };
+  }
+
+  /**
    * 点赞动态
    */
   async likePost(postId: number, token: string) {

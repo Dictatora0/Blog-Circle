@@ -138,7 +138,8 @@ const coverUrl = ref("");
 const avatarUploading = ref(false);
 const avatarInput = ref(null);
 const avatarUrl = ref("");
-const defaultAvatar = "https://via.placeholder.com/80?text=头像";
+// 使用本地 SVG 默认头像
+const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23E0E7FF'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='32' fill='%23667eea' font-family='Arial, sans-serif'%3E👤%3C/text%3E%3C/svg%3E";
 
 const userInfo = computed(() => userStore.userInfo);
 

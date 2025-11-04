@@ -82,7 +82,8 @@ import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const userStore = useUserStore()
-const defaultAvatar = 'https://via.placeholder.com/32?text=头像'
+// 使用本地 SVG 默认头像
+const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23E0E7FF'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='14' fill='%23667eea' font-family='Arial, sans-serif'%3E👤%3C/text%3E%3C/svg%3E"
 
 const goToHome = () => {
   router.push('/home')
@@ -108,7 +109,7 @@ const handleCommand = (command) => {
   } else if (command === 'logout') {
     userStore.logout()
     ElMessage.success('已退出登录')
-    router.push('/home')
+    router.push('/login')
   }
 }
 

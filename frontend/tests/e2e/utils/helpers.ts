@@ -50,12 +50,12 @@ export async function loginUser(
   await page.goto('/login')
   await page.waitForLoadState('domcontentloaded')
   
-  // 等待输入框可见
-  await page.waitForSelector('input[placeholder="用户名"], input[placeholder*="用户名"]', { timeout: 5000 })
-  await page.waitForSelector('input[placeholder="密码"], input[placeholder*="密码"]', { timeout: 5000 })
+  // 等待输入框可见（Element Plus使用.el-input__inner）
+  await page.waitForSelector('.el-input__inner[placeholder="用户名"]', { timeout: 5000 })
+  await page.waitForSelector('.el-input__inner[placeholder="密码"]', { timeout: 5000 })
   
-  await page.locator('input[placeholder="用户名"]').fill(username)
-  await page.locator('input[placeholder="密码"]').fill(password)
+  await page.locator('.el-input__inner[placeholder="用户名"]').fill(username)
+  await page.locator('.el-input__inner[placeholder="密码"]').fill(password)
   
   // 等待登录 API 响应（在点击按钮之前启动监听）
   const loginResponsePromise = page.waitForResponse(
@@ -63,7 +63,8 @@ export async function loginUser(
     { timeout: 15000 }
   )
   
-  await page.locator('button:has-text("登录")').click()
+  // 点击登录按钮（Element Plus的button在.el-button内）
+  await page.locator('button.el-button--primary:has-text("登录"), button:has-text("登录")').first().click()
   
   // 等待登录 API 响应完成
   const loginResponse = await loginResponsePromise
@@ -218,8 +219,8 @@ export async function createTestPost(
   await page.waitForLoadState('domcontentloaded')
   await page.waitForTimeout(500)
   
-  // 输入内容
-  const contentInput = page.locator('textarea[placeholder="分享你的想法..."]')
+  // 输入内容（Element Plus的textarea在.el-textarea__inner内）
+  const contentInput = page.locator('textarea.el-textarea__inner, textarea[placeholder*="分享"]')
   await contentInput.waitFor({ state: 'visible', timeout: 5000 })
   await contentInput.fill(testContent)
   

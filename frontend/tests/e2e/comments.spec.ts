@@ -234,15 +234,20 @@ test.describe('评论功能模块', () => {
       await expect(postElement).toBeVisible({ timeout: 15000 });
       const postCard = postElement.locator('xpath=ancestor::div[contains(@class, "moment") or contains(@class, "post")]').first();
 
-      // 打开评论区
-      const commentButton = postCard.locator('button:has-text("评论"), [class*="comment"]').first();
-      if (await commentButton.isVisible()) {
+      // 打开评论区（点击评论图标）
+      const commentButton = postCard.locator('button.action-btn').filter({ hasText: '💬' });
+      if (await commentButton.isVisible().catch(() => false)) {
         await commentButton.click();
         await page.waitForTimeout(500);
       }
 
-      // 尝试提交空评论
-      const submitButton = postCard.locator('button:has-text("发送"), button:has-text("提交")').last();
+      // 找到评论输入框
+      const commentInput = postCard.locator('.comment-input input, input[placeholder*="写评论"]').first();
+      await expect(commentInput).toBeVisible({ timeout: 5000 });
+
+      // 尝试提交空评论 - 查找发送按钮
+      const submitButton = postCard.locator('button.btn-send, button:has-text("发送")').first();
+      await expect(submitButton).toBeVisible({ timeout: 5000 });
       
       // 检查按钮是否被禁用
       const isDisabled = await submitButton.isDisabled();
@@ -387,13 +392,13 @@ test.describe('评论功能模块', () => {
       await expect(postElement).toBeVisible({ timeout: 10000 });
       const postCard = postElement.locator('xpath=ancestor::div[contains(@class, "moment") or contains(@class, "post")]').first();
       
-      // 验证评论数显示为3（使用更宽松的选择器）
-      const commentCount = postCard.locator('[class*="comment"], text=/评论/, text=/3/').first();
-      await expect(commentCount).toBeVisible({ timeout: 10000 });
-      const countText = await commentCount.textContent();
+      // 验证评论数显示为3（查找包含评论图标和数字的元素）
+      const commentStat = postCard.locator('.stat-item').filter({ hasText: '💬' });
+      await expect(commentStat).toBeVisible({ timeout: 10000 });
+      const countText = await commentStat.textContent();
       
       // 应该包含数字3
-      expect(countText).toMatch(/3/);
+      expect(countText).toContain('3');
     });
 
     test('评论按时间顺序显示', async ({ page, request }) => {
@@ -583,7 +588,7 @@ test.describe('评论功能模块', () => {
       const postId = postResult.body.data.id;
 
       // 尝试添加包含脚本的评论
-      const xssComment = invalidData.specialCharacters.content;
+      const xssComment = invalidData.xssContent;
       await api.createComment(postId, xssComment, token);
 
       // 访问页面
