@@ -12,4 +12,13 @@
         SELECT * FROM access_logs ORDER BY created_at DESC
     </select>
 
+    <select id="countTodayViewByUserAndPost" resultType="int">
+        SELECT COUNT(*) 
+        FROM access_logs 
+        WHERE user_id = #{userId} 
+          AND post_id = #{postId} 
+          AND action = 'VIEW_POST'
+          AND DATE(created_at) = CURRENT_DATE
+    </select>
+
 </mapper>
