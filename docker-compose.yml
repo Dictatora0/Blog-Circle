@@ -2,12 +2,14 @@ version: '3.3'
 
 services:
   db:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: blogcircle-db
+    user: postgres
     environment:
       POSTGRES_USER: bloguser
       POSTGRES_PASSWORD: blogpass
       POSTGRES_DB: blog_db
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./backend/src/main/resources/db/01_init.sql:/docker-entrypoint-initdb.d/01_init.sql
@@ -20,6 +22,7 @@ services:
       retries: 5
     networks:
       - blogcircle-network
+    restart: unless-stopped
 
   backend:
     build:
@@ -29,9 +32,10 @@ services:
     volumes:
       - backend_uploads:/app/uploads
     ports:
-      - "8081:8081"
+      - "8081:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - blogcircle-network
     restart: unless-stopped
