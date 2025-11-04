@@ -68,17 +68,32 @@ public class PostService {
     public Post getPostById(Long id, Long userId) {
         Post post = postMapper.selectById(id);
         if (post != null) {
-            // 增加浏览次数
-            postMapper.incrementViewCount(id);
-            
             // 设置点赞状态
             if (userId != null && userId > 0) {
                 post.setLiked(likeMapper.selectByPostIdAndUserId(id, userId) != null);
             }
             
-            // 记录访问日志
+            // 处理浏览量和访问日志
+            Long actualUserId = userId != null ? userId : 0L;
+            boolean isAuthor = userId != null && userId.equals(post.getAuthorId());
+            
+            // 作者查看自己的文章不增加浏览量
+            if (!isAuthor) {
+                // 检查用户今天是否已经访问过这篇文章
+                int todayViewCount = accessLogMapper.countTodayViewByUserAndPost(actualUserId, id);
+                
+                // 只有在今天首次访问时才增加浏览量
+                if (todayViewCount == 0) {
+                    // 增加浏览次数
+                    postMapper.incrementViewCount(id);
+                    // 更新返回对象中的浏览量
+                    post.setViewCount(post.getViewCount() + 1);
+                }
+            }
+            
+            // 记录访问日志（无论是否增加浏览量都记录）
             AccessLog log = new AccessLog();
-            log.setUserId(userId != null ? userId : 0L);
+            log.setUserId(actualUserId);
             log.setPostId(id);
             log.setAction("VIEW_POST");
             accessLogMapper.insert(log);
