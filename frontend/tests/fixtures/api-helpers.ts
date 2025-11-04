@@ -126,7 +126,7 @@ export class ApiHelpers {
    * 获取评论列表
    */
   async getComments(postId: number, token?: string) {
-    const response = await this.request.get(`${API_BASE_URL}/comments/${postId}`, {
+    const response = await this.request.get(`${API_BASE_URL}/comments/post/${postId}`, {
       headers: this.getHeaders(token),
     });
 

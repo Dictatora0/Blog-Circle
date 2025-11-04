@@ -147,11 +147,11 @@ test.describe('点赞功能模块', () => {
       await expect(postElement).toBeVisible({ timeout: 15000 });
       const postCard = postElement.locator('xpath=ancestor::div[contains(@class, "moment") or contains(@class, "post")]').first();
       
-      // 验证点赞数为1
-      const likeCount = postCard.locator('[class*="like-count"], [class*="likes"]').first();
-      await expect(likeCount).toBeVisible({ timeout: 10000 });
-      const countText = await likeCount.textContent();
-      expect(countText).toMatch(/1/);
+      // 验证点赞数为1（使用 stat-item 和图标）
+      const likeStat = postCard.locator('.stat-item').filter({ hasText: '❤️' });
+      await expect(likeStat).toBeVisible({ timeout: 10000 });
+      const countText = await likeStat.textContent();
+      expect(countText).toContain('1');
     });
 
     test('点赞按钮视觉反馈正确', async ({ page, request }) => {
@@ -169,20 +169,20 @@ test.describe('点赞功能模块', () => {
 
       const postElement = page.locator(`text=${post.content.substring(0, 20)}`).first();
       const postCard = postElement.locator('xpath=ancestor::div[contains(@class, "moment") or contains(@class, "post")]').first();
-      const likeButton = postCard.locator('button:has-text("点赞"), button[class*="like"], [class*="like-btn"]').first();
+      const likeButton = postCard.locator('button.action-btn').filter({ hasText: '🤍' }).or(postCard.locator('button.action-btn').filter({ hasText: '❤️' })).first();
 
-      // 记录点赞前的样式
-      const beforeClass = await likeButton.getAttribute('class');
+      // 记录点赞前的图标
+      const beforeIcon = await likeButton.textContent();
 
       // 点击点赞
       await likeButton.click();
       await page.waitForTimeout(500);
 
-      // 记录点赞后的样式
-      const afterClass = await likeButton.getAttribute('class');
+      // 记录点赞后的图标
+      const afterIcon = await likeButton.textContent();
 
-      // 样式应该有变化（通常会添加 active、liked 等类名）
-      expect(beforeClass).not.toBe(afterClass);
+      // 图标应该变化（🤍 -> ❤️）
+      expect(afterIcon).toContain('❤️');
     });
 
     test('未登录用户无法点赞', async ({ page, request }) => {
@@ -249,18 +249,18 @@ test.describe('点赞功能模块', () => {
 
       const postElement = page.locator(`text=${post.content.substring(0, 20)}`).first();
       const postCard = postElement.locator('xpath=ancestor::div[contains(@class, "moment") or contains(@class, "post")]').first();
-      const likeButton = postCard.locator('button:has-text("点赞"), button[class*="like"], [class*="like-btn"]').first();
+      const likeButton = postCard.locator('button.action-btn').filter({ hasText: '🤍' }).or(postCard.locator('button.action-btn').filter({ hasText: '❤️' })).first();
 
       // 再次点击取消点赞
       await likeButton.click();
       await page.waitForTimeout(1000);
 
       // 验证点赞数变为0
-      const likeCount = postCard.locator('[class*="like-count"], [class*="likes"]').first();
-      const countText = await likeCount.textContent();
+      const likeStat = postCard.locator('.stat-item').filter({ hasText: '❤️' });
+      const countText = await likeStat.textContent();
       
       // 应该显示0或不显示数字
-      expect(countText).toMatch(/0|^$/);
+      expect(countText).toMatch(/0|❤️/);
     });
 
     test('通过API取消点赞', async ({ page, request }) => {
