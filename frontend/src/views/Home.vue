@@ -39,6 +39,7 @@ import { useIntersectionObserver } from '@vueuse/core'
 import { getPostList } from '@/api/post'
 import { useUserStore } from '@/stores/user'
 import MomentItem from '@/components/MomentItem.vue'
+import { getResourceUrl } from '@/config'
 
 const userStore = useUserStore()
 const moments = ref([])
@@ -64,7 +65,7 @@ const loadMoments = async (reset = false) => {
       // 处理作者头像URL（相对路径转绝对路径）
       let authorAvatar = post.authorAvatar || null
       if (authorAvatar && authorAvatar.startsWith("/")) {
-        authorAvatar = `http://localhost:8080${authorAvatar}`
+        authorAvatar = getResourceUrl(authorAvatar)
       }
       
       // 处理图片列表

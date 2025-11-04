@@ -44,6 +44,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { getFriendTimeline } from '@/api/friends'
 import { ElMessage } from 'element-plus'
 import MomentItem from '@/components/MomentItem.vue'
+import { getResourceUrl } from '@/config'
 
 const moments = ref([])
 const loading = ref(false)
@@ -66,7 +67,7 @@ const loadTimeline = async (reset = false) => {
       // 处理作者头像URL（相对路径转绝对路径）
       let authorAvatar = post.authorAvatar || null
       if (authorAvatar && authorAvatar.startsWith("/")) {
-        authorAvatar = `http://localhost:8080${authorAvatar}`
+        authorAvatar = getResourceUrl(authorAvatar)
       }
       
       // 处理图片列表

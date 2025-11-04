@@ -125,6 +125,7 @@ import { uploadImage } from "@/api/upload";
 import { updateUser, getCurrentUser } from "@/api/auth";
 import { ElMessage } from "element-plus";
 import MomentItem from "@/components/MomentItem.vue";
+import { getResourceUrl } from "@/config";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -216,7 +217,7 @@ const handleCoverUpload = async (event) => {
 
     // 如果返回的是相对路径，转换为完整URL
     if (uploadedUrl.startsWith("/")) {
-      uploadedUrl = `http://localhost:8080${uploadedUrl}`;
+      uploadedUrl = getResourceUrl(uploadedUrl);
     }
 
     // 3. 更新用户信息
@@ -304,7 +305,7 @@ const handleAvatarUpload = async (event) => {
 
     // 如果返回的是相对路径，转换为完整URL
     if (uploadedUrl.startsWith("/")) {
-      uploadedUrl = `http://localhost:8080${uploadedUrl}`;
+      uploadedUrl = getResourceUrl(uploadedUrl);
     }
 
     // 3. 更新用户信息
@@ -366,7 +367,7 @@ const loadUserMoments = async () => {
       // 处理作者头像URL（相对路径转绝对路径）
       let authorAvatar = post.authorAvatar || null
       if (authorAvatar && authorAvatar.startsWith("/")) {
-        authorAvatar = `http://localhost:8080${authorAvatar}`
+        authorAvatar = getResourceUrl(authorAvatar)
       }
       
       // 处理图片列表
@@ -416,7 +417,7 @@ onMounted(async () => {
   if (cover) {
     // 如果是相对路径，转换为完整URL
     if (cover.startsWith("/")) {
-      coverUrl.value = `http://localhost:8080${cover}`;
+      coverUrl.value = getResourceUrl(cover);
     } else {
       coverUrl.value = cover;
     }
@@ -427,7 +428,7 @@ onMounted(async () => {
   if (avatar) {
     // 如果是相对路径，转换为完整URL
     if (avatar.startsWith("/")) {
-      avatarUrl.value = `http://localhost:8080${avatar}`;
+      avatarUrl.value = getResourceUrl(avatar);
     } else {
       avatarUrl.value = avatar;
     }

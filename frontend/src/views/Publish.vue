@@ -81,6 +81,7 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { createPost } from '@/api/post'
 import { uploadImage } from '@/api/upload'
+import { getResourceUrl } from '@/config'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -141,7 +142,7 @@ const uploadImages = async () => {
     try {
       const res = await uploadImage(file)
       if (res.data && res.data.data) {
-        uploadedUrls.push(`http://localhost:8080${res.data.data.url}`)
+        uploadedUrls.push(getResourceUrl(res.data.data.url))
       }
     } catch (error) {
       console.error('图片上传失败:', error)
