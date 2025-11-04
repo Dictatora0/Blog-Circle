@@ -54,9 +54,10 @@ public class PostController {
      * 删除文章
      */
     @DeleteMapping("/{id}")
-    public Result<Void> deletePost(@PathVariable Long id) {
+    public Result<Void> deletePost(@PathVariable Long id, HttpServletRequest request) {
         try {
-            postService.deletePost(id);
+            Long userId = (Long) request.getAttribute("userId");
+            postService.deletePost(id, userId);
             return Result.success("删除成功", null);
         } catch (Exception e) {
             return Result.error(e.getMessage());

@@ -179,7 +179,7 @@ class PostControllerTest {
     @DisplayName("场景5: 删除文章成功")
     void testDeletePost() throws Exception {
         // Given: 模拟文章服务删除成功
-        doNothing().when(postService).deletePost(1L);
+        doNothing().when(postService).deletePost(1L, 1L);
 
         // When: 发送删除文章请求
         // Then: 验证响应
@@ -188,7 +188,7 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("删除成功"));
 
-        verify(postService).deletePost(1L);
+        verify(postService).deletePost(eq(1L), anyLong());
     }
 
     @Test

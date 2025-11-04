@@ -73,17 +73,24 @@ const loginForm = reactive({
 })
 
 const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+  username: [{ required: true, message: '请输入用户名', trigger: ['blur', 'change'] }],
+  password: [{ required: true, message: '请输入密码', trigger: ['blur', 'change'] }]
 }
 
 const handleLogin = async () => {
-  if (!loginFormRef.value) return
+  console.log('handleLogin 被调用')
+  if (!loginFormRef.value) {
+    console.log('loginFormRef.value 为空')
+    return
+  }
   
+  console.log('开始表单验证')
   await loginFormRef.value.validate(async (valid) => {
+    console.log('表单验证结果:', valid)
     if (valid) {
       loading.value = true
       try {
+        console.log('调用登录API')
         const res = await login(loginForm)
         console.log('登录响应:', res.data)
         
@@ -91,10 +98,21 @@ const handleLogin = async () => {
         if (res.data && res.data.code === 200 && res.data.data) {
           const { token, user } = res.data.data
           if (token && user) {
+            // 先设置token和用户信息
             userStore.setToken(token)
             userStore.setUserInfo(user)
+            console.log('Token已设置:', userStore.token)
+            
+            // 显示成功消息
             ElMessage.success(res.data.message || '登录成功')
+            
+            // 使用nextTick确保store更新完成后再跳转
+            await new Promise(resolve => setTimeout(resolve, 100))
+            
+            // 路由跳转
+            console.log('准备跳转到 /home')
             await router.push('/home')
+            console.log('路由跳转完成')
           } else {
             ElMessage.error('登录失败，响应数据格式错误')
           }

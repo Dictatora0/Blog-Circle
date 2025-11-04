@@ -23,7 +23,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("*")  // 允许所有域名（生产环境可根据需要限制）
+                .allowedOrigins("http://localhost:5173", "http://localhost:3000")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
@@ -43,6 +43,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/posts/list",
                         "/api/posts/*/detail",
                         "/api/comments/post/*",
+                        "/api/likes/*/count",
                         "/uploads/**"
                 );
     }

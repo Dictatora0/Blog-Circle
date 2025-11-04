@@ -1,10 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import MomentItem from '@/components/MomentItem.vue'
 import { useUserStore } from '@/stores/user'
+
+// Mock API调用
+vi.mock('@/api/comment', () => ({
+  getCommentsByPostId: vi.fn(() => Promise.resolve({ data: { data: [] } }))
+}))
 
 /**
  * MomentItem 组件测试
@@ -29,6 +34,10 @@ describe('MomentItem', () => {
     setActivePinia(pinia)
   })
 
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
   const mockMoment = {
     id: 1,
     title: '测试动态',
@@ -41,7 +50,7 @@ describe('MomentItem', () => {
     images: null
   }
 
-  it('场景1: 显示动态内容', () => {
+  it('场景1: 显示动态内容', async () => {
     // Given: 准备动态数据
     // When: 渲染组件
     render(MomentItem, {
@@ -54,12 +63,16 @@ describe('MomentItem', () => {
       }
     })
 
+    // 等待组件初始化完成
+    await waitFor(() => {
+      expect(screen.getByText('这是一条测试动态内容')).toBeInTheDocument()
+    })
+
     // Then: 应该显示动态内容
-    expect(screen.getByText('这是一条测试动态内容')).toBeInTheDocument()
     expect(screen.getByText('测试用户')).toBeInTheDocument()
   })
 
-  it('场景2: 显示用户信息', () => {
+  it('场景2: 显示用户信息', async () => {
     // Given & When: 渲染组件
     render(MomentItem, {
       props: {
@@ -71,11 +84,13 @@ describe('MomentItem', () => {
       }
     })
 
-    // Then: 应该显示用户信息
+    // 等待组件初始化完成
+    await waitFor(() => {
     expect(screen.getByText('测试用户')).toBeInTheDocument()
+    })
   })
 
-  it('场景3: 显示统计数据', () => {
+  it('场景3: 显示统计数据', async () => {
     // Given & When: 渲染组件
     render(MomentItem, {
       props: {
@@ -85,14 +100,18 @@ describe('MomentItem', () => {
       global: {
         plugins: [router, pinia, ElementPlus]
       }
+    })
+
+    // 等待组件初始化完成
+    await waitFor(() => {
+      expect(screen.getByText('10')).toBeInTheDocument()
     })
 
     // Then: 应该显示浏览数和点赞数
-    expect(screen.getByText('10')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
   })
 
-  it('场景4: 显示图片（如果有）', () => {
+  it('场景4: 显示图片（如果有）', async () => {
     // Given: 动态包含图片
     const momentWithImages = {
       ...mockMoment,
@@ -111,7 +130,7 @@ describe('MomentItem', () => {
     })
 
     // Then: 应该显示图片
-    waitFor(() => {
+    await waitFor(() => {
       const images = screen.getAllByRole('img')
       expect(images.length).toBeGreaterThan(0)
     })

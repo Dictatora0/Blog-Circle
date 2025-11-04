@@ -12,12 +12,12 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/e2e',
   
-  // 测试超时时间（60秒，给首次启动更多时间）
-  timeout: 60000,
+  // 测试超时时间（20秒，快速失败）
+  timeout: 20000,
   
   // 每个测试用例期望超时时间
   expect: {
-    timeout: 10000,
+    timeout: 3000,
   },
   
   // 完全并行执行
@@ -26,11 +26,11 @@ export default defineConfig({
   // CI 环境禁止 test.only
   forbidOnly: !!process.env.CI,
   
-  // CI 环境重试次数（非 CI 环境也启用重试，处理 flaky 测试）
-  retries: process.env.CI ? 2 : 1,
+  // 快速失败，不重试（加快测试速度）
+  retries: 0,
   
-  // CI 环境串行执行
-  workers: process.env.CI ? 1 : undefined,
+  // 使用更多workers加快测试（6个worker）
+  workers: process.env.CI ? 1 : 6,
   
   // 报告配置
   reporter: [
@@ -42,14 +42,15 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     headless: true,
-    // 视频录制：失败时录制
-    video: 'on-first-retry',
-    // 截图：仅在失败时截图
-    screenshot: 'only-on-failure',
-    // 追踪：首次失败时追踪
-    trace: 'on-first-retry',
-    // 增加导航超时时间
-    navigationTimeout: 60000,
+    // 完全禁用所有录制功能
+    video: 'off',
+    screenshot: 'off',
+    trace: 'off',
+    // 减少超时时间
+    navigationTimeout: 10000,
+    actionTimeout: 5000,
+    // 禁用自动等待
+    waitForTimeout: 0,
   },
 
   // 项目配置（浏览器）
