@@ -37,6 +37,11 @@ public class PostService {
      */
     @Transactional
     public Post createPost(Post post) {
+        // 验证内容不为空
+        if (post.getContent() == null || post.getContent().trim().isEmpty()) {
+            throw new RuntimeException("动态内容不能为空");
+        }
+        
         // 调试日志：记录创建前的信息
         System.out.println("PostService.createPost: BEFORE insert - authorId=" + post.getAuthorId() + ", content=" + (post.getContent() != null ? post.getContent().substring(0, Math.min(30, post.getContent().length())) : "null"));
         
@@ -82,9 +87,20 @@ public class PostService {
     }
 
     /**
-     * 删除文章
+     * 删除文章（带权限验证）
      */
-    public void deletePost(Long id) {
+    public void deletePost(Long id, Long userId) {
+        // 查询动态是否存在
+        Post post = postMapper.selectById(id);
+        if (post == null) {
+            throw new RuntimeException("动态不存在");
+        }
+        
+        // 验证是否是作者本人
+        if (!post.getAuthorId().equals(userId)) {
+            throw new RuntimeException("无权删除他人的动态");
+        }
+        
         postMapper.deleteById(id);
     }
 

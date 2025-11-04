@@ -27,6 +27,11 @@ public class CommentService {
      */
     @Transactional
     public Comment createComment(Comment comment) {
+        // 验证评论内容不为空
+        if (comment.getContent() == null || comment.getContent().trim().isEmpty()) {
+            throw new RuntimeException("评论内容不能为空");
+        }
+        
         commentMapper.insert(comment);
         
         // 记录访问日志
@@ -47,9 +52,20 @@ public class CommentService {
     }
 
     /**
-     * 删除评论
+     * 删除评论（带权限验证）
      */
-    public void deleteComment(Long id) {
+    public void deleteComment(Long id, Long userId) {
+        // 查询评论是否存在
+        Comment comment = commentMapper.selectById(id);
+        if (comment == null) {
+            throw new RuntimeException("评论不存在");
+        }
+        
+        // 验证是否是评论作者本人
+        if (!comment.getUserId().equals(userId)) {
+            throw new RuntimeException("无权删除他人的评论");
+        }
+        
         commentMapper.deleteById(id);
     }
 
