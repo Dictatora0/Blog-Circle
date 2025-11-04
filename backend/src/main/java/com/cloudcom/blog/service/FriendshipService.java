@@ -223,11 +223,10 @@ public class FriendshipService {
     public List<User> searchUsers(String keyword, Long currentUserId) {
         List<User> users = userMapper.searchUsers(keyword);
         
-        // 过滤掉当前用户，并移除密码信息
+        // 过滤掉当前用户（密码字段已在SQL查询中排除，无需手动移除）
         List<User> result = new ArrayList<>();
         for (User user : users) {
             if (!user.getId().equals(currentUserId)) {
-                user.setPassword(null);
                 result.add(user);
             }
         }
