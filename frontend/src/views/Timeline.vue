@@ -40,12 +40,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, watch } from 'vue'
 import { getFriendTimeline } from '@/api/friends'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 import MomentItem from '@/components/MomentItem.vue'
 import { getResourceUrl } from '@/config'
 
+const userStore = useUserStore()
 const moments = ref([])
 const loading = ref(false)
 const refreshing = ref(false)
@@ -131,6 +133,20 @@ onMounted(() => {
   document.addEventListener('touchstart', handleTouchStart)
   document.addEventListener('touchmove', handleTouchMove)
   document.addEventListener('touchend', handleTouchEnd)
+})
+
+// 页面激活时刷新数据（从其他页面返回时，确保头像等信息最新）
+onActivated(() => {
+  console.log('Timeline页面激活，刷新好友动态列表')
+  loadTimeline(true)
+})
+
+// 监听用户头像变化
+watch(() => userStore.userInfo?.avatar, (newAvatar, oldAvatar) => {
+  if (newAvatar !== oldAvatar && oldAvatar !== undefined) {
+    console.log('检测到头像更新，刷新好友动态列表')
+    loadTimeline(true)
+  }
 })
 
 onUnmounted(() => {
