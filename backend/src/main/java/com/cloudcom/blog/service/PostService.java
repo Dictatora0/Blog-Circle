@@ -8,6 +8,7 @@ import com.cloudcom.blog.mapper.LikeMapper;
 import com.cloudcom.blog.mapper.PostMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -34,8 +35,30 @@ public class PostService {
     /**
      * 创建文章
      */
+    @Transactional
     public Post createPost(Post post) {
-        postMapper.insert(post);
+        // 调试日志：记录创建前的信息
+        System.out.println("PostService.createPost: BEFORE insert - authorId=" + post.getAuthorId() + ", content=" + (post.getContent() != null ? post.getContent().substring(0, Math.min(30, post.getContent().length())) : "null"));
+        
+        // 插入动态
+        System.out.println("PostService.createPost: Calling postMapper.insert - post.getId() before insert=" + post.getId());
+        try {
+            int result = postMapper.insert(post);
+            System.out.println("PostService.createPost: After postMapper.insert - result=" + result + ", post.getId()=" + post.getId());
+        } catch (Exception e) {
+            System.out.println("PostService.createPost: Exception during insert - " + e.getClass().getName() + ": " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+        
+        // 确保ID已设置（MyBatis useGeneratedKeys会自动设置）
+        if (post.getId() == null) {
+            System.out.println("PostService.createPost: ERROR - post.getId() is null after insert!");
+            throw new RuntimeException("创建动态失败：未获取到动态ID");
+        }
+        
+        // 调试日志：记录插入后的信息
+        System.out.println("PostService.createPost: AFTER insert - authorId=" + post.getAuthorId() + ", postId=" + post.getId());
         
         // 记录访问日志
         AccessLog log = new AccessLog();
@@ -44,6 +67,10 @@ public class PostService {
         log.setAction("CREATE_POST");
         accessLogMapper.insert(log);
         
+        // 调试日志：记录创建的动态信息（事务提交前）
+        System.out.println("PostService.createPost: BEFORE commit - authorId=" + post.getAuthorId() + ", postId=" + post.getId() + ", content=" + (post.getContent() != null ? post.getContent().substring(0, Math.min(30, post.getContent().length())) : "null"));
+        
+        // 事务提交后，数据立即可见（Spring的@Transactional默认行为）
         return post;
     }
 
@@ -132,11 +159,12 @@ public class PostService {
     /**
      * 获取好友时间线（自己+好友的动态）
      */
+    @Transactional(readOnly = true, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public List<Post> getFriendTimeline(Long userId) {
         // 获取所有好友ID
         List<Long> friendIds = friendshipMapper.selectFriendIdsByUserId(userId);
         
-        // 添加自己的ID
+        // 添加自己的ID（确保总是包含自己的动态）
         List<Long> userIds = new ArrayList<>();
         userIds.add(userId);
         if (friendIds != null && !friendIds.isEmpty()) {
@@ -145,6 +173,17 @@ public class PostService {
         
         // 查询这些用户的动态
         List<Post> posts = postMapper.selectFriendTimeline(userIds);
+        
+        // 调试日志：记录查询到的动态数量
+        System.out.println("getFriendTimeline: userId=" + userId + ", userIds=" + userIds + ", posts count=" + posts.size());
+        if (posts.size() > 0) {
+            System.out.println("getFriendTimeline: first post authorId=" + posts.get(0).getAuthorId() + ", content=" + (posts.get(0).getContent() != null ? posts.get(0).getContent().substring(0, Math.min(30, posts.get(0).getContent().length())) : "null"));
+        } else {
+            System.out.println("getFriendTimeline: No posts found, checking if posts exist for userId=" + userId);
+            // 直接查询数据库验证
+            List<Post> directPosts = postMapper.selectByAuthorId(userId);
+            System.out.println("getFriendTimeline: Direct query by authorId=" + userId + " returned " + directPosts.size() + " posts");
+        }
         
         // 设置点赞状态
         for (Post post : posts) {
@@ -155,3 +194,56 @@ public class PostService {
     }
 }
 
+    }
+
+    /**
+     * 根据作者ID获取文章
+     */
+    public List<Post> getPostsByAuthorId(Long authorId, Long currentUserId) {
+        List<Post> posts = postMapper.selectByAuthorId(authorId);
+        // 设置点赞状态
+        if (currentUserId != null && currentUserId > 0) {
+            for (Post post : posts) {
+                post.setLiked(likeMapper.selectByPostIdAndUserId(post.getId(), currentUserId) != null);
+            }
+        }
+        return posts;
+    }
+
+    /**
+     * 获取好友时间线（自己+好友的动态）
+     */
+    @Transactional(readOnly = true, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public List<Post> getFriendTimeline(Long userId) {
+        // 获取所有好友ID
+        List<Long> friendIds = friendshipMapper.selectFriendIdsByUserId(userId);
+        
+        // 添加自己的ID（确保总是包含自己的动态）
+        List<Long> userIds = new ArrayList<>();
+        userIds.add(userId);
+        if (friendIds != null && !friendIds.isEmpty()) {
+            userIds.addAll(friendIds);
+        }
+        
+        // 查询这些用户的动态
+        List<Post> posts = postMapper.selectFriendTimeline(userIds);
+        
+        // 调试日志：记录查询到的动态数量
+        System.out.println("getFriendTimeline: userId=" + userId + ", userIds=" + userIds + ", posts count=" + posts.size());
+        if (posts.size() > 0) {
+            System.out.println("getFriendTimeline: first post authorId=" + posts.get(0).getAuthorId() + ", content=" + (posts.get(0).getContent() != null ? posts.get(0).getContent().substring(0, Math.min(30, posts.get(0).getContent().length())) : "null"));
+        } else {
+            System.out.println("getFriendTimeline: No posts found, checking if posts exist for userId=" + userId);
+            // 直接查询数据库验证
+            List<Post> directPosts = postMapper.selectByAuthorId(userId);
+            System.out.println("getFriendTimeline: Direct query by authorId=" + userId + " returned " + directPosts.size() + " posts");
+        }
+        
+        // 设置点赞状态
+        for (Post post : posts) {
+            post.setLiked(likeMapper.selectByPostIdAndUserId(post.getId(), userId) != null);
+        }
+        
+        return posts;
+    }
+}

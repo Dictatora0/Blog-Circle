@@ -6,6 +6,7 @@ import com.cloudcom.blog.mapper.AccessLogMapper;
 import com.cloudcom.blog.mapper.CommentMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -24,6 +25,7 @@ public class CommentService {
     /**
      * 创建评论
      */
+    @Transactional
     public Comment createComment(Comment comment) {
         commentMapper.insert(comment);
         
@@ -72,5 +74,7 @@ public class CommentService {
         return commentMapper.selectByUserId(userId);
     }
 }
+
+
 
 

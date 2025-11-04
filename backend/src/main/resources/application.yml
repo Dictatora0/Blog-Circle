@@ -10,6 +10,11 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
+      # 连接池配置，确保连接复用和健康检查
+      connection-test-query: SELECT 1
+      leak-detection-threshold: 60000
+      # 确保连接池中的连接立即可用
+      initialization-fail-timeout: 1
   servlet:
     multipart:
       enabled: true
@@ -22,6 +27,10 @@ mybatis:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 禁用二级缓存，确保每次查询都从数据库读取最新数据
+    cache-enabled: false
+    # 确保本地缓存（一级缓存）在事务提交后失效
+    local-cache-scope: STATEMENT
 
 # JWT配置
 jwt:
@@ -39,6 +48,15 @@ file:
   upload:
     path: ./uploads
     url-prefix: /uploads
+  
+server:
+  port: 8080
+
+logging:
+  level:
+    com.cloudcom.blog: DEBUG
+
+
   
 server:
   port: 8080
