@@ -283,28 +283,3 @@ public class SparkAnalyticsService {
 }
 
 
-
-     * 获取聚合统计数据
-     * 返回包含 postCount, viewCount, likeCount, commentCount, userCount 的聚合对象
-     */
-    public Map<String, Object> getAggregatedStatistics() {
-        Map<String, Object> aggregated = new HashMap<>();
-        
-        // 从数据库直接查询统计数据（避免依赖statistics表）
-        long postCount = statisticMapper.countTotalPosts();
-        long viewCount = statisticMapper.countTotalViews();
-        long likeCount = statisticMapper.countTotalLikes();
-        long commentCount = statisticMapper.countTotalComments();
-        long userCount = statisticMapper.countTotalUsers();
-        
-        aggregated.put("postCount", postCount);
-        aggregated.put("viewCount", viewCount);
-        aggregated.put("likeCount", likeCount);
-        aggregated.put("commentCount", commentCount);
-        aggregated.put("userCount", userCount);
-        
-        return aggregated;
-    }
-}
-
-

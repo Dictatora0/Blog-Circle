@@ -68,28 +68,3 @@ public interface StatisticMapper {
 }
 
 
-
-    long countTotalPosts();
-    
-    /**
-     * 统计总浏览量
-     */
-    long countTotalViews();
-    
-    /**
-     * 统计总点赞数
-     */
-    long countTotalLikes();
-    
-    /**
-     * 统计总评论数
-     */
-    long countTotalComments();
-    
-    /**
-     * 统计总用户数
-     */
-    long countTotalUsers();
-}
-
-
