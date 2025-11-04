@@ -129,15 +129,35 @@ main() {
     # 使用绝对路径配置 Git 安全目录
     execute_remote "cd ${PROJECT_DIR} && pwd | xargs -I {} git config --global --add safe.directory {}" || true
     execute_remote "git config --global --add safe.directory /root/${PROJECT_DIR}" || true
+    # 配置 Git 使用 HTTP/1.1 而不是 HTTP/2（解决网络问题）
+    execute_remote "git config --global http.version HTTP/1.1" || true
+    # 增加超时时间
+    execute_remote "git config --global http.postBuffer 524288000" || true
     log_success "Git 安全目录配置完成"
     
-    # 3. 拉取最新代码
+    # 3. 拉取最新代码（带重试机制）
     log_info "3. 拉取最新代码..."
-    execute_remote "cd ${PROJECT_DIR} && git fetch origin dev && git pull origin dev"
-    if [ $? -eq 0 ]; then
+    MAX_RETRIES=3
+    RETRY_COUNT=0
+    SUCCESS=false
+    
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        if execute_remote "cd ${PROJECT_DIR} && git fetch origin dev && git pull origin dev"; then
+            SUCCESS=true
+            break
+        else
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                log_warning "拉取失败，${RETRY_COUNT}/${MAX_RETRIES} 次重试..."
+                sleep 5
+            fi
+        fi
+    done
+    
+    if [ "$SUCCESS" = true ]; then
         log_success "代码更新成功"
     else
-        log_error "代码更新失败"
+        log_error "代码更新失败，已重试 ${MAX_RETRIES} 次"
         exit 1
     fi
     
