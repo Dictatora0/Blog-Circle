@@ -21,6 +21,7 @@
           <MomentItem 
             :moment="moment" 
             :index="index"
+            :key="`${moment.id}-${moment.authorAvatar || ''}`"
             @update="loadTimeline"
           />
         </div>
@@ -70,6 +71,12 @@ const loadTimeline = async (reset = false) => {
       let authorAvatar = post.authorAvatar || null
       if (authorAvatar && authorAvatar.startsWith("/")) {
         authorAvatar = getResourceUrl(authorAvatar)
+      }
+      
+      // 添加时间戳参数破坏浏览器缓存，确保显示最新头像
+      if (authorAvatar && !authorAvatar.startsWith('data:')) {
+        const separator = authorAvatar.includes('?') ? '&' : '?'
+        authorAvatar = `${authorAvatar}${separator}_v=${Date.now()}`
       }
       
       // 处理图片列表
@@ -126,8 +133,17 @@ const handleTouchEnd = () => {
   }
 }
 
+// 监听全局头像更新事件
+const handleAvatarUpdated = () => {
+  console.log('收到头像更新事件，刷新好友动态列表')
+  loadTimeline(true)
+}
+
 onMounted(() => {
   loadTimeline()
+  
+  // 监听全局头像更新事件
+  window.addEventListener('user-avatar-updated', handleAvatarUpdated)
   
   // 添加触摸事件监听
   document.addEventListener('touchstart', handleTouchStart)
@@ -150,7 +166,8 @@ watch(() => userStore.userInfo?.avatar, (newAvatar, oldAvatar) => {
 })
 
 onUnmounted(() => {
-  // 移除触摸事件监听
+  // 移除事件监听
+  window.removeEventListener('user-avatar-updated', handleAvatarUpdated)
   document.removeEventListener('touchstart', handleTouchStart)
   document.removeEventListener('touchmove', handleTouchMove)
   document.removeEventListener('touchend', handleTouchEnd)

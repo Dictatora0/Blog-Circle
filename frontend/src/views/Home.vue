@@ -16,6 +16,7 @@
           <MomentItem 
             :moment="moment" 
             :index="index"
+            :key="`${moment.id}-${moment.authorAvatar || ''}`"
             @update="loadMoments"
           />
         </div>
@@ -68,6 +69,12 @@ const loadMoments = async (reset = false) => {
       let authorAvatar = post.authorAvatar || null
       if (authorAvatar && authorAvatar.startsWith("/")) {
         authorAvatar = getResourceUrl(authorAvatar)
+      }
+      
+      // 添加时间戳参数破坏浏览器缓存，确保显示最新头像
+      if (authorAvatar && !authorAvatar.startsWith('data:')) {
+        const separator = authorAvatar.includes('?') ? '&' : '?'
+        authorAvatar = `${authorAvatar}${separator}_v=${Date.now()}`
       }
       
       // 处理图片列表
@@ -158,8 +165,31 @@ const handleMouseUp = () => {
   mouseDown = false
 }
 
+// 页面激活时刷新数据（从其他页面返回时，确保头像等信息最新）
+onActivated(() => {
+  console.log('Home页面激活，刷新动态列表')
+  loadMoments(true)
+})
+
+// 监听用户头像变化
+watch(() => userStore.userInfo?.avatar, (newAvatar, oldAvatar) => {
+  if (newAvatar !== oldAvatar && oldAvatar !== undefined) {
+    console.log('检测到头像更新，刷新动态列表')
+    loadMoments(true)
+  }
+})
+
+// 监听全局头像更新事件
+const handleAvatarUpdated = () => {
+  console.log('收到头像更新事件，刷新动态列表')
+  loadMoments(true)
+}
+
 onMounted(() => {
   loadMoments(true)
+  
+  // 监听全局头像更新事件
+  window.addEventListener('user-avatar-updated', handleAvatarUpdated)
   
   // 无限滚动
   const target = document.querySelector('.loading-more')
@@ -197,6 +227,7 @@ watch(() => userStore.userInfo?.avatar, (newAvatar, oldAvatar) => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('user-avatar-updated', handleAvatarUpdated)
   window.removeEventListener('touchstart', handleTouchStart)
   window.removeEventListener('touchmove', handleTouchMove)
   window.removeEventListener('mousedown', handleMouseDown)
