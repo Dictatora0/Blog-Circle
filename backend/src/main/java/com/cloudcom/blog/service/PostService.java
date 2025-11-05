@@ -42,8 +42,19 @@ public class PostService {
             throw new RuntimeException("动态内容不能为空");
         }
         
+        // 如果没有提供title，使用content的前50个字符作为title
+        if (post.getTitle() == null || post.getTitle().trim().isEmpty()) {
+            String content = post.getContent().trim();
+            // 如果content长度超过50，截取前50个字符并加上省略号
+            if (content.length() > 50) {
+                post.setTitle(content.substring(0, 50) + "...");
+            } else {
+                post.setTitle(content);
+            }
+        }
+        
         // 调试日志：记录创建前的信息
-        System.out.println("PostService.createPost: BEFORE insert - authorId=" + post.getAuthorId() + ", content=" + (post.getContent() != null ? post.getContent().substring(0, Math.min(30, post.getContent().length())) : "null"));
+        System.out.println("PostService.createPost: BEFORE insert - authorId=" + post.getAuthorId() + ", title=" + post.getTitle() + ", content=" + (post.getContent() != null ? post.getContent().substring(0, Math.min(30, post.getContent().length())) : "null"));
         
         // 插入动态
         System.out.println("PostService.createPost: Calling postMapper.insert - post.getId() before insert=" + post.getId());
