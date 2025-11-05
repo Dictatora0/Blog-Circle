@@ -19,17 +19,35 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * 配置跨域
+     * 使用 allowedOriginPatterns 支持开发环境的灵活配置
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        // 获取当前运行环境
+        String activeProfile = System.getProperty("spring.profiles.active", "default");
+        
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173", "http://localhost:3000", 
-                               "http://10.211.55.11:8080", "http://localhost:8080")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
                 .allowedHeaders("*")
                 .exposedHeaders("Authorization", "Content-Type", "X-Total-Count")
                 .allowCredentials(true)
                 .maxAge(3600);
+        
+        // 开发/测试环境：使用宽松的CORS策略
+        if ("default".equals(activeProfile) || "test".equals(activeProfile)) {
+            registry.addMapping("/**")
+                    .allowedOriginPatterns("*");  // 允许所有来源
+        } else {
+            // 生产环境：明确指定允许的来源
+            registry.addMapping("/**")
+                    .allowedOrigins(
+                        "http://localhost:5173",
+                        "http://localhost:3000",
+                        "http://localhost:8080",
+                        "http://10.211.55.11:8080",
+                        "https://your-production-domain.com"
+                    );
+        }
     }
 
     /**
