@@ -50,7 +50,7 @@ docker-compose logs --tail=20 frontend
 echo ""
 
 echo "========================================="
-echo "   🎉 部署完成！"
+echo "   部署完成！"
 echo "========================================="
 echo ""
 echo "访问地址："
@@ -66,6 +66,10 @@ echo "  查看日志: docker-compose logs -f"
 echo "  停止服务: docker-compose down"
 echo "  重启服务: docker-compose restart"
 echo ""
+
+
+
+
 
 
 

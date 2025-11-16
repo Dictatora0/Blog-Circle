@@ -15,7 +15,7 @@ import java.util.Collections;
  * 该配置提供了比 WebMvcConfigurer 更高优先级的CORS处理
  * 确保在所有情况下都能正确处理跨域请求
  * 
- * @author CloudCom Team
+ * @author Lying
  * @since 2025-11-05
  */
 @Configuration
@@ -31,7 +31,7 @@ public class CorsConfig {
         // 开发/测试环境：允许所有来源
         if ("default".equals(activeProfile) || "test".equals(activeProfile)) {
             config.setAllowedOriginPatterns(Collections.singletonList("*"));
-            System.out.println("🔧 CORS配置: 开发模式 - 允许所有来源");
+            System.out.println("CORS配置: 开发模式 - 允许所有来源");
         } else {
             // 生产环境：明确指定允许的来源
             config.setAllowedOrigins(Arrays.asList(
