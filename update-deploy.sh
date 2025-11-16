@@ -78,7 +78,7 @@ docker-compose logs --tail=20 frontend 2>/dev/null || echo "前端日志暂不�
 echo ""
 
 echo "========================================="
-echo "   ✅ 更新部署完成！"
+echo "   更新部署完成！"
 echo "========================================="
 echo ""
 echo "访问地址："
