@@ -228,6 +228,45 @@ npm install
 npm run dev
 ```
 
+### 容器化部署脚本（docker-compose-start.sh / docker-compose-stop.sh）
+
+项目提供了统一的容器化部署脚本，支持本地开发环境和容器化环境的一键管理。
+
+### 新增功能
+
+#### docker-compose-start.sh 新增 dev 模式
+
+- **用途**：启动本地开发环境（PostgreSQL + Spring Boot + Vite）
+- **命令**：`./docker-compose-start.sh dev`
+- **功能**：自动调用现有的 `./start.sh` 脚本
+
+#### docker-compose-stop.sh 新增 dev 模式
+
+- **用途**：停止本地开发环境（PostgreSQL + Spring Boot + Vite）
+- **命令**：`./docker-compose-stop.sh dev`
+- **功能**：自动调用现有的 `./stop.sh` 脚本
+
+### 使用方式总结
+
+| 环境类型     | 启动命令                           | 停止命令                          | 说明                            |
+| ------------ | ---------------------------------- | --------------------------------- | ------------------------------- |
+| 本地开发环境 | `./docker-compose-start.sh dev`    | `./docker-compose-stop.sh dev`    | PostgreSQL + Spring Boot + Vite |
+| 本地容器部署 | `./docker-compose-start.sh`        | `./docker-compose-stop.sh`        | Docker Compose (默认)           |
+| 远程容器部署 | `./docker-compose-start.sh remote` | `./docker-compose-stop.sh remote` | SSH 远程管理                    |
+
+### 技术实现
+
+- **依赖检查**：自动验证所需命令（如 `psql`、`mvn`、`npm` 等）
+- **错误处理**：使用 `set -euo pipefail` 并配合彩色日志输出
+- **兼容性**：在保留原有脚本功能的基础上，通过模式参数扩展不同场景
+- **环境变量**：支持通过环境变量覆盖远程服务器地址、用户名等参数
+
+典型使用场景如下：
+
+- 本地开发阶段：通过 `./docker-compose-start.sh dev` 启动本地开发环境，对应使用 `./docker-compose-stop.sh dev` 进行停止。
+- 本地容器化部署阶段：通过 `./docker-compose-start.sh` 与 `./docker-compose-stop.sh` 管理本机 Docker Compose 环境。
+- 远程部署阶段：通过 `./docker-compose-start.sh remote` 与 `./docker-compose-stop.sh remote` 管理远程服务器上的容器化环境。
+
 ## 六、测试账号与角色说明
 
 | 用户名 | 密码     | 说明       |
