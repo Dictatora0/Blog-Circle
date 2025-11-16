@@ -78,9 +78,5 @@ Desktop.ini
 spark-warehouse/
 derby.log
 
-# Package manager
-package-lock.json.bak
-yarn.lock
-pnpm-lock.yaml
-
-
+# Reports
+reports/

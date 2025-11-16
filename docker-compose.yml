@@ -1,4 +1,4 @@
-version: '3.3'
+version: "3.3"
 
 services:
   db:
@@ -28,6 +28,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      cache_from:
+        - type=local,src=/tmp/docker-cache
     container_name: blogcircle-backend
     volumes:
       - backend_uploads:/app/uploads
@@ -47,6 +49,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      cache_from:
+        - type=local,src=/tmp/docker-cache
     container_name: blogcircle-frontend
     ports:
       - "8080:80"
@@ -65,8 +69,3 @@ volumes:
 networks:
   blogcircle-network:
     driver: bridge
-
-
-
-
-

@@ -5,20 +5,19 @@ set -euo pipefail
 ###############################################################
 # Blog Circle 部署启动脚本
 # 用法：
-#   本地开发环境：./docker-compose-start.sh dev      # PostgreSQL + Spring Boot + Vite
-#   本地部署：./docker-compose-start.sh             # 默认 local (Docker Compose)
-#   远程部署：./docker-compose-start.sh remote      # 依赖 ssh/sshpass
+#   本地开发环境：./docker-compose-start.sh dev      # PostgreSQL + Spring Boot + Vite（直接运行）
+#   虚拟机部署：./docker-compose-start.sh vm         # 容器化部署到虚拟机 10.211.55.11
 ###############################################################
 
-MODE=${1:-local}
+MODE=${1:-dev}
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/docker-compose.yml"
 
-# 远程配置，可通过环境变量覆盖
-SERVER_IP=${SERVER_IP:-"10.211.55.11"}
-SERVER_USER=${SERVER_USER:-"root"}
-SERVER_PASSWORD=${SERVER_PASSWORD:-"747599qw@"}
-SERVER_PROJECT_DIR=${SERVER_PROJECT_DIR:-"CloudCom"}
+# 虚拟机配置
+VM_IP="10.211.55.11"
+VM_USER="root"
+VM_PASSWORD="747599qw@"
+VM_PROJECT_DIR="CloudCom"
 
 # 颜色
 GREEN='\033[0;32m'
@@ -47,6 +46,57 @@ require_cmd() {
   fi
 }
 
+echo "========================================="
+echo "   Blog Circle 容器化部署脚本"
+echo "========================================="
+echo ""
+
+# 检查 Docker 和 Docker Compose
+if ! command -v docker &> /dev/null; then
+    echo "错误: 未找到 Docker，请先安装 Docker"
+    exit 1
+fi
+
+if ! command -v docker-compose &> /dev/null; then
+    echo "错误: 未找到 Docker Compose，请先安装 Docker Compose"
+    exit 1
+fi
+
+echo "1. 配置 Docker 镜像源（加速拉取镜像）..."
+DAEMON_CONFIG="/etc/docker/daemon.json"
+if [ ! -f "$DAEMON_CONFIG" ] || ! grep -q "registry-mirrors" "$DAEMON_CONFIG"; then
+    sudo mkdir -p /etc/docker
+    sudo tee "$DAEMON_CONFIG" > /dev/null <<EOF
+{
+  "registry-mirrors": [
+    "https://docker.mirrors.ustc.edu.cn",
+    "https://hub-mirror.c.163.com",
+    "https://mirror.ccs.tencentyun.com"
+  ],
+  "insecure-registries": [],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+EOF
+    echo "Docker 镜像源已配置，重启 Docker 服务..."
+    sudo systemctl restart docker || sudo service docker restart || true
+    sleep 10
+else
+    echo "Docker 镜像源已配置。"
+fi
+
+echo "2. 设置 Docker 环境变量（延长超时时间）..."
+export DOCKER_CLIENT_TIMEOUT=300
+export COMPOSE_HTTP_TIMEOUT=300
+
+echo "3. 检查 Docker 版本..."
+docker --version
+docker-compose --version
+echo ""
+
 ########################################
 # 本地开发环境（PostgreSQL + Spring Boot + Vite）
 ########################################
@@ -72,157 +122,108 @@ run_dev() {
   ok "本地开发环境启动完成"
 }
 
-########################################
-# 本地部署
-########################################
-run_local() {
-  header
-
-  if [ ! -f "$COMPOSE_FILE" ]; then
-    err "未找到 docker-compose.yml，请在项目根目录执行"
-    exit 1
-  fi
-
-  for c in git docker docker-compose; do
-    require_cmd "$c"
-  done
-
-  log "1. 更新代码 (dev 分支)..."
-  git fetch origin dev
-  git pull origin dev
-  ok "代码已同步"
-  echo ""
-
-  log "2. 停止旧容器..."
-  docker-compose down --remove-orphans >/dev/null 2>&1 || true
-  ok "旧容器已停止"
-  echo ""
-
-  log "3. 构建并启动服务..."
-  docker-compose up -d --build
-  echo ""
-
-  log "4. 等待服务启动..."
-  sleep 12
-  ok "服务已启动"
-  echo ""
-
-  log "5. 服务状态"
-  docker-compose ps
-  echo ""
-
-  log "6. 查看关键日志 (最后20行)"
-  echo "--- 数据库 ---"
-  docker-compose logs --tail=20 db || warn "数据库日志不可用"
-  echo ""
-  echo "--- 后端 ---"
-  docker-compose logs --tail=20 backend || warn "后端日志不可用"
-  echo ""
-  echo "--- 前端 ---"
-  docker-compose logs --tail=20 frontend || warn "前端日志不可用"
-  echo ""
-
-  echo "========================================="
-  ok "本地部署完成"
-  echo "========================================="
-  echo ""
-  echo "访问地址："
-  echo "  前端: http://localhost:8080"
-  echo "  后端: http://localhost:8081"
-  echo ""
-  echo "测试账号："
-  echo "  用户名: admin"
-  echo "  密码: admin123"
-  echo ""
-  echo "常用命令："
-  echo "  查看日志: docker-compose logs -f"
-  echo "  停止服务: docker-compose down"
-  echo "  重启服务: docker-compose restart"
-  echo ""
-}
-
-########################################
-# 远程部署
-########################################
-remote_cmd() {
-  sshpass -p "$SERVER_PASSWORD" \
+vm_cmd() {
+  sshpass -p "$VM_PASSWORD" \
     ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=yes \
         -o PreferredAuthentications=password -o PubkeyAuthentication=no \
-        "${SERVER_USER}@${SERVER_IP}" "$1"
+        "${VM_USER}@${VM_IP}" "$1"
 }
 
-run_remote() {
+run_vm() {
   header
 
   for c in ssh sshpass; do
     require_cmd "$c"
   done
 
-  log "1. 测试 SSH 连接..."
-  if remote_cmd "echo ok" >/dev/null 2>&1; then
+  log "1. 测试 SSH 连接到虚拟机..."
+  if vm_cmd "echo ok" >/dev/null 2>&1; then
     ok "SSH 连接正常"
   else
-    err "无法连接远程服务器 ${SERVER_USER}@${SERVER_IP}"
+    err "无法连接虚拟机 ${VM_USER}@${VM_IP}"
     exit 1
   fi
   echo ""
 
-  log "2. 检查项目目录..."
-  remote_cmd "cd ${SERVER_PROJECT_DIR}" >/dev/null 2>&1 || {
-    err "远程目录 ${SERVER_PROJECT_DIR} 不存在"
+  log "2. 检查虚拟机项目目录..."
+  vm_cmd "cd ${VM_PROJECT_DIR}" >/dev/null 2>&1 || {
+    err "虚拟机目录 ${VM_PROJECT_DIR} 不存在"
     exit 1
   }
-  ok "远程项目目录存在"
+  ok "虚拟机项目目录存在"
   echo ""
 
-  log "3. 同步最新代码..."
-  remote_cmd "cd ${SERVER_PROJECT_DIR} && git fetch origin dev && git reset --hard origin/dev"
-  ok "远程代码同步完成"
+  log "3. 检查和清理虚拟机端口冲突..."
+  # 检查端口占用
+  vm_cmd "netstat -anp 2>/dev/null | grep ':5432 ' | head -5" || vm_cmd "ss -tlnp 2>/dev/null | grep ':5432 ' | head -5" || true
+  vm_cmd "netstat -anp 2>/dev/null | grep ':8080 ' | head -5" || vm_cmd "ss -tlnp 2>/dev/null | grep ':8080 ' | head -5" || true
+  vm_cmd "netstat -anp 2>/dev/null | grep ':8081 ' | head -5" || vm_cmd "ss -tlnp 2>/dev/null | grep ':8081 ' | head -5" || true
+
+  # 停止可能冲突的服务
+  vm_cmd "sudo systemctl stop postgresql 2>/dev/null || true"
+  vm_cmd "sudo systemctl disable postgresql 2>/dev/null || true"
+  vm_cmd "sudo systemctl stop nginx 2>/dev/null || true"
+  vm_cmd "sudo systemctl disable nginx 2>/dev/null || true"
+
+  # 杀死可能占用端口的进程
+  vm_cmd "sudo lsof -ti:5432 | xargs -r sudo kill -9 2>/dev/null || true"
+  vm_cmd "sudo lsof -ti:8080 | xargs -r sudo kill -9 2>/dev/null || true"
+  vm_cmd "sudo lsof -ti:8081 | xargs -r sudo kill -9 2>/dev/null || true"
+
+  # 等待端口释放
+  vm_cmd "sleep 3"
+
+  ok "端口冲突清理完成"
   echo ""
 
-  log "4. 停止旧容器..."
-  remote_cmd "cd ${SERVER_PROJECT_DIR} && docker-compose down --remove-orphans >/dev/null 2>&1 || true"
+  log "4. 同步最新代码到虚拟机..."
+  vm_cmd "cd ${VM_PROJECT_DIR} && git fetch origin dev && git reset --hard origin/dev"
+  ok "虚拟机代码同步完成"
+  echo ""
+
+  log "5. 停止旧容器..."
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose down --remove-orphans >/dev/null 2>&1 || true"
   ok "旧容器已停止"
   echo ""
 
-  log "5. 构建并启动服务..."
-  remote_cmd "cd ${SERVER_PROJECT_DIR} && docker-compose up -d --build"
-  ok "远程服务已启动"
+  log "6. 构建并启动服务..."
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose up -d --build"
+  ok "虚拟机服务已启动"
   echo ""
 
-  log "6. 等待服务启动..."
-  sleep 12
+  log "7. 等待服务启动..."
+  sleep 20
   echo ""
 
-  log "7. 服务状态"
-  remote_cmd "cd ${SERVER_PROJECT_DIR} && docker-compose ps"
+  log "8. 服务状态"
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose ps"
   echo ""
 
-  log "8. 拉取关键日志"
+  log "9. 拉取关键日志"
   echo "--- 数据库 ---"
-  remote_cmd "cd ${SERVER_PROJECT_DIR} && docker-compose logs --tail=20 db" || warn "数据库日志不可用"
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose logs --tail=20 db" || warn "数据库日志不可用"
   echo ""
   echo "--- 后端 ---"
-  remote_cmd "cd ${SERVER_PROJECT_DIR} && docker-compose logs --tail=20 backend" || warn "后端日志不可用"
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose logs --tail=20 backend" || warn "后端日志不可用"
   echo ""
   echo "--- 前端 ---"
-  remote_cmd "cd ${SERVER_PROJECT_DIR} && docker-compose logs --tail=20 frontend" || warn "前端日志不可用"
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose logs --tail=20 frontend" || warn "前端日志不可用"
   echo ""
 
   echo "========================================="
-  ok "远程部署完成"
+  ok "虚拟机部署完成"
   echo "========================================="
   echo ""
   echo "访问地址："
-  echo "  前端: http://${SERVER_IP}:8080"
-  echo "  后端: http://${SERVER_IP}:8081"
+  echo "  前端: http://${VM_IP}:8080"
+  echo "  后端: http://${VM_IP}:8081"
   echo ""
   echo "测试账号："
   echo "  用户名: admin"
   echo "  密码: admin123"
   echo ""
-  echo "常用命令（在服务器上执行）："
-  echo "  cd ${SERVER_PROJECT_DIR}"
+  echo "常用命令（在虚拟机上执行）："
+  echo "  cd ${VM_PROJECT_DIR}"
   echo "  docker-compose logs -f          # 查看所有日志"
   echo "  docker-compose restart          # 重启服务"
   echo "  docker-compose down             # 停止服务"
@@ -233,14 +234,11 @@ case "$MODE" in
   dev)
     run_dev
     ;;
-  local)
-    run_local
-    ;;
-  remote)
-    run_remote
+  vm)
+    run_vm
     ;;
   *)
-    err "未知模式: $MODE (支持 dev、local 或 remote)"
+    err "未知模式: $MODE (支持 dev 或 vm)"
     exit 1
     ;;
 esac
