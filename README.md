@@ -246,11 +246,24 @@ npm run dev
 
 ### 使用方式总结
 
-| 环境类型     | 启动命令                           | 停止命令                          | 说明                            |
-| ------------ | ---------------------------------- | --------------------------------- | ------------------------------- |
-| 本地开发环境 | `./docker-compose-start.sh dev`    | `./docker-compose-stop.sh dev`    | PostgreSQL + Spring Boot + Vite |
-| 本地容器部署 | `./docker-compose-start.sh`        | `./docker-compose-stop.sh`        | Docker Compose (默认)           |
-| 远程容器部署 | `./docker-compose-start.sh remote` | `./docker-compose-stop.sh remote` | SSH 远程管理                    |
+| 环境类型     | 启动命令                        | 停止命令                       | 说明                            |
+| ------------ | ------------------------------- | ------------------------------ | ------------------------------- |
+| 本地开发环境 | `./docker-compose-start.sh dev` | `./docker-compose-stop.sh dev` | PostgreSQL + Spring Boot + Vite |
+| 虚拟机部署   | `./docker-compose-start.sh vm`  | `./docker-compose-stop.sh vm`  | 容器化部署到虚拟机 10.211.55.11 |
+
+### 本地开发
+
+```bash
+./docker-compose-start.sh dev    # 启动本地开发环境
+./docker-compose-stop.sh dev     # 停止本地开发环境
+```
+
+### 虚拟机部署
+
+```bash
+./docker-compose-start.sh vm     # 部署到虚拟机
+./docker-compose-stop.sh vm      # 停止虚拟机服务
+```
 
 ### 技术实现
 
@@ -261,9 +274,8 @@ npm run dev
 
 典型使用场景如下：
 
-- 本地开发阶段：通过 `./docker-compose-start.sh dev` 启动本地开发环境，对应使用 `./docker-compose-stop.sh dev` 进行停止。
-- 本地容器化部署阶段：通过 `./docker-compose-start.sh` 与 `./docker-compose-stop.sh` 管理本机 Docker Compose 环境。
-- 远程部署阶段：通过 `./docker-compose-start.sh remote` 与 `./docker-compose-stop.sh remote` 管理远程服务器上的容器化环境。
+- **本地开发阶段**：通过 `./docker-compose-start.sh dev` 启动本地开发环境，对应使用 `./docker-compose-stop.sh dev` 进行停止。适合开发调试阶段。
+- **虚拟机部署阶段**：通过 `./docker-compose-start.sh vm` 进行容器化部署到虚拟机 10.211.55.11，对应使用 `./docker-compose-stop.sh vm` 停止服务。适合生产测试或演示环境。
 
 ## 六、测试账号与角色说明
 
@@ -1218,7 +1230,19 @@ npm run test:e2e    # E2E 测试
 - 前端容器：Nginx 静态文件服务
 - 数据库容器：PostgreSQL
 
-在此基础上，补充了 `docker-compose-start.sh` 与 `docker-compose-stop.sh` 两个脚本，用于统一管理本地与远程环境中的 Docker Compose 部署过程。脚本内部封装了代码同步、容器重建、端口检查以及关键日志输出等步骤，使部署流程更加标准化和可复现。
+在此基础上，提供了 `docker-compose-start.sh` 与 `docker-compose-stop.sh` 两个脚本，用于统一管理本地开发环境和虚拟机容器化环境：
+
+**本地开发环境管理**：
+
+- `./docker-compose-start.sh dev`：启动本地 PostgreSQL、Spring Boot、Vite 服务
+- `./docker-compose-stop.sh dev`：停止本地开发服务
+
+**虚拟机容器化部署**：
+
+- `./docker-compose-start.sh vm`：SSH 连接虚拟机 10.211.55.11，进行代码同步、容器重建和启动
+- `./docker-compose-stop.sh vm`：停止虚拟机上的容器服务
+
+脚本内部封装了端口冲突检查、代码同步、容器重建、日志输出等完整部署流程，使部署过程更加标准化和可复现。
 
 ### 九、项目总结
 

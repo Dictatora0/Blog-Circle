@@ -5,20 +5,19 @@ set -euo pipefail
 ###############################################################
 # Blog Circle 部署停止脚本
 # 用法：
-#   本地开发环境：./docker-compose-stop.sh dev      # PostgreSQL + Spring Boot + Vite
-#   本地部署：./docker-compose-stop.sh             # 默认 local (Docker Compose)
-#   远程部署：./docker-compose-stop.sh remote      # 依赖 ssh/sshpass
+#   本地开发环境：./docker-compose-stop.sh dev      # 停止 PostgreSQL + Spring Boot + Vite
+#   虚拟机部署：./docker-compose-stop.sh vm         # 停止虚拟机容器环境
 ###############################################################
 
-MODE=${1:-local}
+MODE=${1:-dev}
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/docker-compose.yml"
 
-# 远程配置，可通过环境变量覆盖
-SERVER_IP=${SERVER_IP:-"10.211.55.11"}
-SERVER_USER=${SERVER_USER:-"root"}
-SERVER_PASSWORD=${SERVER_PASSWORD:-"747599qw@"}
-SERVER_PROJECT_DIR=${SERVER_PROJECT_DIR:-"CloudCom"}
+# 虚拟机配置
+VM_IP="10.211.55.11"
+VM_USER="root"
+VM_PASSWORD="747599qw@"
+VM_PROJECT_DIR="CloudCom"
 
 # 颜色
 GREEN='\033[0;32m'
@@ -70,90 +69,54 @@ run_dev() {
   ok "本地开发环境停止完成"
 }
 
-########################################
-# 本地停止
-########################################
-run_local() {
-  header
-
-  if [ ! -f "$COMPOSE_FILE" ]; then
-    err "未找到 docker-compose.yml，请在项目根目录执行"
-    exit 1
-  fi
-
-  require_cmd "docker-compose"
-
-  log "1. 停止所有容器..."
-  docker-compose down --remove-orphans
-  ok "容器已停止"
-  echo ""
-
-  log "2. 检查容器状态..."
-  docker-compose ps
-  echo ""
-
-  echo "========================================="
-  ok "本地服务已停止"
-  echo "========================================="
-  echo ""
-  echo "数据卷已保留，重新启动时可恢复数据"
-  echo ""
-  echo "如需完全清理数据卷，执行："
-  echo "  docker-compose down -v"
-  echo ""
-}
-
-########################################
-# 远程停止
-########################################
-remote_cmd() {
-  sshpass -p "$SERVER_PASSWORD" \
+vm_cmd() {
+  sshpass -p "$VM_PASSWORD" \
     ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=yes \
         -o PreferredAuthentications=password -o PubkeyAuthentication=no \
-        "${SERVER_USER}@${SERVER_IP}" "$1"
+        "${VM_USER}@${VM_IP}" "$1"
 }
 
-run_remote() {
+run_vm() {
   header
 
   for c in ssh sshpass; do
     require_cmd "$c"
   done
 
-  log "1. 测试 SSH 连接..."
-  if remote_cmd "echo ok" >/dev/null 2>&1; then
+  log "1. 测试 SSH 连接到虚拟机..."
+  if vm_cmd "echo ok" >/dev/null 2>&1; then
     ok "SSH 连接正常"
   else
-    err "无法连接远程服务器 ${SERVER_USER}@${SERVER_IP}"
+    err "无法连接虚拟机 ${VM_USER}@${VM_IP}"
     exit 1
   fi
   echo ""
 
-  log "2. 检查项目目录..."
-  remote_cmd "cd ${SERVER_PROJECT_DIR}" >/dev/null 2>&1 || {
-    err "远程目录 ${SERVER_PROJECT_DIR} 不存在"
+  log "2. 检查虚拟机项目目录..."
+  vm_cmd "cd ${VM_PROJECT_DIR}" >/dev/null 2>&1 || {
+    err "虚拟机目录 ${VM_PROJECT_DIR} 不存在"
     exit 1
   }
-  ok "远程项目目录存在"
+  ok "虚拟机项目目录存在"
   echo ""
 
   log "3. 停止所有容器..."
-  remote_cmd "cd ${SERVER_PROJECT_DIR} && docker-compose down --remove-orphans"
-  ok "远程容器已停止"
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose down --remove-orphans"
+  ok "虚拟机容器已停止"
   echo ""
 
   log "4. 检查容器状态..."
-  remote_cmd "cd ${SERVER_PROJECT_DIR} && docker-compose ps"
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose ps"
   echo ""
 
   echo "========================================="
-  ok "远程服务已停止"
+  ok "虚拟机服务已停止"
   echo "========================================="
   echo ""
   echo "数据卷已保留，重新启动时可恢复数据"
   echo ""
-  echo "如需完全清理数据卷，在服务器上执行："
-  echo "  cd ${SERVER_PROJECT_DIR}"
+  echo "如需完全清理数据卷，在虚拟机上执行："
+  echo "  cd ${VM_PROJECT_DIR}"
   echo "  docker-compose down -v"
   echo ""
 }
@@ -162,14 +125,11 @@ case "$MODE" in
   dev)
     run_dev
     ;;
-  local)
-    run_local
-    ;;
-  remote)
-    run_remote
+  vm)
+    run_vm
     ;;
   *)
-    err "未知模式: $MODE (支持 dev、local 或 remote)"
+    err "未知模式: $MODE (支持 dev 或 vm)"
     exit 1
     ;;
 esac
