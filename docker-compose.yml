@@ -44,6 +44,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/blog_db
       - SPRING_DATASOURCE_USERNAME=bloguser
       - SPRING_DATASOURCE_PASSWORD=blogpass
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC -XX:CompressedClassSpaceSize=64m
 
   frontend:
     build:
