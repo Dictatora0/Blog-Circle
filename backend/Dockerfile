@@ -16,7 +16,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests -B || \
     (echo "构建失败，重试..." && sleep 5 && mvn clean package -DskipTests -B)
 
-FROM eclipse-temurin:17-jdk-alpine
+FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
