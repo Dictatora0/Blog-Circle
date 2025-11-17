@@ -25,26 +25,23 @@ services:
     restart: unless-stopped
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      cache_from:
-        - type=local,src=/tmp/docker-cache
+    build: ./backend
     container_name: blogcircle-backend
-    volumes:
-      - backend_uploads:/app/uploads
-    ports:
-      - "8081:8080"
-    depends_on:
-      - db
-    networks:
-      - blogcircle-network
-    restart: unless-stopped
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/blog_db
       - SPRING_DATASOURCE_USERNAME=bloguser
       - SPRING_DATASOURCE_PASSWORD=blogpass
-      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC -XX:CompressedClassSpaceSize=64m
+      - JAVA_TOOL_OPTIONS=-Xms64m -Xmx128m -XX:+UseSerialGC -XX:CompressedClassSpaceSize=32m -XX:ThreadStackSize=512
+    depends_on:
+      - db
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000
 
   frontend:
     build:
