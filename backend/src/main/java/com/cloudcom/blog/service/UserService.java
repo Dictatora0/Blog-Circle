@@ -35,18 +35,18 @@ public class UserService {
             throw new RuntimeException("密码不能为空");
         }
         
+        // 检查用户名是否已存在（优先检查，避免不必要的验证）
+        User existUser = userMapper.selectByUsername(user.getUsername());
+        if (existUser != null) {
+            throw new RuntimeException("用户名已存在");
+        }
+        
         // 验证邮箱
         if (InputSanitizer.isBlankOrEmpty(user.getEmail())) {
             throw new RuntimeException("邮箱不能为空");
         }
         if (!InputSanitizer.isValidEmail(user.getEmail())) {
             throw new RuntimeException("邮箱格式不正确");
-        }
-        
-        // 检查用户名是否已存在
-        User existUser = userMapper.selectByUsername(user.getUsername());
-        if (existUser != null) {
-            throw new RuntimeException("用户名已存在");
         }
         
         // 清理昵称中的 XSS

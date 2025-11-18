@@ -31,6 +31,16 @@ STANDBY2_ROOT_PWD="747599qw@2"
 REPORT_FILE="reports/gaussdb_cluster_report_$(date +%Y%m%d_%H%M%S).txt"
 overall_ok=1
 
+# 测试统计
+test_total=0
+test_passed=0
+test_failed=0
+
+# 数据库连接信息
+DB_NAME="postgres"
+DB_USER="omm"
+TEST_TABLE="cluster_test_$(date +%s)"
+
 # ==== 前置检查 ====
 echo "前置检查中..."
 command -v sshpass >/dev/null 2>&1
@@ -80,6 +90,29 @@ run_remote() {
     -o UserKnownHostsFile=/dev/null \
     -o ConnectTimeout=10 \
     root@"$host" "export LC_ALL=zh_CN.UTF-8; $cmd"
+}
+
+# ==== 测试结果记录函数 ====
+record_test() {
+  local test_name="$1"
+  local result="$2"  # "PASS" or "FAIL"
+  local details="$3"
+  
+  test_total=$((test_total + 1))
+  
+  if [ "$result" = "PASS" ]; then
+    test_passed=$((test_passed + 1))
+    echo "✓ [PASS] $test_name" >> "$REPORT_FILE"
+  else
+    test_failed=$((test_failed + 1))
+    echo "✗ [FAIL] $test_name" >> "$REPORT_FILE"
+    overall_ok=0
+  fi
+  
+  if [ -n "$details" ]; then
+    echo "  详情: $details" >> "$REPORT_FILE"
+  fi
+  echo "" >> "$REPORT_FILE"
 }
 
 # ==== 单节点常规检查（进程 / 端口 / 关键目录） ====
@@ -203,8 +236,14 @@ collect_primary_cluster_info() {
 }
 
 # ==== 报告头 ====
-echo "GaussDB 一主两备集群验证报告" > "$REPORT_FILE"
+echo "========================================" > "$REPORT_FILE"
+echo "  GaussDB 一主两备集群验证报告" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
 echo "生成时间：$(date +"%Y-%m-%d %H:%M:%S")" >> "$REPORT_FILE"
+echo "主节点：$PRIMARY_IP" >> "$REPORT_FILE"
+echo "备节点1：$STANDBY1_IP" >> "$REPORT_FILE"
+echo "备节点2：$STANDBY2_IP" >> "$REPORT_FILE"
+echo "数据库端口：$DB_PORT" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 
 # ==== 逐节点检查 ====
@@ -235,20 +274,224 @@ echo "主节点详情：" >> "$REPORT_FILE"
 # 主节点集群与复制视图
 collect_primary_cluster_info
 
+# ==== 数据库连接测试 ====
+echo "" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "数据库连接测试" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "" >> "$REPORT_FILE"
+
+echo "测试主节点数据库连接..."
+test_db_connection() {
+  local role="$1"
+  local ip="$2"
+  local pwd="$3"
+  
+  local sql_cmd="su - omm -c 'gsql -d $DB_NAME -p $DB_PORT -c \"SELECT version();\" -t' 2>&1"
+  local result
+  result=$(run_remote "$pwd" "$ip" "$sql_cmd" 2>&1)
+  
+  if echo "$result" | grep -q "openGauss\|PostgreSQL"; then
+    record_test "${role}节点数据库连接" "PASS" "成功连接到 $ip:$DB_PORT"
+  else
+    record_test "${role}节点数据库连接" "FAIL" "无法连接到 $ip:$DB_PORT - $result"
+  fi
+}
+
+test_db_connection "主" "$PRIMARY_IP" "$PRIMARY_ROOT_PWD"
+test_db_connection "备1" "$STANDBY1_IP" "$STANDBY1_ROOT_PWD"
+test_db_connection "备2" "$STANDBY2_IP" "$STANDBY2_ROOT_PWD"
+
+# ==== 数据写入和复制测试 ====
+echo "" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "数据复制测试" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "" >> "$REPORT_FILE"
+
+echo "执行数据复制测试..."
+
+# 在主节点创建测试表并插入数据
+echo "1. 在主节点创建测试表..."
+create_table_cmd="su - omm -c 'gsql -d $DB_NAME -p $DB_PORT -c \"CREATE TABLE IF NOT EXISTS $TEST_TABLE (id INT PRIMARY KEY, data VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);\"' 2>&1"
+create_result=$(run_remote "$PRIMARY_ROOT_PWD" "$PRIMARY_IP" "$create_table_cmd" 2>&1)
+
+if echo "$create_result" | grep -q "CREATE TABLE\|already exists"; then
+  record_test "主节点创建测试表" "PASS" "表 $TEST_TABLE 创建成功"
+  
+  # 插入测试数据
+  echo "2. 插入测试数据..."
+  test_value="test_data_$(date +%s)"
+  insert_cmd="su - omm -c 'gsql -d $DB_NAME -p $DB_PORT -c \"INSERT INTO $TEST_TABLE (id, data) VALUES (1, '\''$test_value'\'');\"' 2>&1"
+  insert_result=$(run_remote "$PRIMARY_ROOT_PWD" "$PRIMARY_IP" "$insert_cmd" 2>&1)
+  
+  if echo "$insert_result" | grep -q "INSERT"; then
+    record_test "主节点数据写入" "PASS" "成功写入数据: $test_value"
+    
+    # 等待复制
+    echo "3. 等待数据复制（5秒）..."
+    sleep 5
+    
+    # 在备节点验证数据
+    echo "4. 验证备节点数据复制..."
+    for standby_info in "备1:$STANDBY1_IP:$STANDBY1_ROOT_PWD" "备2:$STANDBY2_IP:$STANDBY2_ROOT_PWD"; do
+      IFS=':' read -r role ip pwd <<< "$standby_info"
+      
+      select_cmd="su - omm -c 'gsql -d $DB_NAME -p $DB_PORT -t -A -c \"SELECT data FROM $TEST_TABLE WHERE id=1;\"' 2>&1"
+      select_result=$(run_remote "$pwd" "$ip" "$select_cmd" 2>&1)
+      select_result=$(echo "$select_result" | tr -d '[:space:]')
+      
+      if [ "$select_result" = "$test_value" ]; then
+        record_test "${role}节点数据复制验证" "PASS" "数据已成功复制到 $ip"
+      else
+        record_test "${role}节点数据复制验证" "FAIL" "数据未复制或不匹配 (期望: $test_value, 实际: $select_result)"
+      fi
+    done
+    
+    # 清理测试表
+    echo "5. 清理测试数据..."
+    drop_cmd="su - omm -c 'gsql -d $DB_NAME -p $DB_PORT -c \"DROP TABLE IF EXISTS $TEST_TABLE;\"' 2>&1"
+    run_remote "$PRIMARY_ROOT_PWD" "$PRIMARY_IP" "$drop_cmd" >/dev/null 2>&1
+    
+  else
+    record_test "主节点数据写入" "FAIL" "插入数据失败: $insert_result"
+  fi
+else
+  record_test "主节点创建测试表" "FAIL" "创建表失败: $create_result"
+fi
+
+# ==== 复制延迟测试 ====
+echo "" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "复制延迟测试" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "" >> "$REPORT_FILE"
+
+echo "检查复制延迟..."
+lag_cmd="su - omm -c 'gsql -d $DB_NAME -p $DB_PORT -t -A -c \"SELECT application_name, client_addr, state, sync_state, pg_size_pretty(pg_wal_lsn_diff(sender_sent_location, receiver_replay_location)) as lag FROM pg_stat_replication;\"' 2>&1"
+lag_result=$(run_remote "$PRIMARY_ROOT_PWD" "$PRIMARY_IP" "$lag_cmd" 2>&1)
+
+if [ -n "$lag_result" ] && ! echo "$lag_result" | grep -q "ERROR\|error"; then
+  echo "复制延迟信息:" >> "$REPORT_FILE"
+  echo "$lag_result" >> "$REPORT_FILE"
+  
+  # 检查是否有大延迟
+  if echo "$lag_result" | grep -q "MB\|GB"; then
+    record_test "复制延迟检查" "FAIL" "检测到显著的复制延迟"
+  else
+    record_test "复制延迟检查" "PASS" "复制延迟在正常范围内"
+  fi
+else
+  record_test "复制延迟检查" "FAIL" "无法获取复制延迟信息"
+fi
+
+# ==== 性能测试 ====
+echo "" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "性能测试" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "" >> "$REPORT_FILE"
+
+echo "执行简单查询性能测试..."
+perf_test_table="perf_test_$(date +%s)"
+
+# 创建性能测试表
+perf_create_cmd="su - omm -c 'gsql -d $DB_NAME -p $DB_PORT -c \"CREATE TABLE $perf_test_table (id SERIAL PRIMARY KEY, data TEXT); INSERT INTO $perf_test_table (data) SELECT md5(random()::text) FROM generate_series(1, 1000);\"' 2>&1"
+perf_create_result=$(run_remote "$PRIMARY_ROOT_PWD" "$PRIMARY_IP" "$perf_create_cmd" 2>&1)
+
+if echo "$perf_create_result" | grep -q "INSERT"; then
+  # 执行查询并测量时间
+  perf_query_cmd="su - omm -c 'gsql -d $DB_NAME -p $DB_PORT -c \"\\timing on\" -c \"SELECT COUNT(*) FROM $perf_test_table;\"' 2>&1"
+  perf_result=$(run_remote "$PRIMARY_ROOT_PWD" "$PRIMARY_IP" "$perf_query_cmd" 2>&1)
+  
+  if echo "$perf_result" | grep -q "Time:"; then
+    query_time=$(echo "$perf_result" | grep "Time:" | awk '{print $2}')
+    record_test "查询性能测试" "PASS" "查询1000行耗时: ${query_time}ms"
+  else
+    record_test "查询性能测试" "FAIL" "无法获取查询时间"
+  fi
+  
+  # 清理性能测试表
+  perf_drop_cmd="su - omm -c 'gsql -d $DB_NAME -p $DB_PORT -c \"DROP TABLE IF EXISTS $perf_test_table;\"' 2>&1"
+  run_remote "$PRIMARY_ROOT_PWD" "$PRIMARY_IP" "$perf_drop_cmd" >/dev/null 2>&1
+else
+  record_test "查询性能测试" "FAIL" "无法创建性能测试表"
+fi
+
+# ==== 连接数测试 ====
+echo "" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "连接数测试" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "" >> "$REPORT_FILE"
+
+echo "检查数据库连接数..."
+for node_info in "主:$PRIMARY_IP:$PRIMARY_ROOT_PWD" "备1:$STANDBY1_IP:$STANDBY1_ROOT_PWD" "备2:$STANDBY2_IP:$STANDBY2_ROOT_PWD"; do
+  IFS=':' read -r role ip pwd <<< "$node_info"
+  
+  conn_cmd="su - omm -c 'gsql -d $DB_NAME -p $DB_PORT -t -A -c \"SELECT count(*) FROM pg_stat_activity;\"' 2>&1"
+  conn_result=$(run_remote "$pwd" "$ip" "$conn_cmd" 2>&1)
+  conn_count=$(echo "$conn_result" | tr -d '[:space:]')
+  
+  if [[ "$conn_count" =~ ^[0-9]+$ ]]; then
+    record_test "${role}节点连接数检查" "PASS" "当前连接数: $conn_count"
+  else
+    record_test "${role}节点连接数检查" "FAIL" "无法获取连接数"
+  fi
+done
+
 # ==== 总体结论 ====
+echo "" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "测试总结" >> "$REPORT_FILE"
+echo "========================================" >> "$REPORT_FILE"
+echo "" >> "$REPORT_FILE"
+echo "总测试数: $test_total" >> "$REPORT_FILE"
+echo "通过: $test_passed" >> "$REPORT_FILE"
+echo "失败: $test_failed" >> "$REPORT_FILE"
+echo "通过率: $(awk "BEGIN {printf \"%.1f\", ($test_passed/$test_total)*100}")%" >> "$REPORT_FILE"
+echo "" >> "$REPORT_FILE"
+
 echo "验证结论：" >> "$REPORT_FILE"
 if [ "$overall_ok" -eq 1 ]; then
-  echo "集群一主两备运行正常。" >> "$REPORT_FILE"
-  echo "- 所有节点进程和端口正常。" >> "$REPORT_FILE"
-  echo "- 异步复制无延迟。" >> "$REPORT_FILE"
-  echo "- 数据目录存在。" >> "$REPORT_FILE"
+  echo "✓ 集群一主两备运行正常" >> "$REPORT_FILE"
+  echo "  - 所有节点进程和端口正常" >> "$REPORT_FILE"
+  echo "  - 数据库连接正常" >> "$REPORT_FILE"
+  echo "  - 数据复制功能正常" >> "$REPORT_FILE"
+  echo "  - 复制延迟在正常范围内" >> "$REPORT_FILE"
+  echo "  - 性能测试通过" >> "$REPORT_FILE"
 else
-  echo "集群存在异常，请检查上述详情。" >> "$REPORT_FILE"
+  echo "✗ 集群存在异常" >> "$REPORT_FILE"
+  echo "  请检查上述失败的测试项" >> "$REPORT_FILE"
+  echo "  建议查看详细日志进行故障排查" >> "$REPORT_FILE"
 fi
+echo "" >> "$REPORT_FILE"
 
 
 # ==== 输出到终端 ====
-echo "验证已完成，报告文件：$REPORT_FILE"
+echo ""
+echo "========================================"
+echo "验证已完成"
+echo "========================================"
+echo "报告文件：$REPORT_FILE"
+echo "总测试数：$test_total"
+echo "通过：$test_passed"
+echo "失败：$test_failed"
+if [ "$overall_ok" -eq 1 ]; then
+  echo "状态：✓ 全部通过"
+else
+  echo "状态：✗ 存在失败项"
+fi
+echo ""
 echo "================ 报告内容预览 ================"
 cat "$REPORT_FILE"
 echo "============================================="
+echo ""
+echo "提示：完整报告已保存到 $REPORT_FILE"
+
+# 返回适当的退出码
+if [ "$overall_ok" -eq 1 ]; then
+  exit 0
+else
+  exit 1
+fi
