@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: blog-system
+  datasource:
+    primary:
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: ${GAUSSDB_PRIMARY_URL:jdbc:postgresql://10.211.55.11:5432/blog_db}
+      username: ${GAUSSDB_USERNAME:bloguser}
+      password: ${GAUSSDB_PASSWORD:747599qw@}
+      maximum-pool-size: 10
+      minimum-idle: 3
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      validation-timeout: 5000
+      connection-test-query: SELECT 1
+      pool-name: GaussDB-Primary-HikariCP
+    replica:
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: ${GAUSSDB_REPLICA_URL:jdbc:postgresql://10.211.55.11:5432/blog_db}
+      username: ${GAUSSDB_USERNAME:bloguser}
+      password: ${GAUSSDB_PASSWORD:747599qw@}
+      maximum-pool-size: 10
+      minimum-idle: 3
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      validation-timeout: 5000
+      connection-test-query: SELECT 1
+      pool-name: GaussDB-Replica-HikariCP
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.cloudcom.blog.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+jwt:
+  secret: cloudcom-blog-system-secret-key-2025
+  expiration: 86400000
+
+file:
+  upload:
+    path: /app/uploads
+    url-prefix: /uploads
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.cloudcom.blog: INFO
+    org.opengauss: WARN
+    com.zaxxer.hikari: DEBUG

@@ -20,20 +20,52 @@ public class LikeController {
     private LikeService likeService;
 
     /**
-     * 点赞或取消点赞
+     * 点赞
      */
     @PostMapping("/{postId}")
-    public Result<Map<String, Object>> toggleLike(@PathVariable Long postId, HttpServletRequest request) {
+    public Result<Map<String, Object>> like(@PathVariable Long postId, HttpServletRequest request) {
         try {
             Long userId = (Long) request.getAttribute("userId");
-            boolean liked = likeService.toggleLike(postId, userId);
+            
+            // 检查是否已点赞
+            if (likeService.isLiked(postId, userId)) {
+                return Result.error("已经点赞过了");
+            }
+            
+            likeService.like(postId, userId);
             int likeCount = likeService.getLikeCount(postId);
             
             Map<String, Object> result = new HashMap<>();
-            result.put("liked", liked);
+            result.put("liked", true);
             result.put("likeCount", likeCount);
             
-            return Result.success(liked ? "点赞成功" : "取消点赞成功", result);
+            return Result.success("点赞成功", result);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
+     * 取消点赞
+     */
+    @DeleteMapping("/{postId}")
+    public Result<Map<String, Object>> unlike(@PathVariable Long postId, HttpServletRequest request) {
+        try {
+            Long userId = (Long) request.getAttribute("userId");
+            
+            // 检查是否已点赞
+            if (!likeService.isLiked(postId, userId)) {
+                return Result.error("还未点赞");
+            }
+            
+            likeService.unlike(postId, userId);
+            int likeCount = likeService.getLikeCount(postId);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("liked", false);
+            result.put("likeCount", likeCount);
+            
+            return Result.success("取消点赞成功", result);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }

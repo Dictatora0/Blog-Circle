@@ -16,7 +16,26 @@ public class LikeService {
     private LikeMapper likeMapper;
 
     /**
-     * 点赞或取消点赞
+     * 点赞
+     */
+    @Transactional
+    public void like(Long postId, Long userId) {
+        Like like = new Like();
+        like.setPostId(postId);
+        like.setUserId(userId);
+        likeMapper.insert(like);
+    }
+    
+    /**
+     * 取消点赞
+     */
+    @Transactional
+    public void unlike(Long postId, Long userId) {
+        likeMapper.delete(postId, userId);
+    }
+    
+    /**
+     * 点赞或取消点赞（兼容旧接口）
      */
     @Transactional
     public boolean toggleLike(Long postId, Long userId) {

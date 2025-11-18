@@ -80,6 +80,8 @@ import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import {
   runAnalytics,
+  getStatisticsSummary,
+  getAggregatedStatistics,
   getAllStatistics,
   getStatisticsByType,
 } from "@/api/statistics";
@@ -96,11 +98,11 @@ const handleAnalyze = async () => {
   try {
     // 后端返回格式: { code: 200, message: "..." } 或 { code: 500, message: "错误信息" }
     const res = await runAnalytics();
-    
+
     // 检查响应状态码（axios成功响应时，HTTP状态码是200，但业务code可能在data中）
     const responseData = res.data || {};
     const code = responseData.code;
-    
+
     if (code === 200) {
       const message = responseData.message || "分析完成";
       ElMessage.success(message);
@@ -114,7 +116,8 @@ const handleAnalyze = async () => {
     console.error("分析失败:", error);
     // 从错误响应中获取错误消息
     const errorResponse = error.response?.data || {};
-    const errorMsg = errorResponse.message || error.message || "分析失败，请重试";
+    const errorMsg =
+      errorResponse.message || error.message || "分析失败，请重试";
     ElMessage.error(errorMsg);
   } finally {
     analyzing.value = false;
@@ -123,11 +126,14 @@ const handleAnalyze = async () => {
 
 const loadStatistics = async () => {
   try {
-    // 加载所有统计数据
-    // 后端返回格式: { code: 200, message: "...", data: [...] }
-    const res = await getAllStatistics();
-    const responseData = res.data?.data || res.data || [];
-    allStats.value = Array.isArray(responseData) ? responseData : [];
+    // 加载统计汇总（聚合 + 明细）
+    // 后端返回格式: { code: 200, message: "...", data: { aggregated: {...}, details: [...] } }
+    const res = await getStatisticsSummary();
+    const responseData = res.data?.data || res.data || {};
+
+    // 提取明细列表
+    const details = responseData.details || [];
+    allStats.value = Array.isArray(details) ? details : [];
 
     // 分类统计数据
     userPostStats.value = allStats.value.filter(
@@ -212,16 +218,15 @@ onMounted(() => {
     padding: var(--spacing-md);
     padding-top: calc(56px + var(--spacing-md));
   }
-  
+
   .header-row {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-md);
   }
-  
+
   .title {
     font-size: 16px;
   }
 }
 </style>
-

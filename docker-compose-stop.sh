@@ -70,9 +70,14 @@ run_dev() {
 }
 
 vm_cmd() {
-  sshpass -p "$VM_PASSWORD" \
-    ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=yes \
-        -o PreferredAuthentications=password -o PubkeyAuthentication=no \
+  # 使用环境变量传递密码，避免特殊字符问题
+  export SSHPASS="$VM_PASSWORD"
+  sshpass -e \
+    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        -o PasswordAuthentication=yes \
+        -o PreferredAuthentications=password \
+        -o PubkeyAuthentication=no \
+        -o ConnectTimeout=10 \
         "${VM_USER}@${VM_IP}" "$1"
 }
 

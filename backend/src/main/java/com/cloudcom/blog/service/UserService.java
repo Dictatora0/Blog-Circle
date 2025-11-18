@@ -2,6 +2,7 @@ package com.cloudcom.blog.service;
 
 import com.cloudcom.blog.entity.User;
 import com.cloudcom.blog.mapper.UserMapper;
+import com.cloudcom.blog.util.InputSanitizer;
 import com.cloudcom.blog.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,10 +22,36 @@ public class UserService {
      * 用户注册
      */
     public User register(User user) {
+        // 验证用户名
+        if (InputSanitizer.isBlankOrEmpty(user.getUsername())) {
+            throw new RuntimeException("用户名不能为空");
+        }
+        if (!InputSanitizer.isValidUsername(user.getUsername())) {
+            throw new RuntimeException("用户名格式不正确（3-20个字符，只能包含字母、数字和下划线）");
+        }
+        
+        // 验证密码
+        if (InputSanitizer.isBlankOrEmpty(user.getPassword())) {
+            throw new RuntimeException("密码不能为空");
+        }
+        
+        // 验证邮箱
+        if (InputSanitizer.isBlankOrEmpty(user.getEmail())) {
+            throw new RuntimeException("邮箱不能为空");
+        }
+        if (!InputSanitizer.isValidEmail(user.getEmail())) {
+            throw new RuntimeException("邮箱格式不正确");
+        }
+        
         // 检查用户名是否已存在
         User existUser = userMapper.selectByUsername(user.getUsername());
         if (existUser != null) {
             throw new RuntimeException("用户名已存在");
+        }
+        
+        // 清理昵称中的 XSS
+        if (!InputSanitizer.isBlankOrEmpty(user.getNickname())) {
+            user.setNickname(InputSanitizer.sanitizeXSS(user.getNickname()));
         }
         
         // 加密密码

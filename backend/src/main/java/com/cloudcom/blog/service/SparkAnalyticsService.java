@@ -1,5 +1,6 @@
 package com.cloudcom.blog.service;
 
+import com.cloudcom.blog.dto.StatisticsSummary;
 import com.cloudcom.blog.entity.Statistic;
 import com.cloudcom.blog.mapper.StatisticMapper;
 import org.apache.spark.sql.Dataset;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -252,6 +254,16 @@ public class SparkAnalyticsService {
     }
 
     /**
+     * 获取统计汇总（聚合 + 明细）
+     */
+    public StatisticsSummary getStatisticsSummary() {
+        StatisticsSummary summary = new StatisticsSummary();
+        summary.setAggregated(getAggregatedStatistics());
+        summary.setDetails(getAllStatistics());
+        return summary;
+    }
+
+    /**
      * 根据类型获取统计结果
      */
     public List<Statistic> getStatisticsByType(String statType) {
@@ -262,24 +274,22 @@ public class SparkAnalyticsService {
      * 获取聚合统计数据
      * 返回包含 postCount, viewCount, likeCount, commentCount, userCount 的聚合对象
      */
-    public Map<String, Object> getAggregatedStatistics() {
-        Map<String, Object> aggregated = new HashMap<>();
-        
+    public Map<String, Long> getAggregatedStatistics() {
+        Map<String, Long> aggregated = new LinkedHashMap<>();
+
         // 从数据库直接查询统计数据（避免依赖statistics表）
         long postCount = statisticMapper.countTotalPosts();
         long viewCount = statisticMapper.countTotalViews();
         long likeCount = statisticMapper.countTotalLikes();
         long commentCount = statisticMapper.countTotalComments();
         long userCount = statisticMapper.countTotalUsers();
-        
+
         aggregated.put("postCount", postCount);
         aggregated.put("viewCount", viewCount);
         aggregated.put("likeCount", likeCount);
         aggregated.put("commentCount", commentCount);
         aggregated.put("userCount", userCount);
-        
+
         return aggregated;
     }
 }
-
-

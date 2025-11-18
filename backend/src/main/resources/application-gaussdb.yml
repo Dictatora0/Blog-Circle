@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    driver-class-name: org.opengauss.Driver
+    url: ${GAUSSDB_JDBC_URL:jdbc:opengauss://${GAUSSDB_HOST:10.211.55.11}:${GAUSSDB_PORT:5432}/blog_db}
+    username: ${GAUSSDB_USERNAME:bloguser}
+    password: ${GAUSSDB_PASSWORD:blogpass}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      leak-detection-threshold: 60000
+      initialization-fail-timeout: 1
+
+logging:
+  level:
+    com.cloudcom.blog: INFO

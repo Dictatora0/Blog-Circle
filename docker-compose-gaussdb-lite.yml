@@ -1,0 +1,49 @@
+version: "3.3"
+
+# 轻量级部署：GaussDB + 后端 + 前端（不包含 Spark）
+# 用于快速测试 GaussDB 功能，无需等待 Spark 镜像拉取
+# 使用方法：docker-compose -f docker-compose-gaussdb-lite.yml up -d
+
+services:
+  # 后端服务（连接外部 GaussDB 主节点）
+  backend:
+    build: ./backend
+    container_name: blogcircle-backend
+    environment:
+      - SPRING_PROFILES_ACTIVE=gaussdb
+      - GAUSSDB_HOST=${GAUSSDB_HOST:-10.211.55.11}
+      - GAUSSDB_PORT=${GAUSSDB_PORT:-5432}
+      - GAUSSDB_USERNAME=${GAUSSDB_USERNAME:-bloguser}
+      - GAUSSDB_PASSWORD=${GAUSSDB_PASSWORD:-blogpass}
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC -XX:CompressedClassSpaceSize=32m -XX:ThreadStackSize=512
+    ports:
+      - "8081:8080"
+    networks:
+      - blogcircle-network
+    restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
+      - no-new-privileges:true
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: blogcircle-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - blogcircle-network
+    restart: unless-stopped
+
+networks:
+  blogcircle-network:
+    driver: bridge

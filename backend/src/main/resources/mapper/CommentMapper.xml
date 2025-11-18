@@ -19,7 +19,9 @@
     </update>
 
     <select id="selectById" resultType="Comment">
-        SELECT * FROM comments WHERE id = #{id}
+        SELECT id, post_id as postId, user_id as userId, content, created_at as createdAt
+        FROM comments 
+        WHERE id = #{id}
     </select>
 
     <select id="selectByPostIdWithUser" resultType="Comment">

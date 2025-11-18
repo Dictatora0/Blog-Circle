@@ -1,0 +1,87 @@
+services:
+  backend:
+    build: ./backend
+    container_name: blogcircle-backend
+    environment:
+      - SPRING_PROFILES_ACTIVE=gaussdb-cluster
+      - GAUSSDB_PRIMARY_URL=jdbc:postgresql://10.211.55.11:5432/blog_db
+      - GAUSSDB_REPLICA_URL=jdbc:postgresql://10.211.55.11:5432/blog_db
+      - GAUSSDB_USERNAME=bloguser
+      - GAUSSDB_PASSWORD=747599qw@
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
+    ports:
+      - "8081:8080"
+    networks:
+      - blogcircle-network
+    extra_hosts:
+      - "gaussdb-primary:10.211.55.11"
+      - "gaussdb-standby1:10.211.55.14"
+      - "gaussdb-standby2:10.211.55.13"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/posts/list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: blogcircle-frontend
+    ports:
+      - "8082:80"
+    depends_on:
+      - backend
+    networks:
+      - blogcircle-network
+    restart: unless-stopped
+
+  spark-master:
+    image: apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
+    container_name: blogcircle-spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+    ports:
+      - "7077:7077"
+      - "8090:8080"
+    networks:
+      - blogcircle-network
+    extra_hosts:
+      - "gaussdb-primary:10.211.55.11"
+      - "gaussdb-standby1:10.211.55.14"
+      - "gaussdb-standby2:10.211.55.13"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  spark-worker:
+    image: apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
+    container_name: blogcircle-spark-worker
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=2
+    ports:
+      - "8091:8081"
+    networks:
+      - blogcircle-network
+    extra_hosts:
+      - "gaussdb-primary:10.211.55.11"
+      - "gaussdb-standby1:10.211.55.14"
+      - "gaussdb-standby2:10.211.55.13"
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  blogcircle-network:
+    driver: bridge

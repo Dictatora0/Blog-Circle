@@ -6,6 +6,7 @@ import com.cloudcom.blog.mapper.AccessLogMapper;
 import com.cloudcom.blog.mapper.FriendshipMapper;
 import com.cloudcom.blog.mapper.LikeMapper;
 import com.cloudcom.blog.mapper.PostMapper;
+import com.cloudcom.blog.util.InputSanitizer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -42,6 +43,15 @@ public class PostService {
             throw new RuntimeException("动态内容不能为空");
         }
         
+        // 验证内容长度
+        if (!InputSanitizer.isValidLength(post.getContent(), 10000)) {
+            throw new RuntimeException("动态内容过长（最多10000字符）");
+        }
+        
+        // 清理 XSS 攻击和特殊字符
+        String sanitizedContent = InputSanitizer.sanitizeXSS(post.getContent());
+        post.setContent(sanitizedContent);
+        
         // 如果没有提供title，使用content的前50个字符作为title
         if (post.getTitle() == null || post.getTitle().trim().isEmpty()) {
             String content = post.getContent().trim();
@@ -51,6 +61,10 @@ public class PostService {
             } else {
                 post.setTitle(content);
             }
+        } else {
+            // 清理 title 中的 XSS
+            String sanitizedTitle = InputSanitizer.sanitizeXSS(post.getTitle());
+            post.setTitle(sanitizedTitle);
         }
         
         // 调试日志：记录创建前的信息
@@ -140,8 +154,9 @@ public class PostService {
                 if (todayViewCount == 0) {
                     // 增加浏览次数
                     postMapper.incrementViewCount(id);
-                    // 更新返回对象中的浏览量
-                    post.setViewCount(post.getViewCount() + 1);
+                    // 更新返回对象中的浏览量（处理 null 情况）
+                    int currentCount = post.getViewCount() != null ? post.getViewCount() : 0;
+                    post.setViewCount(currentCount + 1);
                 }
             }
             

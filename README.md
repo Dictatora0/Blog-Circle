@@ -10,21 +10,24 @@ Blog Circle 是一个仿微信朋友圈风格的博客社交平台，面向熟�
 
 后端主要围绕博客与社交业务中常见的实体进行建模，包括用户、文章、评论、好友关系以及基础统计信息。业务概念保持简洁，便于代码阅读和二次开发。大部分业务逻辑集中在清晰的 Service 分层及配套 SQL 中，适合作为 Spring Boot 与 MyBatis 组合的教学与实践案例。
 
-前端设计围绕“朋友圈”这一核心使用场景展开，在页面数量相对有限的前提下，尽量将常用操作控制在较少的交互步骤内。界面基于 Element Plus 实现卡片式布局和弹窗交互，既便于统一风格，也为后续功能扩展和样式调整预留空间。
+前端设计围绕"朋友圈"这一核心使用场景展开，在页面数量相对有限的前提下，尽量将常用操作控制在较少的交互步骤内。界面基于 Element Plus 实现卡片式布局和弹窗交互，既便于统一风格，也为后续功能扩展和样式调整预留空间。
+
+**新增功能**：系统现已支持 GaussDB（openGauss）数据库、Spark 分析模块，提供完整的容器化部署方案。
 
 ## 二、开发环境与技术栈
 
 ### 后端
 
-| 技术         | 版本   | 说明                   |
-| ------------ | ------ | ---------------------- |
-| Spring Boot  | 3.1.5  | 核心框架               |
-| MyBatis      | 3.0.3  | ORM 框架               |
-| PostgreSQL   | 42.6.0 | 数据库（兼容 GaussDB） |
-| JWT          | 0.11.5 | 身份认证               |
-| Apache Spark | 3.5.0  | 数据分析（可选）       |
-| Maven        | -      | 构建工具               |
-| JDK          | 17     | Java 版本              |
+| 技术         | 版本   | 说明              |
+| ------------ | ------ | ----------------- |
+| Spring Boot  | 3.1.5  | 核心框架          |
+| MyBatis      | 3.0.3  | ORM 框架          |
+| PostgreSQL   | 42.6.0 | 数据库驱动        |
+| openGauss    | 3.0.0  | GaussDB JDBC 驱动 |
+| JWT          | 0.11.5 | 身份认证          |
+| Apache Spark | 3.5.0  | 数据分析（可选）  |
+| Maven        | -      | 构建工具          |
+| JDK          | 17     | Java 版本         |
 
 ### 前端
 
@@ -98,12 +101,21 @@ Docker 相关的打包和部署方式：
   - 第一阶段基于 `node:18-alpine`，安装依赖并执行 `npm run build` 生成静态文件。
   - 第二阶段基于 `nginx:alpine`，只负责托管 `dist/` 目录，并通过 `nginx.conf` 做反向代理。
 
-项目提供了 `docker-compose.yml` 用于一键启动：
+项目提供了多个 docker-compose 配置文件：
+
+**标准部署（PostgreSQL）**：`docker-compose.yml`
 
 - `db` 服务运行 PostgreSQL，负责持久化所有业务数据，并挂载卷保存数据文件。
 - `backend` 服务从 `backend/Dockerfile` 构建，依赖 `db`，通过环境变量连接数据库，对外暴露端口 `8081`。
 - `frontend` 服务从 `frontend/Dockerfile` 构建，依赖 `backend`，对外暴露端口 `8080`。
 - 三个服务都在同一个自定义网络 `blogcircle-network` 中，后端直接通过服务名 `db` 访问数据库。
+
+**完整部署（GaussDB + Spark）**：`docker-compose-gaussdb.yml`
+
+- `gaussdb` 服务运行 openGauss（GaussDB），提供国产数据库支持。
+- `backend` 服务使用 `application-gaussdb.yml` 配置，通过 `jdbc:opengauss://` 连接 GaussDB。
+- `spark-master` 和 `spark-worker` 服务提供 Spark 分析集群。
+- 所有服务在同一网络中，支持完整的数据分析工作流。
 
 ## 三、系统功能与特点
 
@@ -115,7 +127,9 @@ Docker 相关的打包和部署方式：
 - **评论系统**：发表、编辑、删除评论
 - **点赞功能**：文章点赞与取消
 - **好友系统**：搜索用户、添加好友、管理好友关系、查看好友动态时间线
-- **数据统计**：用户发文统计、文章浏览统计、评论统计（SQL 分析，可选 Spark）
+- **数据统计**：用户发文统计、文章浏览统计、评论统计（SQL 分析，支持 Spark）
+- **GaussDB 支持**：完整的 openGauss/GaussDB 适配，支持国产数据库
+- **Spark 分析**：独立 Spark 分析模块，支持大规模数据处理
 
 ### 设计特色
 
@@ -164,7 +178,25 @@ psql --version
 
 ## 五、系统启动与运行说明
 
+### 快速开始
+
+**最简单的方式**：本地开发环境
+
+```bash
+# 启动本地开发环境（PostgreSQL + Spring Boot + Vite）
+./docker-compose-start.sh dev
+
+# 访问应用
+# 前端: http://localhost:5173
+# 后端: http://localhost:8080
+
+# 停止服务
+./docker-compose-stop.sh dev
+```
+
 ### 一键启动（推荐）
+
+#### 方式 1：本地开发
 
 1. **配置数据库**
 
@@ -195,6 +227,59 @@ spring:
 ```bash
 ./stop.sh
 ```
+
+#### 方式 2：Docker Compose（PostgreSQL）
+
+```bash
+# 启动所有服务
+docker-compose up -d
+
+# 访问应用
+# 前端: http://localhost:8080
+# 后端: http://localhost:8081
+
+# 停止服务
+docker-compose down
+```
+
+#### 方式 3：Docker Compose（连接现有 GaussDB 主库 + Spark）
+
+适用于宿主环境已部署 GaussDB 集群，仅需启动前后端与 Spark。
+
+```bash
+export GAUSSDB_HOST=10.211.55.11
+export GAUSSDB_PORT=5432
+export GAUSSDB_USERNAME=bloguser
+export GAUSSDB_PASSWORD=blogpass
+
+docker compose -f docker-compose-gaussdb.yml up -d
+
+# 前端: http://localhost:8080
+# 后端: http://localhost:8081
+# Spark Master UI: http://localhost:8888
+
+docker compose -f docker-compose-gaussdb.yml down
+```
+
+**注意**：Spark 镜像较大（~1GB），首次拉取可能需要较长时间。如果拉取失败，请参考 [SPARK_SETUP_GUIDE.md](./SPARK_SETUP_GUIDE.md)。
+
+#### 方式 3b：Docker Compose（连接现有 GaussDB，仅前后端）
+
+```bash
+export GAUSSDB_HOST=10.211.55.11
+export GAUSSDB_PORT=5432
+export GAUSSDB_USERNAME=bloguser
+export GAUSSDB_PASSWORD=blogpass
+
+docker compose -f docker-compose-gaussdb-lite.yml up -d
+
+# 前端: http://localhost:8080
+# 后端: http://localhost:8081
+
+docker compose -f docker-compose-gaussdb-lite.yml down
+```
+
+该配置以现有 GaussDB 主库为中心，快速启动应用但不包含 Spark 服务。
 
 ### 手动启动
 
@@ -1295,5 +1380,71 @@ npm run test:e2e    # E2E 测试
 - 跨域问题的解决方案
 
 项目不仅提升了编程技能，更重要的是培养了系统思维和工程化开发能力。
+
+---
+
+## 十九、GaussDB 和 Spark 支持
+
+### GaussDB 数据库支持
+
+系统现已完整支持 openGauss/GaussDB 国产数据库：
+
+- **JDBC 驱动**：集成 openGauss 3.0.0 JDBC 驱动
+- **配置文件**：新增 `application-gaussdb.yml` 配置
+- **Docker 镜像**：支持 `enmotech/opengauss:latest` 容器化部署
+- **SQL 兼容性**：所有 SQL 脚本已验证与 GaussDB 兼容
+
+**快速开始**：
+
+```bash
+# 使用 GaussDB 启动完整栈
+docker-compose -f docker-compose-gaussdb.yml up -d
+
+# 或配置环境变量
+export SPRING_PROFILES_ACTIVE=gaussdb
+export GAUSSDB_JDBC_URL=jdbc:opengauss://localhost:5432/blog_db
+export GAUSSDB_USERNAME=bloguser
+export GAUSSDB_PASSWORD=blogpass
+
+mvn spring-boot:run
+```
+
+### Spark 分析模块
+
+独立的 Spark 分析模块提供大规模数据处理能力：
+
+- **模块位置**：`analytics/` 目录
+- **功能**：从 GaussDB 读取数据，执行统计分析，写回结果
+- **部署方式**：Docker 容器、Spark Cluster、本地运行
+- **集成**：通过后端 API `POST /api/stats/analyze` 触发
+
+**快速开始**：
+
+```bash
+# 构建 Spark 任务
+cd analytics
+mvn clean package
+
+# 运行分析任务
+spark-submit \
+  --class com.cloudcom.analytics.BlogAnalyticsJob \
+  --master local[*] \
+  target/blog-analytics-1.0.0-jar-with-dependencies.jar \
+  jdbc:opengauss://localhost:5432/blog_db \
+  bloguser \
+  blogpass
+
+# 或通过 API 触发
+curl -X POST http://localhost:8080/api/stats/analyze \
+  -H "Authorization: Bearer <token>"
+```
+
+### 完整部署文档
+
+详见以下文档获取完整的部署和使用指南：
+
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)**：完整部署指南，包括本地开发、Docker Compose、GaussDB、Spark 等
+- **[DOCKER_REFERENCE.md](./DOCKER_REFERENCE.md)**：Docker 快速参考，包括镜像构建、容器运行、网络配置等
+- **[analytics/README.md](./analytics/README.md)**：Spark 分析模块详细文档
 
 ---

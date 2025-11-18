@@ -13,6 +13,10 @@ MODE=${1:-dev}
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/docker-compose.yml"
 
+# 本地 Docker 命令路径
+DOCKER_CMD="/usr/local/bin/docker"
+COMPOSE_CMD="/usr/local/bin/docker-compose"
+
 # 虚拟机配置
 VM_IP="10.211.55.11"
 VM_USER="root"
@@ -52,12 +56,12 @@ echo "========================================="
 echo ""
 
 # 检查 Docker 和 Docker Compose
-if ! command -v docker &> /dev/null; then
+if ! command -v "$DOCKER_CMD" &> /dev/null; then
     echo "错误: 未找到 Docker，请先安装 Docker"
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v "$COMPOSE_CMD" &> /dev/null; then
     echo "错误: 未找到 Docker Compose，请先安装 Docker Compose"
     exit 1
 fi
@@ -93,8 +97,8 @@ export DOCKER_CLIENT_TIMEOUT=300
 export COMPOSE_HTTP_TIMEOUT=300
 
 echo "3. 检查 Docker 版本..."
-docker --version
-docker-compose --version
+"$DOCKER_CMD" --version
+"$COMPOSE_CMD" --version
 echo ""
 
 ########################################
@@ -123,16 +127,20 @@ run_dev() {
 }
 
 vm_cmd() {
-  sshpass -p "$VM_PASSWORD" \
-    ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=yes \
-        -o PreferredAuthentications=password -o PubkeyAuthentication=no \
-        "${VM_USER}@${VM_IP}" "$1"
+  # 使用密码认证
+  export SSHPASS="$VM_PASSWORD"
+  sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+      -o PasswordAuthentication=yes \
+      -o PreferredAuthentications=password \
+      -o PubkeyAuthentication=no \
+      -o ConnectTimeout=10 \
+      "${VM_USER}@${VM_IP}" "$1"
 }
 
 run_vm() {
   header
 
-  for c in ssh sshpass; do
+    for c in ssh sshpass; do
     require_cmd "$c"
   done
 
@@ -177,8 +185,34 @@ run_vm() {
   echo ""
 
   log "4. 同步最新代码到虚拟机..."
-  vm_cmd "cd ${VM_PROJECT_DIR} && git fetch origin dev && git reset --hard origin/dev"
+  vm_cmd "cd ${VM_PROJECT_DIR} && git fetch origin dev 2>&1 && \
+    if git diff --quiet HEAD origin/dev; then \
+      echo '本地代码已是最新'; \
+    else \
+      echo '检测到远程更新'; \
+      if git status --porcelain | grep -q .; then \
+        echo '本地有未提交的更改，保留本地代码'; \
+        git merge --no-edit origin/dev 2>&1 || echo '合并失败，保留本地代码'; \
+      else \
+        echo '本地无未提交的更改，更新到最新'; \
+        git reset --hard origin/dev; \
+      fi; \
+    fi"
   ok "虚拟机代码同步完成"
+  
+  # 确保 fix-docker-network.sh 脚本存在
+  log "4.5. 检查修复脚本..."
+  if ! vm_cmd "test -f ${VM_PROJECT_DIR}/fix-docker-network.sh"; then
+    log "修复脚本不存在，从本地复制..."
+    export SSHPASS="$VM_PASSWORD"
+    sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        -o PasswordAuthentication=yes -o PreferredAuthentications=password -o PubkeyAuthentication=no \
+        "${VM_USER}@${VM_IP}" "mkdir -p ${VM_PROJECT_DIR}" 2>/dev/null || true
+    sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        -o PasswordAuthentication=yes -o PreferredAuthentications=password -o PubkeyAuthentication=no \
+        "${ROOT_DIR}/fix-docker-network.sh" "${VM_USER}@${VM_IP}:${VM_PROJECT_DIR}/" 2>/dev/null || true
+  fi
+  ok "修复脚本检查完成"
   echo ""
 
   log "5. 停止旧容器..."
@@ -195,11 +229,15 @@ run_vm() {
   sleep 20
   echo ""
 
-  log "8. 服务状态"
+  log "8. 修复 Docker 网络问题..."
+  vm_cmd "cd ${VM_PROJECT_DIR} && bash fix-docker-network.sh" || warn "网络修复失败，前端可能需要手动重启"
+  echo ""
+
+  log "9. 服务状态"
   vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose ps"
   echo ""
 
-  log "9. 拉取关键日志"
+  log "10. 拉取关键日志"
   echo "--- 数据库 ---"
   vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose logs --tail=20 db" || warn "数据库日志不可用"
   echo ""
