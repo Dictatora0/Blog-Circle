@@ -24,7 +24,7 @@ npx playwright test tests/e2e/posts.spec.ts::18 --reporter=line || true
 echo ""
 
 echo "================================"
-echo "✅ 验证完成！"
+echo "验证完成！"
 echo ""
 echo "💡 提示："
 echo "  - 如果以上3个测试都通过，说明修复成功"

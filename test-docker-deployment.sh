@@ -193,7 +193,7 @@ echo -e "${RED}失败: $FAILED${NC}"
 echo ""
 
 if [ $FAILED -eq 0 ]; then
-    echo -e "${GREEN}✅ 所有测试通过！容器化部署正常。${NC}"
+    echo -e "${GREEN}所有测试通过！容器化部署正常。${NC}"
     exit 0
 else
     echo -e "${RED}❌ 部分测试失败，请检查日志。${NC}"

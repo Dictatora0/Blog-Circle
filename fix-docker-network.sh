@@ -44,7 +44,7 @@ if [ -z "$BACKEND_IP" ]; then
     exit 1
 fi
 
-echo "✅ Backend IP: $BACKEND_IP"
+echo "Backend IP: $BACKEND_IP"
 echo ""
 
 # 3. 停止前端容器
@@ -93,7 +93,7 @@ server {
 }
 EOF
 
-echo "✅ Nginx 配置已更新"
+echo "Nginx 配置已更新"
 echo ""
 
 # 5. 重启前端容器
@@ -104,7 +104,7 @@ sleep 5
 # 6. 检查前端状态
 echo "[6] 检查前端状态..."
 if docker-compose ps frontend | grep -q "Up"; then
-    echo "✅ 前端容器已启动"
+    echo "前端容器已启动"
 else
     echo "⚠️  前端容器可能未完全启动，查看日志..."
     docker-compose logs frontend | tail -10
@@ -112,7 +112,7 @@ fi
 
 echo ""
 echo "========================================="
-echo "✅ 网络问题修复完成"
+echo "网络问题修复完成"
 echo "========================================="
 echo ""
 echo "测试前端连接:"

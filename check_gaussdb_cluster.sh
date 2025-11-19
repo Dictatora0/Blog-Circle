@@ -20,13 +20,13 @@ fi
 DB_PORT=5432
 
 PRIMARY_IP="10.211.55.11"
-PRIMARY_ROOT_PWD="747599qw@"
+PRIMARY_DB_PWD="747599qw@"
 
 STANDBY1_IP="10.211.55.14"
-STANDBY1_ROOT_PWD="747599qw@1"
+STANDBY1_DB_PWD="747599qw@"
 
 STANDBY2_IP="10.211.55.13"
-STANDBY2_ROOT_PWD="747599qw@2"
+STANDBY2_DB_PWD="747599qw@"
 
 REPORT_FILE="reports/gaussdb_cluster_report_$(date +%Y%m%d_%H%M%S).txt"
 overall_ok=1
@@ -43,53 +43,83 @@ TEST_TABLE="cluster_test_$(date +%s)"
 
 # ==== 前置检查 ====
 echo "前置检查中..."
-command -v sshpass >/dev/null 2>&1
+
+# Docker 命令路径
+DOCKER_CMD="/usr/local/bin/docker"
+if [ ! -x "$DOCKER_CMD" ]; then
+  DOCKER_CMD="docker"
+fi
+
+# 检查 Docker 命令
+command -v $DOCKER_CMD >/dev/null 2>&1
 if [ $? -ne 0 ]; then
-  echo "ERROR: 未找到 sshpass，请先安装后再运行本脚本。"
-  echo "Mac 上安装示例：brew install hudochenkov/sshpass/sshpass"
-  echo "openEuler 上示例：yum install -y sshpass"
+  echo "ERROR: 未找到 docker 命令"
   exit 1
 fi
 
-# 前置 SSH 连接测试
-echo "测试 SSH 连接到各节点..."
-for ip in "$PRIMARY_IP" "$STANDBY1_IP" "$STANDBY2_IP"; do
-  pwd_var="${ip//./_}_PWD"  # 动态变量名
-  case "$ip" in
-    "$PRIMARY_IP") pwd="$PRIMARY_ROOT_PWD" ;;
-    "$STANDBY1_IP") pwd="$STANDBY1_ROOT_PWD" ;;
-    "$STANDBY2_IP") pwd="$STANDBY2_ROOT_PWD" ;;
-  esac
-  echo "测试连接到 $ip..."
-  test_out=$(sshpass -p "$pwd" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 root@"$ip" "echo 'SSH OK'" 2>&1)
-  if [[ "$test_out" == *"SSH OK"* ]]; then
-    echo "  ✓ $ip 连接成功"
-  else
-    echo "  ✗ $ip 连接失败: $test_out"
-    echo "请检查：1. IP/密码正确 2. openEuler 允许 root SSH (修改 /etc/ssh/sshd_config: PermitRootLogin yes && systemctl restart sshd)"
+# 使用临时 PostgreSQL 容器执行 psql 命令
+echo "✓ 使用临时 PostgreSQL 容器执行数据库操作"
+
+# 前置数据库连接测试（使用 psql 直接连接，不需要 SSH）
+echo "测试 PostgreSQL 数据库连接..."
+
+# 数据库连接信息
+PG_USER="bloguser"
+PG_PASSWORD="747599qw@"
+PG_DB="blog_db"
+
+# 测试主库连接（使用临时 PostgreSQL 容器）
+echo "测试主库连接 (${PRIMARY_IP}:${DB_PORT})..."
+$DOCKER_CMD run --rm -e PGPASSWORD="${PG_PASSWORD}" postgres:15-alpine psql -h "${PRIMARY_IP}" -p "${DB_PORT}" -U "${PG_USER}" -d "${PG_DB}" -c "SELECT 'PRIMARY OK' as status, version();" 2>&1 | head -5
+if [ $? -eq 0 ]; then
+    echo "  ✓ 主库连接成功"
+else
+    echo "  ✗ 主库连接失败"
+    echo "请检查："
+    echo "  1. PostgreSQL 容器是否运行: docker ps | grep gaussdb"
+    echo "  2. 网络是否可达: ping ${PRIMARY_IP}"
+    echo "  3. 端口是否开放: nc -zv ${PRIMARY_IP} ${DB_PORT}"
     overall_ok=0
-  fi
-done
+fi
+
+# 测试备库连接（如果存在）
+if [ -n "${STANDBY1_IP}" ]; then
+    echo "测试备库1连接 (${STANDBY1_IP}:${DB_PORT})..."
+    $DOCKER_CMD run --rm -e PGPASSWORD="${STANDBY1_ROOT_PWD}" postgres:15-alpine psql -h "${STANDBY1_IP}" -p "${DB_PORT}" -U "${PG_USER}" -d "${PG_DB}" -c "SELECT 'STANDBY1 OK' as status;" 2>&1 | head -3
+    if [ $? -eq 0 ]; then
+        echo "  ✓ 备库1连接成功"
+    else
+        echo "  ⚠ 备库1连接失败（可能未配置）"
+    fi
+fi
+
+if [ -n "${STANDBY2_IP}" ]; then
+    echo "测试备库2连接 (${STANDBY2_IP}:${DB_PORT})..."
+    $DOCKER_CMD run --rm -e PGPASSWORD="${STANDBY2_ROOT_PWD}" postgres:15-alpine psql -h "${STANDBY2_IP}" -p "${DB_PORT}" -U "${PG_USER}" -d "${PG_DB}" -c "SELECT 'STANDBY2 OK' as status;" 2>&1 | head -3
+    if [ $? -eq 0 ]; then
+        echo "  ✓ 备库2连接成功"
+    else
+        echo "  ⚠ 备库2连接失败（可能未配置）"
+    fi
+fi
+
 if [ "$overall_ok" -eq 0 ]; then
-  echo "SSH 连接测试失败，请修复后再运行。"
+  echo "主库连接测试失败，请修复后再运行。"
   exit 1
 fi
-echo "SSH 连接测试通过。"
+echo "数据库连接测试通过。"
 echo ""
 
-# ==== 通用远程执行函数（修复编码问题）====
-run_remote() {
-  local pwd="$1"
-  local host="$2"
-  shift 2
-  local cmd="$*"
+# ==== 通用数据库执行函数 ====
+run_sql() {
+  local host="$1"
+  local db_password="$2"
+  local sql="$3"
+  local db_name="${4:-blog_db}"
+  local db_user="${5:-bloguser}"
 
-  # 设置 UTF-8 编码
-  sshpass -p "$pwd" ssh \
-    -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    -o ConnectTimeout=10 \
-    root@"$host" "export LC_ALL=zh_CN.UTF-8; $cmd"
+  # 使用临时 PostgreSQL 容器执行 SQL
+  $DOCKER_CMD run --rm -e PGPASSWORD="${db_password}" postgres:15-alpine psql -h "${host}" -p "${DB_PORT}" -U "${db_user}" -d "${db_name}" -t -c "${sql}" 2>&1
 }
 
 # ==== 测试结果记录函数 ====

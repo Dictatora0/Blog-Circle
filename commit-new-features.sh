@@ -53,7 +53,7 @@ if [ -f "AVATAR_UPLOAD_TEST_README.md" ]; then
 fi
 
 echo ""
-echo "✅ 文件已添加到暂存区"
+echo "文件已添加到暂存区"
 echo ""
 
 # 显示将要提交的文件
@@ -75,7 +75,7 @@ echo "💾 提交更改..."
 git commit -m "$COMMIT_MSG"
 
 echo ""
-echo "✅ 提交成功！"
+echo "提交成功！"
 echo ""
 echo "📤 推送到远程仓库："
 echo "   git push origin dev"

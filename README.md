@@ -14,6 +14,43 @@ Blog Circle 是一个仿微信朋友圈风格的博客社交平台，面向熟�
 
 **新增功能**：系统现已支持 GaussDB（openGauss）数据库、Spark 分析模块，提供完整的容器化部署方案。
 
+## 当前项目状态概览（2025-11）
+
+- **整体完成度**
+
+  - 后端、前端、好友系统、统计模块等核心功能均已实现，可在本地或容器环境直接运行。
+  - 提供从开发环境到虚拟机部署的一整套脚本（`start.sh` / `stop.sh`、`docker-compose-start.sh` / `docker-compose-stop.sh`、`deploy-gaussdb-cluster.sh` 等），便于一键启动和回归测试。
+
+- **数据库与集群现状**
+
+  - 支持三种主要运行模式：
+    1. **本地 / 容器 PostgreSQL 单实例**：适用于日常开发和功能调试。
+    2. **外部 GaussDB 单实例**：通过 `application-gaussdb.yml` 和 `docker-compose-gaussdb-lite.yml` 连接现有 GaussDB 主库。
+    3. **单机一主二备 GaussDB 集群（VM 10.211.55.11）**：
+       - 由 `setup-gaussdb-single-vm-cluster.sh` 生成并在虚拟机上执行部署脚本，在同一台主机上启动 1 个主库 + 2 个备库实例（端口分别为 5432/5433/5434）。
+       - 集群部署和验证过程已在 `SINGLE_VM_CLUSTER_GUIDE.md` 和 `GAUSSDB_CLUSTER_DEPLOYMENT_SUCCESS.md` 中详细记录。
+
+- **分析与 Spark 模块**
+
+  - `analytics` 子模块已接入 Spark，能够在 Docker Compose GaussDB 集群或外部 GaussDB 上运行统计任务。
+  - 通过 `run-spark-job.sh`、`SPARK_SETUP_GUIDE.md` 可以在本地或集群环境中复现统计作业（首次拉取 Spark 镜像耗时较长属正常现象）。
+
+- **测试与脚本现状**
+
+  - 根目录下提供了多类测试脚本：
+    - `tests/run-all-tests.sh`：汇总调用后端单元测试、API 测试和基础环境检查。
+    - `test-local-services.sh`：本地环境连通性与基础功能验证。
+    - `test-gaussdb-connection.sh`、`test-vm-deployment.sh`：针对 GaussDB 与虚拟机部署的连通性与服务检查。
+  - 针对 **单机一主二备 GaussDB 集群**：
+    - `test-gaussdb-single-vm-cluster.sh`：在本地 Mac 上，通过 Docker 化的 `psql` 尝试从外部验证 5432/5433/5434 三个实例的连接、角色和数据同步。
+    - `verify-gaussdb-cluster.sh`：推荐在虚拟机上使用 `gsql` 直接验证集群状态、数据同步和只读约束，更贴近 GaussDB 官方工具链。
+
+- **已知限制与注意事项**
+  - GaussDB（openGauss）在认证协议和系统视图（如 `pg_stat_replication` 字段）上与 PostgreSQL 存在差异：
+    - 使用 `postgres:15-alpine` 等标准 PostgreSQL 客户端连接 GaussDB 时，可能出现认证协议不匹配的问题，这是驱动层兼容性限制，并非业务逻辑错误。
+    - 集群复制状态更多依赖 `pg_is_in_recovery()`、WAL 接收线程日志以及 GaussDB 自身的告警/日志文件进行确认。
+  - 部分测试脚本假设目标环境已具备 Docker、GaussDB 客户端 (`gsql`) 等工具，实际运行前需要根据自身环境按需安装或微调脚本路径。
+
 ## 二、开发环境与技术栈
 
 ### 后端
@@ -250,7 +287,7 @@ docker-compose down
 export GAUSSDB_HOST=10.211.55.11
 export GAUSSDB_PORT=5432
 export GAUSSDB_USERNAME=bloguser
-export GAUSSDB_PASSWORD=blogpass
+export GAUSSDB_PASSWORD=747599qw@
 
 docker compose -f docker-compose-gaussdb.yml up -d
 
@@ -648,6 +685,54 @@ npm run test:e2e  # 终端2
 1. 重新登录获取新 Token
 2. Token 默认有效期为 24 小时
 
+### GaussDB 单机一主二备集群常见问题
+
+#### 问题 1：端口冲突（5432/5433/5434）
+
+**症状**：启动主库或备库时提示端口已被占用。
+
+**解决**：
+
+```bash
+# 检查端口占用
+netstat -tlnp | grep -E '5432|5433|5434'
+
+# 停止占用端口的进程（确认 PID 正确后再执行）
+kill -9 <PID>
+```
+
+#### 问题 2：数据目录权限错误
+
+**症状**：`gs_ctl` 或 `gaussdb` 启动失败，报权限不足。
+
+**解决**：
+
+```bash
+OMM_GROUP=$(id -gn omm)
+chown -R omm:$OMM_GROUP /usr/local/opengauss/data_*
+chmod 700 /usr/local/opengauss/data_*
+```
+
+#### 问题 3：备库未建立复制
+
+**症状**：备库已启动并且 `pg_is_in_recovery() = t`，但主库 `pg_stat_replication` 为空，或者在备库查询业务表时报 “relation 不存在”。
+
+**排查步骤**：
+
+```bash
+# 检查备库日志
+tail -f /usr/local/opengauss/data_standby1/pg_log/*.log
+
+# 检查 standby.signal / recovery.conf 是否存在
+ls -la /usr/local/opengauss/data_standby1/standby.signal
+ls -la /usr/local/opengauss/data_standby1/recovery.conf
+
+# 检查复制连接配置
+cat /usr/local/opengauss/data_standby1/recovery.conf
+```
+
+> 更完整的单机一主二备集群部署与排障说明，可参考 `SINGLE_VM_CLUSTER_GUIDE.md` 和 `GAUSSDB_CLUSTER_DEPLOYMENT_SUCCESS.md`，但以本 README 为入口文档。
+
 ## 十三、项目工程结构
 
 ```
@@ -741,6 +826,16 @@ npm run build
 - Vue 3 文档：https://cn.vuejs.org/
 - Element Plus 文档：https://element-plus.org/
 - MyBatis 文档：https://mybatis.org/mybatis-3/
+
+## 文档与脚本索引（当前状态）
+
+- **README.md**：项目主入口文档，优先以此为准，涵盖总体架构、运行方式、GaussDB 单机一主二备集群现状及常见问题排查。
+- **SINGLE_VM_CLUSTER_GUIDE.md**：GaussDB 单机一主二备集群的详细部署步骤和背景说明，关键信息已合并到 README，可作为补充阅读材料。
+- **GAUSSDB_CLUSTER_DEPLOYMENT_SUCCESS.md**：单机一主二备集群在 VM `10.211.55.11` 上的实际部署结果与参数快照，用于记录当前环境状态。
+- **DEPLOYMENT_GUIDE.md**：整体部署流程与注意事项，部分内容与 README 重叠，后续以 README 为最新权威说明。
+- **DOCKER_REFERENCE.md**：各类 Docker / Docker Compose 配置的补充说明，适合需要深入了解容器化细节时查阅。
+- **SPARK_SETUP_GUIDE.md**：Spark 环境准备与运行说明，仅在需要运行 `analytics` 模块的 Spark 统计任务时参考。
+- 其他以 `*_GUIDE.md`、`*_SUMMARY.md`、`*_COMPLETE*.md` 等命名的文档，多为阶段性总结或历史交付记录，内部信息已逐步并入 README，可视为存档，不再单独更新。
 
 ---
 

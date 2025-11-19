@@ -8,25 +8,21 @@
     <div class="search-section">
       <h2>🔍 搜索用户</h2>
       <div class="search-box">
-        <input 
-          v-model="searchKeyword" 
-          type="text" 
-          placeholder="输入用户名、邮箱或昵称搜索..." 
+        <input
+          v-model="searchKeyword"
+          type="text"
+          placeholder="输入用户名、邮箱或昵称搜索..."
           @keyup.enter="handleSearch"
           class="search-input"
         />
         <button @click="handleSearch" class="search-btn">搜索</button>
       </div>
-      
+
       <div v-if="searchResults.length > 0" class="search-results">
-        <FriendCard 
-          v-for="user in searchResults" 
-          :key="user.id" 
-          :friend="user"
-        >
+        <FriendCard v-for="user in searchResults" :key="user.id" :friend="user">
           <template #actions>
-            <button 
-              @click="handleSendRequest(user.id)" 
+            <button
+              @click="handleSendRequest(user.id)"
               class="btn-primary"
               :disabled="requestingSending"
             >
@@ -43,21 +39,21 @@
     <!-- 好友请求 -->
     <div class="requests-section" v-if="pendingRequests.length > 0">
       <h2>⏳ 好友请求</h2>
-      <FriendCard 
-        v-for="request in pendingRequests" 
-        :key="request.id" 
+      <FriendCard
+        v-for="request in pendingRequests"
+        :key="request.id"
         :friend="getRequesterInfo(request)"
       >
         <template #actions>
-          <button 
-            @click="handleAcceptRequest(request.id)" 
+          <button
+            @click="handleAcceptRequest(request.id)"
             class="btn-success"
             :disabled="processing"
           >
             同意
           </button>
-          <button 
-            @click="handleRejectRequest(request.id)" 
+          <button
+            @click="handleRejectRequest(request.id)"
             class="btn-danger"
             :disabled="processing"
           >
@@ -69,20 +65,20 @@
 
     <!-- 好友列表 -->
     <div class="friends-section">
-      <h2>✅ 我的好友 ({{ friendList.length }})</h2>
+      <h2>我的好友 ({{ friendList.length }})</h2>
       <div v-if="loading" class="loading">加载中...</div>
       <div v-else-if="friendList.length === 0" class="empty-state">
         暂无好友，快去添加吧！
       </div>
       <div v-else>
-        <FriendCard 
-          v-for="friend in friendList" 
-          :key="friend.id" 
+        <FriendCard
+          v-for="friend in friendList"
+          :key="friend.id"
           :friend="friend"
         >
           <template #actions>
-            <button 
-              @click="handleDeleteFriend(friend.id)" 
+            <button
+              @click="handleDeleteFriend(friend.id)"
               class="btn-danger-outline"
               :disabled="deleting"
             >
@@ -96,9 +92,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import FriendCard from '@/components/FriendCard.vue'
+import { ref, onMounted } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import FriendCard from "@/components/FriendCard.vue";
 import {
   getFriendList,
   getPendingRequests,
@@ -106,183 +102,185 @@ import {
   sendFriendRequest,
   acceptFriendRequest,
   rejectFriendRequest,
-  deleteFriend
-} from '@/api/friends'
+  deleteFriend,
+} from "@/api/friends";
 
-const friendList = ref([])
-const pendingRequests = ref([])
-const searchKeyword = ref('')
-const searchResults = ref([])
-const searched = ref(false)
-const loading = ref(false)
-const processing = ref(false)
-const deleting = ref(false)
-const requestingSending = ref(false)
+const friendList = ref([]);
+const pendingRequests = ref([]);
+const searchKeyword = ref("");
+const searchResults = ref([]);
+const searched = ref(false);
+const loading = ref(false);
+const processing = ref(false);
+const deleting = ref(false);
+const requestingSending = ref(false);
 
 onMounted(() => {
-  loadFriendList()
-  loadPendingRequests()
-})
+  loadFriendList();
+  loadPendingRequests();
+});
 
 const loadFriendList = async () => {
   try {
-    loading.value = true
-    const res = await getFriendList()
+    loading.value = true;
+    const res = await getFriendList();
     // 处理响应数据：axios返回的response对象，业务数据在res.data中
     // res.data是{code, message, data}，真正的数据在res.data.data
-    const responseBody = res.data || res
+    const responseBody = res.data || res;
     if (responseBody.code === 200) {
-      friendList.value = responseBody.data || []
+      friendList.value = responseBody.data || [];
     }
   } catch (error) {
-    console.error('加载好友列表失败:', error)
-    ElMessage.error('加载好友列表失败')
+    console.error("加载好友列表失败:", error);
+    ElMessage.error("加载好友列表失败");
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const loadPendingRequests = async () => {
   try {
-    const res = await getPendingRequests()
+    const res = await getPendingRequests();
     // 处理响应数据：axios返回的response对象，业务数据在res.data中
     // res.data是{code, message, data}，真正的数据在res.data.data
-    const responseBody = res.data || res
+    const responseBody = res.data || res;
     if (responseBody.code === 200) {
-      pendingRequests.value = responseBody.data || []
+      pendingRequests.value = responseBody.data || [];
     }
   } catch (error) {
-    console.error('加载好友请求失败:', error)
+    console.error("加载好友请求失败:", error);
   }
-}
+};
 
 const handleSearch = async () => {
   if (!searchKeyword.value.trim()) {
-    ElMessage.warning('请输入搜索关键词')
-    return
+    ElMessage.warning("请输入搜索关键词");
+    return;
   }
-  
+
   try {
-    const res = await searchUsers(searchKeyword.value)
+    const res = await searchUsers(searchKeyword.value);
     // 处理响应数据：axios返回的response对象，业务数据在res.data中
     // res.data是{code, message, data}，真正的数据在res.data.data
-    const responseBody = res.data || res
+    const responseBody = res.data || res;
     if (responseBody.code === 200) {
-      searchResults.value = responseBody.data || []
-      searched.value = true
+      searchResults.value = responseBody.data || [];
+      searched.value = true;
     } else {
-      ElMessage.error(responseBody.message || '搜索失败')
+      ElMessage.error(responseBody.message || "搜索失败");
     }
   } catch (error) {
-    console.error('搜索用户失败:', error)
-    ElMessage.error('搜索失败')
+    console.error("搜索用户失败:", error);
+    ElMessage.error("搜索失败");
   }
-}
+};
 
 const handleSendRequest = async (receiverId) => {
   try {
-    requestingSending.value = true
-    const res = await sendFriendRequest(receiverId)
+    requestingSending.value = true;
+    const res = await sendFriendRequest(receiverId);
     // 处理响应数据：axios返回的response对象，业务数据在res.data中
     // res.data是{code, message, data}，真正的数据在res.data.data
-    const responseBody = res.data || res
+    const responseBody = res.data || res;
     if (responseBody.code === 200) {
-      ElMessage.success('好友请求已发送')
+      ElMessage.success("好友请求已发送");
       // 从搜索结果中移除该用户
-      searchResults.value = searchResults.value.filter(u => u.id !== receiverId)
+      searchResults.value = searchResults.value.filter(
+        (u) => u.id !== receiverId
+      );
     } else {
-      ElMessage.error(responseBody.message || '发送请求失败')
+      ElMessage.error(responseBody.message || "发送请求失败");
     }
   } catch (error) {
-    console.error('发送好友请求失败:', error)
+    console.error("发送好友请求失败:", error);
     // 打印更详细的错误信息
     if (error.response?.data) {
-      console.error('错误详情:', error.response.data)
-      ElMessage.error(error.response.data.message || '发送请求失败')
+      console.error("错误详情:", error.response.data);
+      ElMessage.error(error.response.data.message || "发送请求失败");
     } else {
-      ElMessage.error('发送请求失败')
+      ElMessage.error("发送请求失败");
     }
   } finally {
-    requestingSending.value = false
+    requestingSending.value = false;
   }
-}
+};
 
 const handleAcceptRequest = async (requestId) => {
   try {
-    processing.value = true
-    const res = await acceptFriendRequest(requestId)
+    processing.value = true;
+    const res = await acceptFriendRequest(requestId);
     // 处理响应数据：axios返回的response对象，业务数据在res.data中
-    const responseBody = res.data || res
+    const responseBody = res.data || res;
     if (responseBody.code === 200) {
-      ElMessage.success('已接受好友请求')
-      loadPendingRequests()
-      loadFriendList()
+      ElMessage.success("已接受好友请求");
+      loadPendingRequests();
+      loadFriendList();
     } else {
-      ElMessage.error(responseBody.message || '操作失败')
+      ElMessage.error(responseBody.message || "操作失败");
     }
   } catch (error) {
-    console.error('接受好友请求失败:', error)
+    console.error("接受好友请求失败:", error);
     if (error.response?.data) {
-      ElMessage.error(error.response.data.message || '操作失败')
+      ElMessage.error(error.response.data.message || "操作失败");
     } else {
-      ElMessage.error('操作失败')
+      ElMessage.error("操作失败");
     }
   } finally {
-    processing.value = false
+    processing.value = false;
   }
-}
+};
 
 const handleRejectRequest = async (requestId) => {
   try {
-    processing.value = true
-    const res = await rejectFriendRequest(requestId)
+    processing.value = true;
+    const res = await rejectFriendRequest(requestId);
     // 处理响应数据：axios返回的response对象，业务数据在res.data中
-    const responseBody = res.data || res
+    const responseBody = res.data || res;
     if (responseBody.code === 200) {
-      ElMessage.success('已拒绝好友请求')
-      loadPendingRequests()
+      ElMessage.success("已拒绝好友请求");
+      loadPendingRequests();
     } else {
-      ElMessage.error(responseBody.message || '操作失败')
+      ElMessage.error(responseBody.message || "操作失败");
     }
   } catch (error) {
-    console.error('拒绝好友请求失败:', error)
+    console.error("拒绝好友请求失败:", error);
     if (error.response?.data) {
-      ElMessage.error(error.response.data.message || '操作失败')
+      ElMessage.error(error.response.data.message || "操作失败");
     } else {
-      ElMessage.error('操作失败')
+      ElMessage.error("操作失败");
     }
   } finally {
-    processing.value = false
+    processing.value = false;
   }
-}
+};
 
 const handleDeleteFriend = async (friendId) => {
   try {
-    await ElMessageBox.confirm('确定要删除该好友吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    
-    deleting.value = true
-    const res = await deleteFriend(friendId)
+    await ElMessageBox.confirm("确定要删除该好友吗？", "提示", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+
+    deleting.value = true;
+    const res = await deleteFriend(friendId);
     // 处理响应数据：axios返回的response对象，业务数据在res.data中
-    const responseBody = res.data || res
+    const responseBody = res.data || res;
     if (responseBody.code === 200) {
-      ElMessage.success('已删除好友')
-      loadFriendList()
+      ElMessage.success("已删除好友");
+      loadFriendList();
     } else {
-      ElMessage.error(responseBody.message || '删除失败')
+      ElMessage.error(responseBody.message || "删除失败");
     }
   } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除好友失败:', error)
-      ElMessage.error('删除失败')
+    if (error !== "cancel") {
+      console.error("删除好友失败:", error);
+      ElMessage.error("删除失败");
     }
   } finally {
-    deleting.value = false
+    deleting.value = false;
   }
-}
+};
 
 const getRequesterInfo = (request) => {
   return {
@@ -290,9 +288,9 @@ const getRequesterInfo = (request) => {
     nickname: request.requester?.nickname,
     username: request.requester?.username,
     email: request.requester?.email,
-    avatar: request.requester?.avatar
-  }
-}
+    avatar: request.requester?.avatar,
+  };
+};
 </script>
 
 <style scoped>
@@ -468,4 +466,3 @@ button:disabled {
   }
 }
 </style>
-
