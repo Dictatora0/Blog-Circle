@@ -3,10 +3,10 @@ spring:
     name: blog-system
   datasource:
     primary:
-      driver-class-name: org.postgresql.Driver
-      jdbc-url: ${GAUSSDB_PRIMARY_URL:jdbc:postgresql://10.211.55.11:5432/blog_db}
-      username: ${GAUSSDB_USERNAME:bloguser}
-      password: ${GAUSSDB_PASSWORD:747599qw@}
+      driver-class-name: org.opengauss.Driver
+      jdbc-url: jdbc:opengauss://127.0.0.1:5432/blog_db
+      username: bloguser
+      password: Bloguser1234
       maximum-pool-size: 10
       minimum-idle: 3
       connection-timeout: 30000
@@ -16,10 +16,10 @@ spring:
       connection-test-query: SELECT 1
       pool-name: GaussDB-Primary-HikariCP
     replica:
-      driver-class-name: org.postgresql.Driver
-      jdbc-url: ${GAUSSDB_REPLICA_URL:jdbc:postgresql://10.211.55.11:5432/blog_db}
-      username: ${GAUSSDB_USERNAME:bloguser}
-      password: ${GAUSSDB_PASSWORD:747599qw@}
+      driver-class-name: org.opengauss.Driver
+      jdbc-url: jdbc:opengauss://127.0.0.1:5432/blog_db
+      username: bloguser
+      password: Bloguser1234
       maximum-pool-size: 10
       minimum-idle: 3
       connection-timeout: 30000

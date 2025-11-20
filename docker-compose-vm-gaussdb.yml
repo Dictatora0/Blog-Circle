@@ -1,39 +1,39 @@
+version: "3"
+
 services:
   backend:
-    build: ./backend
+    image: blogcircle-backend:fixed
     container_name: blogcircle-backend
+    network_mode: host
+    volumes:
+      - ./backend/src/main/resources/application.yml:/app/config/application.yml:ro
+      - ./backend/src/main/resources/application-gaussdb-cluster.yml:/app/config/application-gaussdb-cluster.yml:ro
+    entrypoint:
+      [
+        "java",
+        "-Dspring.profiles.active=gaussdb-cluster",
+        "-Dspring.config.additional-location=file:/app/config/",
+        "-jar",
+        "app.jar",
+      ]
     environment:
       - SPRING_PROFILES_ACTIVE=gaussdb-cluster
-      - GAUSSDB_PRIMARY_URL=jdbc:postgresql://10.211.55.11:5432/blog_db
-      - GAUSSDB_REPLICA_URL=jdbc:postgresql://10.211.55.11:5433,10.211.55.11:5434/blog_db?targetServerType=preferSlave&loadBalanceHosts=true
-      - GAUSSDB_USERNAME=bloguser
-      - GAUSSDB_PASSWORD=747599qw@
+      - SERVER_PORT=8081
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
-    ports:
-      - "8081:8080"
-    networks:
-      - blogcircle-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/posts/list"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+    security_opt:
+      - seccomp:unconfined
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: ./frontend
     container_name: blogcircle-frontend
     ports:
       - "8080:80"
     depends_on:
       - backend
-    networks:
-      - blogcircle-network
     restart: unless-stopped
-
-networks:
-  blogcircle-network:
-    driver: bridge

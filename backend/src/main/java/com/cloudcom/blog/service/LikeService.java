@@ -16,14 +16,20 @@ public class LikeService {
     private LikeMapper likeMapper;
 
     /**
-     * 点赞
+     * 点赞（幂等操作，如果已点赞则忽略）
      */
     @Transactional
     public void like(Long postId, Long userId) {
-        Like like = new Like();
-        like.setPostId(postId);
-        like.setUserId(userId);
-        likeMapper.insert(like);
+        // 先检查是否已点赞
+        Like existingLike = likeMapper.selectByPostIdAndUserId(postId, userId);
+        if (existingLike == null) {
+            // 未点赞，则添加点赞
+            Like like = new Like();
+            like.setPostId(postId);
+            like.setUserId(userId);
+            likeMapper.insert(like);
+        }
+        // 如果已点赞，则直接返回（幂等）
     }
     
     /**

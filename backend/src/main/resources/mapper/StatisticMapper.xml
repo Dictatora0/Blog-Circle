@@ -3,12 +3,22 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudcom.blog.mapper.StatisticMapper">
 
-    <insert id="insertOrUpdate" parameterType="Statistic">
+    <insert id="insert" parameterType="Statistic">
         INSERT INTO statistics (stat_type, stat_key, stat_value, created_at, updated_at)
         VALUES (#{statType}, #{statKey}, #{statValue}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ON CONFLICT (stat_type, stat_key) 
-        DO UPDATE SET stat_value = #{statValue}, updated_at = CURRENT_TIMESTAMP
     </insert>
+
+    <update id="update" parameterType="Statistic">
+        UPDATE statistics 
+        SET stat_value = #{statValue}, updated_at = CURRENT_TIMESTAMP
+        WHERE stat_type = #{statType} AND stat_key = #{statKey}
+    </update>
+    
+    <select id="selectOne" resultType="Statistic">
+        SELECT * FROM statistics 
+        WHERE stat_type = #{param1} AND stat_key = #{param2}
+        LIMIT 1
+    </select>
 
     <select id="selectByType" resultType="Statistic">
         SELECT * FROM statistics 

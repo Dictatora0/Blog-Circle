@@ -29,13 +29,13 @@ public class SparkAnalyticsService {
     @Autowired
     private StatisticMapper statisticMapper;
 
-    @Value("${spring.datasource.url}")
+    @Value("${spring.datasource.primary.jdbc-url:jdbc:opengauss://127.0.0.1:5432/blog_db}")
     private String dbUrl;
 
-    @Value("${spring.datasource.username}")
+    @Value("${spring.datasource.primary.username:bloguser}")
     private String dbUsername;
 
-    @Value("${spring.datasource.password}")
+    @Value("${spring.datasource.primary.password:Bloguser1234}")
     private String dbPassword;
 
     // 默认启用Spark，失败时回退到SQL分析
@@ -152,7 +152,7 @@ public class SparkAnalyticsService {
                 stat.setStatType("USER_POST_COUNT");
                 stat.setStatKey("user_" + userId);
                 stat.setStatValue(count);
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             // 统计文章浏览次数
@@ -171,7 +171,7 @@ public class SparkAnalyticsService {
                 stat.setStatType("POST_VIEW_COUNT");
                 stat.setStatKey("post_" + postId);
                 stat.setStatValue(count);
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             // 统计评论数量
@@ -190,7 +190,7 @@ public class SparkAnalyticsService {
                 stat.setStatType("POST_COMMENT_COUNT");
                 stat.setStatKey("post_" + postId);
                 stat.setStatValue(count);
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             logger.info("Spark分析完成，统计结果已写入数据库");
@@ -221,19 +221,19 @@ public class SparkAnalyticsService {
             // 统计每个用户的发文数量（从posts表）
             List<Statistic> userPostStats = statisticMapper.selectUserPostCounts();
             for (Statistic stat : userPostStats) {
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             // 统计文章浏览次数（从posts表的view_count字段）
             List<Statistic> postViewStats = statisticMapper.selectPostViewCounts();
             for (Statistic stat : postViewStats) {
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             // 统计评论数量（从comments表）
             List<Statistic> commentStats = statisticMapper.selectCommentCounts();
             for (Statistic stat : commentStats) {
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             logger.info("SQL分析完成");
@@ -288,5 +288,18 @@ public class SparkAnalyticsService {
         aggregated.put("userCount", userCount);
 
         return aggregated;
+    }
+
+    /**
+     * 插入或更新统计数据的辅助方法
+     * 先查询，存在则更新，不存在则插入
+     */
+    private void insertOrUpdateStatistic(Statistic stat) {
+        Statistic existing = statisticMapper.selectOne(stat.getStatType(), stat.getStatKey());
+        if (existing != null) {
+            statisticMapper.update(stat);
+        } else {
+            statisticMapper.insert(stat);
+        }
     }
 }

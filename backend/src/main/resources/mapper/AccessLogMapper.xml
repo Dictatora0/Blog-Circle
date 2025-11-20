@@ -18,7 +18,7 @@
         WHERE user_id = #{userId} 
           AND post_id = #{postId} 
           AND action = 'VIEW_POST'
-          AND DATE(created_at) = CURRENT_DATE
+          AND created_at::date = CURRENT_DATE
     </select>
 
 </mapper>

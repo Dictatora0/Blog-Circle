@@ -12,9 +12,19 @@ import java.util.List;
 public interface StatisticMapper {
     
     /**
-     * 插入或更新统计数据
+     * 插入统计数据
      */
-    int insertOrUpdate(Statistic statistic);
+    int insert(Statistic statistic);
+
+    /**
+     * 更新统计数据
+     */
+    int update(Statistic statistic);
+    
+    /**
+     * 查询单个统计数据
+     */
+    Statistic selectOne(String statType, String statKey);
     
     /**
      * 根据类型查询统计数据

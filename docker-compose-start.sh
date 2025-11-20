@@ -102,6 +102,36 @@ echo "3. 检查 Docker 版本..."
 "$COMPOSE_CMD" --version
 echo ""
 
+###############################################################
+# 检查依赖
+###############################################################
+check_dependencies() {
+  # 检查 Docker 命令（使用已设置的变量）
+  if ! command -v "$DOCKER_CMD" &> /dev/null; then
+    err "未找到命令: $DOCKER_CMD"
+    exit 1
+  fi
+  
+  if ! command -v "$COMPOSE_CMD" &> /dev/null; then
+    err "未找到命令: $COMPOSE_CMD"
+    exit 1
+  fi
+  
+  # 检查 sshpass，支持多个可能的路径
+  if command -v sshpass &> /dev/null; then
+    SSHPASS_CMD="sshpass"
+  elif [ -f "/opt/homebrew/bin/sshpass" ]; then
+    SSHPASS_CMD="/opt/homebrew/bin/sshpass"
+  elif [ -f "/usr/local/bin/sshpass" ]; then
+    SSHPASS_CMD="/usr/local/bin/sshpass"
+  else
+    err "未找到 sshpass 命令"
+    exit 1
+  fi
+}
+
+check_dependencies
+
 ########################################
 # 本地开发环境（PostgreSQL + Spring Boot + Vite）
 ########################################
@@ -130,18 +160,17 @@ run_dev() {
 vm_cmd() {
   # 使用密码认证
   export SSHPASS="$VM_PASSWORD"
-  sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  $SSHPASS_CMD -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
       -o PasswordAuthentication=yes \
       -o PreferredAuthentications=password \
       -o PubkeyAuthentication=no \
-      -o ConnectTimeout=10 \
-      "${VM_USER}@${VM_IP}" "$1"
+      "${VM_USER}@${VM_IP}" "$@"
 }
 
 run_vm() {
   header
 
-    for c in ssh sshpass; do
+  for c in ssh; do
     require_cmd "$c"
   done
 
@@ -236,19 +265,27 @@ run_vm() {
     fi"
   ok "虚拟机代码同步完成"
   
-  # 确保 fix-docker-network.sh 脚本存在
-  log "4.5. 检查修复脚本..."
-  if ! vm_cmd "test -f ${VM_PROJECT_DIR}/fix-docker-network.sh"; then
-    log "修复脚本不存在，从本地复制..."
-    export SSHPASS="$VM_PASSWORD"
-    sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  # 确保必要的文件存在
+  log "4.5. 检查并同步必要文件..."
+  export SSHPASS="$VM_PASSWORD"
+  
+  # 同步 docker-compose-vm-gaussdb.yml
+  if ! vm_cmd "test -f ${VM_PROJECT_DIR}/docker-compose-vm-gaussdb.yml"; then
+    log "docker-compose-vm-gaussdb.yml 不存在，从本地复制..."
+    $SSHPASS_CMD -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
         -o PasswordAuthentication=yes -o PreferredAuthentications=password -o PubkeyAuthentication=no \
-        "${VM_USER}@${VM_IP}" "mkdir -p ${VM_PROJECT_DIR}" 2>/dev/null || true
-    sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        "${ROOT_DIR}/docker-compose-vm-gaussdb.yml" "${VM_USER}@${VM_IP}:${VM_PROJECT_DIR}/" 2>/dev/null || true
+  fi
+  
+  # 同步 fix-docker-network.sh
+  if ! vm_cmd "test -f ${VM_PROJECT_DIR}/fix-docker-network.sh"; then
+    log "fix-docker-network.sh 不存在，从本地复制..."
+    $SSHPASS_CMD -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
         -o PasswordAuthentication=yes -o PreferredAuthentications=password -o PubkeyAuthentication=no \
         "${ROOT_DIR}/fix-docker-network.sh" "${VM_USER}@${VM_IP}:${VM_PROJECT_DIR}/" 2>/dev/null || true
   fi
-  ok "修复脚本检查完成"
+  
+  ok "必要文件检查完成"
   echo ""
 
   log "5. 停止旧容器..."
@@ -256,8 +293,8 @@ run_vm() {
   ok "旧容器已停止"
   echo ""
 
-  log "6. 构建并启动服务（使用虚拟机 GaussDB 集群）..."
-  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f docker-compose-vm-gaussdb.yml up -d --build"
+  log "6. 启动服务（使用虚拟机 GaussDB 集群）..."
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f docker-compose-vm-gaussdb.yml up -d"
   ok "虚拟机服务已启动（后端连接到 GaussDB 集群）"
   echo ""
 
@@ -267,6 +304,11 @@ run_vm() {
 
   log "8. 修复 Docker 网络问题..."
   vm_cmd "cd ${VM_PROJECT_DIR} && bash fix-docker-network.sh" || warn "网络修复失败，前端可能需要手动重启"
+  echo ""
+  
+  log "8.5. 重启前端服务..."
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f docker-compose-vm-gaussdb.yml up -d frontend"
+  ok "前端服务已重启"
   echo ""
 
   log "9. 服务状态"
