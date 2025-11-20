@@ -13,13 +13,13 @@
 
 ### 1.2 实验环境
 
-- **操作系统**: macOS
-- **容器化**: Docker + Docker Compose
-- **数据库**: GaussDB (openGauss 5.0.0)
-- **大数据**: Apache Spark 3.5.0
-- **后端**: Spring Boot 3.x + MyBatis-Plus
-- **前端**: Vue.js 3
-- **测试**: JUnit 5 + Testcontainers + RestAssured
+- **操作系统**: macOS (本地开发) + openEuler (10.211.55.11 远程 VM)
+- **容器化**: Docker Desktop + Docker Compose 2.x
+- **数据库**: GaussDB (openGauss 5.0.0，Compose 集群) / openGauss 9.2.4（VM 单机多实例）
+- **大数据**: Apache Spark 3.5.0（与 Compose 集群同网段）
+- **后端**: Spring Boot 3.x + MyBatis-Plus + JWT
+- **前端**: Vue.js 3 + Element Plus
+- **测试/运维工具**: JUnit 5、Testcontainers、RestAssured、Playwright、gs_ctl、gsql
 
 ---
 
@@ -49,22 +49,21 @@
 
 ### 2.2 核心技术栈
 
-| 层次 | 技术 | 版本 | 作用 |
-| 层次 | 技术 | 版本 | 作用 |
-|------|------|------|------|
-| 数据库 | GaussDB (openGauss) | 5.0.0 | 主备流复制 | 主备流复制 |
-| 大数据 | Apache Spark | 3.5.0 | 分布式分析 |
-| 后端 | Spring Boot | 3.x | RESTful API |
-| ORM | MyBatis-Plus | 3.5.x | 数据库操作 |
-| 前端 | Vue.js | 3.x | 用户界面 |
-| 容器化 | Docker Compose | 3.8 | 服务编排 |
-| 测试 | JUnit 5 | 5.x | 自动化测试 |
+| 层次   | 技术                                   | 版本                           | 作用                                          |
+| ------ | -------------------------------------- | ------------------------------ | --------------------------------------------- |
+| 数据库 | GaussDB (openGauss)                    | 5.0.0（Compose） / 9.2.4（VM） | 主备流复制、读写分离                          |
+| 大数据 | Apache Spark                           | 3.5.0                          | 分布式分析作业和离线指标计算                  |
+| 后端   | Spring Boot                            | 3.x                            | RESTful API、JWT 认证、AOP 数据源切换         |
+| ORM    | MyBatis-Plus                           | 3.5.x                          | 简化 CRUD，支持多数据源                       |
+| 前端   | Vue.js + Element Plus                  | 3.x / 2.x                      | 朋友圈风格界面                                |
+| 容器化 | Docker Compose                         | 2.x                            | 一键编排 GaussDB + Backend + Frontend + Spark |
+| 测试   | JUnit 5 / Testcontainers / RestAssured | 5.x                            | 数据库与 API 自动化测试                       |
 
 ---
 
 ## 三、核心功能实现
 
-### 3.1 PostgreSQL 主备流复制
+### 3.1 GaussDB (openGauss) 主备流复制
 
 #### 实现原理
 
@@ -76,38 +75,72 @@
 
 #### 关键配置
 
-**主库** (`docker-compose-gaussdb-pseudo.yml`):
+**主库（本地 Compose）** (`docker-compose-gaussdb-pseudo.yml`):
 
 ```yaml
 gaussdb-primary:
-  command: postgres -c wal_level=replica -c max_wal_senders=10
+  image: opengauss/opengauss:5.0.0
   ports: ["5432:5432"]
+  environment:
+    - GS_USER=bloguser
+    - GS_DB=blog_db
+    - GS_PASSWORD=OpenGauss@123
 ```
 
-**备库初始化**:
+**备库初始化（自动重试 gs_basebackup）**:
+
+```yaml
+gaussdb-standby1:
+  command: >
+    bash -c "
+      if [ ! -f /var/lib/opengauss/PG_VERSION ]; then
+        rm -rf /var/lib/opengauss/*
+        until gs_basebackup -h gaussdb-primary -p 5432 -U bloguser -W OpenGauss@123 \
+          -D /var/lib/opengauss -Fp -Xs -P; do
+          sleep 5
+        done
+        echo "standby_mode = 'on'" >> /var/lib/opengauss/recovery.conf
+        echo "primary_conninfo = 'host=gaussdb-primary port=5432 user=bloguser password=OpenGauss@123'" \
+          >> /var/lib/opengauss/recovery.conf
+      fi
+      exec gaussdb
+    "
+```
+
+**远程 VM (10.211.55.11) 启动命令**:
 
 ```bash
-pg_basebackup -h gaussdb-primary -U bloguser \
-  -D /var/lib/postgresql/data -R --wal-method=stream
+su - omm -c "gs_ctl start -D /usr/local/opengauss/data_primary -M primary"
+su - omm -c "gs_ctl start -D /usr/local/opengauss/data_standby1 -M standby"
+su - omm -c "gs_ctl start -D /usr/local/opengauss/data_standby2 -M standby"
 ```
+
+**自动化脚本**:
+
+- `start-gaussdb-cluster.sh`: 一键清理、启动并检测本地 Compose 集群
+- `start-standby-and-verify.sh`: 组合 `docker compose up`、容器健康检查和 `pg_stat_replication` 校验
+- `verify-gaussdb-cluster.sh` / `check_gaussdb_cluster.sh`: 复用 gsql、gs_om，生成集群状态报告
 
 #### 验证结果
 
-```sql
--- 主库查询复制状态
-SELECT client_addr, state FROM pg_stat_replication;
--- 结果：2 个备库，状态 streaming
+```bash
+# 本地验证（直接使用 gsql）
+docker compose -f docker-compose-gaussdb-pseudo.yml exec -T gaussdb-primary \
+  gsql -d blog_db -U bloguser -W OpenGauss@123 -c "SELECT client_addr, state, sync_state FROM pg_stat_replication;"
 
--- 备库查询恢复状态
-SELECT pg_is_in_recovery();
--- 结果：true（备库模式）
+docker compose -f docker-compose-gaussdb-pseudo.yml exec -T gaussdb-standby1 \
+  gsql -d postgres -U bloguser -W OpenGauss@123 -c "SELECT pg_is_in_recovery();"
+
+# 远程 VM 采用 gsql/gs_om：
+su - omm -c "gs_om -t status"
+su - omm -c "gsql -d blog_db -p 5432 -c 'SELECT pg_is_in_recovery();'"
 ```
 
 ✅ **成功指标**：
 
-- 主库正常接收写操作
-- 2 个备库成功启动并保持同步
-- 复制延迟 < 1 秒
+- 主库、两个备库通过 `verify-gaussdb-cluster.sh` 与 `gs_om -t status` 均为 `Normal`
+- `pg_stat_replication` 展示 `streaming / sync_state = Async`，复制延迟 < 1 秒
+- 备库在 `standby_mode` 下拒绝写操作，确保只读实例安全
 
 ---
 
@@ -527,26 +560,26 @@ curl -X POST http://localhost:8081/api/stats/analyze \
 
 ```
 CloudCom/
-├── docker-compose-gaussdb-pseudo.yml          # 集群编排
+├── docker-compose-gaussdb-pseudo.yml          # 本地 GaussDB + Backend + Frontend + Spark 编排
+├── GAUSSDB_CONFIG_SUMMARY.md                  # 集群配置与校验摘要
+├── start-gaussdb-cluster.sh                   # Compose 集群一键启动脚本
+├── start-standby-and-verify.sh                # 1 主 2 备快速拉起 + 状态确认
+├── verify-gaussdb-cluster.sh                  # 配置校验 + gsql 指南
+├── check_gaussdb_cluster.sh                   # 远程节点巡检/报告生成
+├── gaussdb-docker/                            # VM 专用镜像与复制脚本
+│   ├── Dockerfile-primary / standby           # 自定义镜像
+│   └── setup-replication.sh                   # 容器级复制初始化
 ├── backend/src/main/java/com/cloudcom/blog/
-│   ├── config/
-│   │   ├── DataSourceConfig.java             # 数据源配置
-│   │   └── WebConfig.java                    # JWT 配置
-│   ├── aspect/
-│   │   └── DataSourceAspect.java             # AOP 切面
-│   ├── annotation/
-│   │   └── ReadOnly.java                     # 只读注解
-│   ├── controller/
-│   │   └── StatisticsController.java         # Spark API
-│   └── service/
-│       └── SparkAnalyticsService.java        # Spark 服务
+│   ├── config/{DataSourceConfig, WebConfig}.java
+│   ├── aspect/DataSourceAspect.java
+│   ├── annotation/ReadOnly.java
+│   ├── controller/StatisticsController.java
+│   └── service/SparkAnalyticsService.java
 ├── backend/src/test/java/com/cloudcom/blog/
-│   ├── DatabaseIntegrationTest.java          # 数据库测试
-│   └── ApiEndToEndTest.java                  # API 测试
-├── analytics/src/main/java/
-│   └── GaussDBClusterConfig.java             # Spark 配置
-└── tests/
-    └── run-all-tests.sh                      # 统一测试脚本
+│   ├── DatabaseIntegrationTest.java
+│   └── ApiEndToEndTest.java
+├── analytics/src/main/java/com/cloudcom/analytics/GaussDBClusterConfig.java
+└── tests/run-all-tests.sh                      # 统一自动化测试脚本
 ```
 
 ---
@@ -605,8 +638,13 @@ CloudCom/
    - **解决**: 在 @BeforeAll 中创建所有必需的表
 
 3. **问题**: Spark 分析 API 返回 401
+
    - **原因**: 缺少 JWT Token
    - **解决**: 在测试脚本中先登录获取 Token
+
+4. **问题**: 使用标准 `psql` 连接远程 GaussDB 触发 `AUTH_REQ_SASL_CONT` 错误
+   - **原因**: GaussDB 认证流程与 PostgreSQL 略有差异
+   - **解决**: 统一使用 `gsql` 或 openGauss JDBC Driver，或在 `tests/run-all-tests.sh` 中通过容器化 gsql 代理执行
 
 ### 6.5 未来改进方向
 

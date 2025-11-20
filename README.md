@@ -12,7 +12,7 @@ Blog Circle 是一个仿微信朋友圈风格的博客社交平台，面向熟�
 
 前端设计围绕"朋友圈"这一核心使用场景展开，在页面数量相对有限的前提下，尽量将常用操作控制在较少的交互步骤内。界面基于 Element Plus 实现卡片式布局和弹窗交互，既便于统一风格，也为后续功能扩展和样式调整预留空间。
 
-**新增功能**：系统现已支持 GaussDB（openGauss）数据库、Spark 分析模块，提供完整的容器化部署方案。
+**新增功能**：系统现已支持 GaussDB（openGauss）数据库、Spark 分析模块，并配套完整的容器化/远程 VM 双栈部署方案。
 
 ## 当前项目状态概览（2025-11）
 
@@ -23,31 +23,35 @@ Blog Circle 是一个仿微信朋友圈风格的博客社交平台，面向熟�
 
 - **数据库与集群现状**
 
-  - 支持三种主要运行模式：
+  - 支持以下运行模式，所有配置以 README 为准：
     1. **本地 / 容器 PostgreSQL 单实例**：适用于日常开发和功能调试。
     2. **外部 GaussDB 单实例**：通过 `application-gaussdb.yml` 和 `docker-compose-gaussdb-lite.yml` 连接现有 GaussDB 主库。
-    3. **单机一主二备 GaussDB 集群（VM 10.211.55.11）**：
-       - 由 `setup-gaussdb-single-vm-cluster.sh` 生成并在虚拟机上执行部署脚本，在同一台主机上启动 1 个主库 + 2 个备库实例（端口分别为 5432/5433/5434）。
-       - 集群部署和验证过程已在 `SINGLE_VM_CLUSTER_GUIDE.md` 和 `GAUSSDB_CLUSTER_DEPLOYMENT_SUCCESS.md` 中详细记录。
+    3. **本地 GaussDB 一主二备（Docker Compose）**：
+       - 使用 `docker-compose-gaussdb-pseudo.yml` 启动 `gaussdb-primary + standby1 + standby2`，并包含 Spark、后端、前端容器。
+       - `start-gaussdb-cluster.sh`/`start-standby-and-verify.sh` 负责一键清理、启动与健康检查；`verify-gaussdb-cluster.sh`、`check_gaussdb_cluster.sh` 输出复制及节点报告。
+    4. **单机一主二备 GaussDB 集群（VM 10.211.55.11，openGauss 9.2.4/openEuler）**：
+       - `GAUSSDB_CLUSTER_DEPLOYMENT_SUCCESS.md` 记录了部署快照，主库/备库数据目录分别为 `/usr/local/opengauss/data_*`。
+       - 统一通过 `gs_ctl`、`gs_om`、`gsql` 进行生命周期管理，认证信息 `bloguser/blog_db` 与 Compose 模式保持一致。
 
 - **分析与 Spark 模块**
 
-  - `analytics` 子模块已接入 Spark，能够在 Docker Compose GaussDB 集群或外部 GaussDB 上运行统计任务。
-  - 通过 `run-spark-job.sh`、`SPARK_SETUP_GUIDE.md` 可以在本地或集群环境中复现统计作业（首次拉取 Spark 镜像耗时较长属正常现象）。
+  - `analytics` 子模块已接入 Spark，可在 Compose GaussDB 集群或外部 GaussDB 上运行统计任务。
+  - `start-standby-and-verify.sh` 启动数据库后会自动对 Spark 服务进行健康检查；`run-spark-job.sh` 与 `SPARK_SETUP_GUIDE.md` 记录手动/容器化触发方式。
 
 - **测试与脚本现状**
 
   - 根目录下提供了多类测试脚本：
-    - `tests/run-all-tests.sh`：汇总调用后端单元测试、API 测试和基础环境检查。
-    - `test-local-services.sh`：本地环境连通性与基础功能验证。
+    - `tests/run-all-tests.sh`：汇总调用后端单元测试、API 测试、Spark API、自检数据库复制。
+    - `local-ci-test.sh` / `test-local-services.sh`：本地开发与 CI 快速验证。
     - `test-gaussdb-connection.sh`、`test-vm-deployment.sh`：针对 GaussDB 与虚拟机部署的连通性与服务检查。
+    - `start-gaussdb-cluster.sh`、`start-standby-and-verify.sh`、`verify-gaussdb-cluster.sh`、`check_gaussdb_cluster.sh`：面向 GaussDB 一主二备场景的启动、复制校验、远程巡检脚本。
   - 针对 **单机一主二备 GaussDB 集群**：
-    - `test-gaussdb-single-vm-cluster.sh`：在本地 Mac 上，通过 Docker 化的 `psql` 尝试从外部验证 5432/5433/5434 三个实例的连接、角色和数据同步。
-    - `verify-gaussdb-cluster.sh`：推荐在虚拟机上使用 `gsql` 直接验证集群状态、数据同步和只读约束，更贴近 GaussDB 官方工具链。
+    - `test-gaussdb-single-vm-cluster.sh`：在本地通过容器化 `gsql`/`psql` 验证 5432/5433/5434 实例。
+    - `verify-gaussdb-cluster.sh` / `check_gaussdb_cluster.sh`：推荐在虚拟机或本地生成节点报告与复制视图；脚本默认调用 `gsql`、`gs_om` 以避免认证兼容性问题。
 
 - **已知限制与注意事项**
   - GaussDB（openGauss）在认证协议和系统视图（如 `pg_stat_replication` 字段）上与 PostgreSQL 存在差异：
-    - 使用 `postgres:15-alpine` 等标准 PostgreSQL 客户端连接 GaussDB 时，可能出现认证协议不匹配的问题，这是驱动层兼容性限制，并非业务逻辑错误。
+    - 使用标准 `psql` 连接远程 GaussDB 时可能出现 `AUTH_REQ_SASL_CONT without AUTH_REQ_SASL`，需改用 `gsql` 或 openGauss JDBC driver；脚本已统一封装。
     - 集群复制状态更多依赖 `pg_is_in_recovery()`、WAL 接收线程日志以及 GaussDB 自身的告警/日志文件进行确认。
   - 部分测试脚本假设目标环境已具备 Docker、GaussDB 客户端 (`gsql`) 等工具，实际运行前需要根据自身环境按需安装或微调脚本路径。
 

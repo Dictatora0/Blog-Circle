@@ -53,6 +53,10 @@ docker-compose -f docker-compose-gaussdb.yml logs -f
 
 # 停止服务
 docker-compose -f docker-compose-gaussdb.yml down
+
+# 或使用一键脚本（推荐）
+./start-gaussdb-cluster.sh        # 清理旧卷 + 启动 1 主 2 备集群
+./start-standby-and-verify.sh     # 快速验证容器、Spark、复制状态
 ```
 
 ---
@@ -152,36 +156,33 @@ npm run dev
 
 ### 前置条件
 
-- Docker 和 Docker Compose
-- 4GB+ 可用内存
-- 10GB+ 可用磁盘空间
+- Docker Desktop / Docker Compose 2.x（本地集群）
+- 或 openEuler + openGauss 9.2.4（远程 VM 10.211.55.11）
+- 至少 4GB 内存 + 10GB 磁盘
 
-### 使用 Docker 部署 GaussDB
-
-#### 方式 1：独立 GaussDB 容器
+### 使用 Docker 部署 GaussDB（本地一主二备）
 
 ```bash
-docker run -d \
-  --name gaussdb \
-  -e GS_PASSWORD=blogpass \
-  -p 5432:5432 \
-  -v gaussdb_data:/var/lib/opengauss/data \
-  enmotech/opengauss:latest
+# 直接使用脚本，内部会调用 docker-compose-gaussdb-pseudo.yml
+./start-gaussdb-cluster.sh
 
-# 等待容器启动
-sleep 30
+# 查看状态
+docker compose -f docker-compose-gaussdb-pseudo.yml ps
 
-# 初始化数据库
-docker exec gaussdb gsql -U omm -d postgres -f /docker-entrypoint-initdb.d/01_init.sql
+# 手动方式（不推荐，仅供排障参考）
+docker compose -f docker-compose-gaussdb-pseudo.yml up -d gaussdb-primary gaussdb-standby1 gaussdb-standby2
 ```
 
-#### 方式 2：通过 docker-compose
+### 远程 VM（10.211.55.11）部署
 
 ```bash
-docker-compose -f docker-compose-gaussdb.yml up -d gaussdb
+# 初始化脚本
+scp setup-gaussdb-single-vm-cluster.sh root@10.211.55.11:/tmp/
+ssh root@10.211.55.11 "bash /tmp/setup-gaussdb-single-vm-cluster.sh"
 
-# 验证连接
-docker-compose -f docker-compose-gaussdb.yml exec gaussdb gsql -U omm -d postgres -c "SELECT 1"
+# 启动/停止
+su - omm -c "gs_ctl start -D /usr/local/opengauss/data_primary -M primary"
+su - omm -c "gs_ctl stop -D /usr/local/opengauss/data_primary"
 ```
 
 ### 连接 GaussDB
@@ -261,10 +262,12 @@ docker-compose down -v
 # 启动所有服务
 docker-compose -f docker-compose-gaussdb.yml up -d
 
+# 或者使用 start-gaussdb-cluster.sh + run-spark-job.sh
+
 # 查看服务状态
 docker-compose -f docker-compose-gaussdb.yml ps
 
-# 查看日志
+# 查看日志（包含 Spark）
 docker-compose -f docker-compose-gaussdb.yml logs -f backend
 docker-compose -f docker-compose-gaussdb.yml logs -f spark-master
 
@@ -296,13 +299,13 @@ spark-submit --class com.cloudcom.analytics.BlogAnalyticsJob ...
 
 ### 连接现有 GaussDB 集群（不含 Spark）
 
-若宿主环境已有 GaussDB 主库（如一主二备集群），可以跳过容器化数据库：
+若宿主环境已有 GaussDB 主库（如 VM 10.211.55.11 的 1 主 2 备集群），可以跳过容器化数据库：
 
 ```bash
 export GAUSSDB_HOST=10.211.55.11
 export GAUSSDB_PORT=5432
 export GAUSSDB_USERNAME=bloguser
-export GAUSSDB_PASSWORD=blogpass
+export GAUSSDB_PASSWORD=747599qw@
 
 docker compose -f docker-compose-gaussdb-lite.yml up -d
 
@@ -313,7 +316,7 @@ docker compose -f docker-compose-gaussdb-lite.yml ps
 docker compose -f docker-compose-gaussdb-lite.yml down
 ```
 
-此模式仅启动前端与后端，直接连接已有 GaussDB 主节点，适合生产环境或已有数据库集群。
+此模式仅启动前端与后端，直接连接已有 GaussDB 主节点，适合生产环境或 VM 集群已就绪的场景。
 
 **访问地址**
 
@@ -346,65 +349,56 @@ SPARK_WORKER_MEMORY=1G
 
 ---
 
-## Spark 分析模块
+### Spark 分析模块
 
 ### 构建 Spark 任务
 
 ```bash
 cd analytics
-mvn clean package
+mvn clean package -DskipTests
 ```
 
 生成 JAR：`target/blog-analytics-1.0.0-jar-with-dependencies.jar`
 
 ### 运行 Spark 任务
 
-#### 方式 1：本地运行
+#### 方式 1：本地运行（连接本地 GaussDB 容器）
 
 ```bash
 spark-submit \
   --class com.cloudcom.analytics.BlogAnalyticsJob \
   --master local[*] \
   analytics/target/blog-analytics-1.0.0-jar-with-dependencies.jar \
-  jdbc:opengauss://localhost:5432/blog_db \
+  jdbc:postgresql://localhost:5432/blog_db \
   bloguser \
-  blogpass
+  OpenGauss@123
 ```
 
-#### 方式 2：Spark Cluster 模式
+#### 方式 2：Spark Cluster 模式（docker-compose-gaussdb-pseudo.yml）
 
 ```bash
 spark-submit \
-  --class com.cloudcom.analytics.BlogAnalyticsJob \
+  --class com.cloudcom.analytics.BlogAnalyticsClusterJob \
   --master spark://spark-master:7077 \
-  --deploy-mode cluster \
-  analytics/target/blog-analytics-1.0.0-jar-with-dependencies.jar \
-  jdbc:opengauss://gaussdb:5432/blog_db \
-  bloguser \
-  blogpass
+  --driver-memory 1g \
+  --executor-memory 1g \
+  --conf spark.driver.extraJavaOptions="-DGAUSSDB_PRIMARY_PASSWORD=OpenGauss@123" \
+  analytics/target/blog-analytics-1.0.0-jar-with-dependencies.jar
 ```
 
 #### 方式 3：Docker 容器运行
 
 ```bash
-# 构建镜像
-docker build -t blog-analytics:latest ./analytics
-
-# 运行容器
-docker run \
-  --network blogcircle-network \
-  blog-analytics:latest \
-  jdbc:opengauss://gaussdb:5432/blog_db \
-  bloguser \
-  blogpass
+./run-spark-job.sh   # 自动构建 JAR 并提交到 spark-master 容器
 ```
 
 #### 方式 4：通过后端 API 触发
 
 ```bash
-curl -X POST http://localhost:8080/api/stats/analyze \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json"
+TOKEN=$(curl -s -X POST http://localhost:8081/api/auth/login -d '{"username":"admin","password":"admin123"}' | grep -o '"token":"[^" ]*"' | cut -d'"' -f4)
+
+curl -X POST http://localhost:8081/api/stats/analyze \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ### 查看 Spark 结果
