@@ -1,0 +1,39 @@
+services:
+  backend:
+    build: ./backend
+    container_name: blogcircle-backend
+    environment:
+      - SPRING_PROFILES_ACTIVE=gaussdb-cluster
+      - GAUSSDB_PRIMARY_URL=jdbc:postgresql://10.211.55.11:5432/blog_db
+      - GAUSSDB_REPLICA_URL=jdbc:postgresql://10.211.55.11:5433,10.211.55.11:5434/blog_db?targetServerType=preferSlave&loadBalanceHosts=true
+      - GAUSSDB_USERNAME=bloguser
+      - GAUSSDB_PASSWORD=747599qw@
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
+    ports:
+      - "8081:8080"
+    networks:
+      - blogcircle-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/posts/list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: blogcircle-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - blogcircle-network
+    restart: unless-stopped
+
+networks:
+  blogcircle-network:
+    driver: bridge

@@ -6,12 +6,13 @@ set -euo pipefail
 # Blog Circle 部署启动脚本
 # 用法：
 #   本地开发环境：./docker-compose-start.sh dev      # PostgreSQL + Spring Boot + Vite（直接运行）
-#   虚拟机部署：./docker-compose-start.sh vm         # 容器化部署到虚拟机 10.211.55.11
+#   虚拟机部署：./docker-compose-start.sh vm         # 容器化部署到虚拟机 10.211.55.11，使用虚拟机上的 GaussDB 集群
 ###############################################################
 
 MODE=${1:-dev}
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/docker-compose.yml"
+VM_COMPOSE_FILE="${ROOT_DIR}/docker-compose-vm-gaussdb.yml"
 
 # 本地 Docker 命令路径
 DOCKER_CMD="/usr/local/bin/docker"
@@ -161,27 +162,62 @@ run_vm() {
   ok "虚拟机项目目录存在"
   echo ""
 
-  log "3. 检查和清理虚拟机端口冲突..."
-  # 检查端口占用
-  vm_cmd "netstat -anp 2>/dev/null | grep ':5432 ' | head -5" || vm_cmd "ss -tlnp 2>/dev/null | grep ':5432 ' | head -5" || true
+  log "3. 检查虚拟机 GaussDB 一主二备集群状态..."
+  
+  # 检查主库
+  if vm_cmd "su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_primary' 2>/dev/null | grep -q 'server is running'"; then
+    ok "GaussDB 主库 (端口 5432) 正在运行"
+  else
+    warn "GaussDB 主库未运行，尝试启动..."
+    if vm_cmd "su - omm -c 'gs_ctl start -D /usr/local/opengauss/data_primary' 2>&1"; then
+      ok "主库启动成功"
+      sleep 5
+    else
+      err "主库启动失败！请检查数据目录和配置"
+      warn "可能需要先停止所有实例，然后按顺序重启"
+      warn "手动操作：ssh root@10.211.55.11"
+      warn "  su - omm"
+      warn "  gs_ctl stop -D /usr/local/opengauss/data_primary"
+      warn "  gs_ctl stop -D /usr/local/opengauss/data_standby1"
+      warn "  gs_ctl stop -D /usr/local/opengauss/data_standby2"
+      warn "  gs_ctl start -D /usr/local/opengauss/data_primary"
+      warn "继续部署应用..."
+    fi
+  fi
+  
+  # 检查备库1
+  if vm_cmd "su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_standby1' 2>/dev/null | grep -q 'server is running'"; then
+    ok "GaussDB 备库1 (端口 5433) 正在运行"
+  else
+    warn "GaussDB 备库1未运行，尝试启动..."
+    vm_cmd "su - omm -c 'gs_ctl start -D /usr/local/opengauss/data_standby1' 2>&1" || warn "启动备库1失败"
+  fi
+  
+  # 检查备库2
+  if vm_cmd "su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_standby2' 2>/dev/null | grep -q 'server is running'"; then
+    ok "GaussDB 备库2 (端口 5434) 正在运行"
+  else
+    warn "GaussDB 备库2未运行，尝试启动..."
+    vm_cmd "su - omm -c 'gs_ctl start -D /usr/local/opengauss/data_standby2' 2>&1" || warn "启动备库2失败"
+  fi
+  
+  # 检查 Web 端口冲突
+  log "检查 Web 服务端口..."
   vm_cmd "netstat -anp 2>/dev/null | grep ':8080 ' | head -5" || vm_cmd "ss -tlnp 2>/dev/null | grep ':8080 ' | head -5" || true
   vm_cmd "netstat -anp 2>/dev/null | grep ':8081 ' | head -5" || vm_cmd "ss -tlnp 2>/dev/null | grep ':8081 ' | head -5" || true
 
-  # 停止可能冲突的服务
-  vm_cmd "sudo systemctl stop postgresql 2>/dev/null || true"
-  vm_cmd "sudo systemctl disable postgresql 2>/dev/null || true"
+  # 停止可能冲突的 Web 服务
   vm_cmd "sudo systemctl stop nginx 2>/dev/null || true"
   vm_cmd "sudo systemctl disable nginx 2>/dev/null || true"
 
-  # 杀死可能占用端口的进程
-  vm_cmd "sudo lsof -ti:5432 | xargs -r sudo kill -9 2>/dev/null || true"
+  # 杀死可能占用 Web 端口的进程（不包括 GaussDB 端口）
   vm_cmd "sudo lsof -ti:8080 | xargs -r sudo kill -9 2>/dev/null || true"
   vm_cmd "sudo lsof -ti:8081 | xargs -r sudo kill -9 2>/dev/null || true"
 
   # 等待端口释放
   vm_cmd "sleep 3"
 
-  ok "端口冲突清理完成"
+  ok "GaussDB 集群检查完成"
   echo ""
 
   log "4. 同步最新代码到虚拟机..."
@@ -216,13 +252,13 @@ run_vm() {
   echo ""
 
   log "5. 停止旧容器..."
-  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose down --remove-orphans >/dev/null 2>&1 || true"
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f docker-compose-vm-gaussdb.yml down --remove-orphans >/dev/null 2>&1 || true"
   ok "旧容器已停止"
   echo ""
 
-  log "6. 构建并启动服务..."
-  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose up -d --build"
-  ok "虚拟机服务已启动"
+  log "6. 构建并启动服务（使用虚拟机 GaussDB 集群）..."
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f docker-compose-vm-gaussdb.yml up -d --build"
+  ok "虚拟机服务已启动（后端连接到 GaussDB 集群）"
   echo ""
 
   log "7. 等待服务启动..."
@@ -234,18 +270,30 @@ run_vm() {
   echo ""
 
   log "9. 服务状态"
-  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose ps"
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f docker-compose-vm-gaussdb.yml ps"
   echo ""
 
-  log "10. 拉取关键日志"
-  echo "--- 数据库 ---"
-  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose logs --tail=20 db" || warn "数据库日志不可用"
+  log "10. 验证 GaussDB 集群状态"
+  echo "--- 主库状态 (data_primary) ---"
+  vm_cmd "su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_primary'" || warn "无法查询主库状态"
   echo ""
+  echo "--- 备库1状态 (data_standby1) ---"
+  vm_cmd "su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_standby1'" || warn "无法查询备库1状态"
+  echo ""
+  echo "--- 备库2状态 (data_standby2) ---"
+  vm_cmd "su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_standby2'" || warn "无法查询备库2状态"
+  echo ""
+  
+  log "验证主库复制连接"
+  vm_cmd "su - omm -c \"gsql -d blog_db -p 5432 -c 'SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;' 2>/dev/null\"" || warn "无法查询复制状态（可能主库未运行）"
+  echo ""
+
+  log "11. 拉取应用日志"
   echo "--- 后端 ---"
-  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose logs --tail=20 backend" || warn "后端日志不可用"
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f docker-compose-vm-gaussdb.yml logs --tail=20 backend" || warn "后端日志不可用"
   echo ""
   echo "--- 前端 ---"
-  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose logs --tail=20 frontend" || warn "前端日志不可用"
+  vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f docker-compose-vm-gaussdb.yml logs --tail=20 frontend" || warn "前端日志不可用"
   echo ""
 
   echo "========================================="
@@ -256,15 +304,27 @@ run_vm() {
   echo "  前端: http://${VM_IP}:8080"
   echo "  后端: http://${VM_IP}:8081"
   echo ""
+  echo "GaussDB 集群："
+  echo "  主库: ${VM_IP}:5432 (读写)"
+  echo "  备库1: ${VM_IP}:5433 (只读)"
+  echo "  备库2: ${VM_IP}:5434 (只读)"
+  echo "  数据库: blog_db"
+  echo "  用户: bloguser / 747599qw@"
+  echo ""
   echo "测试账号："
   echo "  用户名: admin"
   echo "  密码: admin123"
   echo ""
   echo "常用命令（在虚拟机上执行）："
   echo "  cd ${VM_PROJECT_DIR}"
-  echo "  docker-compose logs -f          # 查看所有日志"
-  echo "  docker-compose restart          # 重启服务"
-  echo "  docker-compose down             # 停止服务"
+  echo "  docker-compose -f docker-compose-vm-gaussdb.yml logs -f          # 查看应用日志"
+  echo "  docker-compose -f docker-compose-vm-gaussdb.yml restart          # 重启应用服务"
+  echo "  docker-compose -f docker-compose-vm-gaussdb.yml down             # 停止应用服务"
+  echo ""
+  echo "GaussDB 管理命令："
+  echo "  su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_primary'   # 查看主库状态"
+  echo "  su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_standby1'  # 查看备库1状态"
+  echo "  su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_standby2'  # 查看备库2状态"
   echo ""
 }
 
