@@ -123,9 +123,15 @@ public class SparkAnalyticsService {
             
             logger.info("SparkSession创建成功，开始数据分析...");
 
-            // 读取访问日志表（从备库）
-            logger.info("从备库连接读取访问日志表");
-            Dataset<Row> accessLogs = com.cloudcom.analytics.GaussDBClusterConfig.readFromReplica(spark, "access_logs");
+            // 读取访问日志表
+            logger.info("从数据库读取访问日志表");
+            Properties connectionProperties = new Properties();
+            connectionProperties.put("user", dbUsername);
+            connectionProperties.put("password", dbPassword);
+            connectionProperties.put("driver", "org.postgresql.Driver");
+            
+            Dataset<Row> accessLogs = spark.read()
+                    .jdbc(dbUrl, "access_logs", connectionProperties);
             
             logger.info("成功读取访问日志表，记录数: {}", accessLogs.count());
 
