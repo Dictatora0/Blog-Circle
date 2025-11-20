@@ -46,6 +46,10 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/posts/*/detail",
                         "/api/comments/post/*",
                         "/api/likes/*/count",
+                        "/api/stats",
+                        "/api/stats/list",
+                        "/api/stats/aggregated",
+                        "/api/stats/*",
                         "/uploads/**"
                 );
     }

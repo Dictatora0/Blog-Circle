@@ -38,18 +38,16 @@ public class SparkAnalyticsService {
     @Value("${spring.datasource.password}")
     private String dbPassword;
 
-    // 默认禁用Spark，直接使用SQL分析（避免Java 17+兼容性问题）
-    @Value("${spark.enabled:false}")
-    private boolean sparkEnabled = false;  // 默认值false，确保即使配置缺失也使用SQL
+    // 默认启用Spark，失败时回退到SQL分析
+    @Value("${spark.enabled:true}")
+    private boolean sparkEnabled = true;  // 默认值true，优先使用Spark
 
     /**
      * 执行数据分析
-     * 默认使用SQL直接查询（避免Spark在Java 17+的兼容性问题）
-     * 如果将来需要Spark，可以通过配置启用
+     * 默认优先使用Spark，失败时回退到SQL分析
      */
     public void runAnalytics() {
-        // 默认使用SQL分析（更稳定可靠，避免Java 17+安全管理器问题）
-        // 只有在配置明确启用Spark时才尝试使用Spark
+        // 默认优先使用Spark（更强大），失败时回退到SQL分析
         logger.info("开始执行数据分析，sparkEnabled配置: {}", sparkEnabled);
         
         if (sparkEnabled) {
@@ -125,16 +123,9 @@ public class SparkAnalyticsService {
             
             logger.info("SparkSession创建成功，开始数据分析...");
 
-            // 配置数据库连接
-            Properties props = new Properties();
-            props.setProperty("user", dbUsername);
-            props.setProperty("password", dbPassword);
-            props.setProperty("driver", "org.postgresql.Driver");
-
-            // 读取访问日志表
-            logger.info("连接到数据库: {}", dbUrl);
-            Dataset<Row> accessLogs = spark.read()
-                    .jdbc(dbUrl, "access_logs", props);
+            // 读取访问日志表（从备库）
+            logger.info("从备库连接读取访问日志表");
+            Dataset<Row> accessLogs = com.cloudcom.analytics.GaussDBClusterConfig.readFromReplica(spark, "access_logs");
             
             logger.info("成功读取访问日志表，记录数: {}", accessLogs.count());
 

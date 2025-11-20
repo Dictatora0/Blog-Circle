@@ -34,8 +34,8 @@ log_test() {
 }
 
 log_success() {
-    echo -e "${GREEN}[✓ 通过]${NC} $1"
-    echo "[✓ 通过] $1" >> $TEST_LOG
+    echo -e "${GREEN}[通过]${NC} $1"
+    echo "[通过] $1" >> $TEST_LOG
 }
 
 log_error() {

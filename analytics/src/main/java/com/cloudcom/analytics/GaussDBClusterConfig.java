@@ -24,7 +24,7 @@ public class GaussDBClusterConfig {
     private static final String DATABASE = System.getenv().getOrDefault("GAUSSDB_DATABASE", "blog_db");
     private static final String USERNAME = System.getenv().getOrDefault("GAUSSDB_USERNAME", "bloguser");
     private static final String PRIMARY_PASSWORD = System.getenv().getOrDefault("GAUSSDB_PRIMARY_PASSWORD", "747599qw@");
-    private static final String STANDBY_PASSWORD = System.getenv().getOrDefault("GAUSSDB_STANDBY_PASSWORD", "747599qw@1");
+    private static final String STANDBY_PASSWORD = System.getenv().getOrDefault("GAUSSDB_STANDBY_PASSWORD", "747599qw@");
     
     // 重试配置
     private static final int MAX_RETRIES = 3;
@@ -41,8 +41,9 @@ public class GaussDBClusterConfig {
      * 获取备库 JDBC URL（读操作，负载均衡）
      */
     public static String getReplicaJdbcUrl() {
-        // 暂时指向主库（单节点 PostgreSQL）
-        return String.format("jdbc:postgresql://%s:%s/%s", PRIMARY_HOST, PORT, DATABASE);
+        // 返回备库连接串，支持 PostgreSQL JDBC 驱动的负载均衡
+        return String.format("jdbc:postgresql://%s:%s,%s:%s/%s?targetServerType=preferSlave&loadBalanceHosts=true",
+            STANDBY1_HOST, PORT, STANDBY2_HOST, PORT, DATABASE);
     }
     
     /**
@@ -184,7 +185,7 @@ public class GaussDBClusterConfig {
             Dataset<Row> primaryTest = spark.read()
                 .jdbc(getPrimaryJdbcUrl(), "(SELECT 1 as test) t", getPrimaryConnectionProperties());
             primaryTest.show();
-            logger.info("✓ 主库连接成功: {}", PRIMARY_HOST);
+            logger.info("主库连接成功: {}", PRIMARY_HOST);
         } catch (Exception e) {
             logger.error("✗ 主库连接失败: {}", e.getMessage(), e);
             throw new RuntimeException("主库连接失败", e);
@@ -196,7 +197,7 @@ public class GaussDBClusterConfig {
             Dataset<Row> replicaTest = spark.read()
                 .jdbc(getReplicaJdbcUrl(), "(SELECT 1 as test) t", getReplicaConnectionProperties());
             replicaTest.show();
-            logger.info("✓ 备库连接成功");
+            logger.info("备库连接成功");
         } catch (Exception e) {
             logger.error("✗ 备库连接失败: {}", e.getMessage(), e);
             throw new RuntimeException("备库连接失败", e);

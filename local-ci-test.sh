@@ -13,19 +13,19 @@ NC='\033[0m' # No Color
 
 # 日志函数
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+    echo -e "${BLUE}[INFO] $1${NC}"
 }
 
 log_success() {
-    echo -e "${GREEN}$1${NC}"
+    echo -e "${GREEN}[OK] $1${NC}"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "${RED}[ERROR] $1${NC}"
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "${YELLOW}[WARN] $1${NC}"
 }
 
 # 清理函数

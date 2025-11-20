@@ -20,7 +20,7 @@ ssh-copy-id -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP}
 # 3. 测试连接
 echo "测试 SSH 连接..."
 if ssh -o ConnectTimeout=5 ${VM_USER}@${VM_IP} "echo 'SSH 密钥认证成功'"; then
-    echo "✓ SSH 配置成功！"
+    echo "SSH 配置成功！"
     echo ""
     echo "现在可以无密码连接到 VM："
     echo "  ssh ${VM_USER}@${VM_IP}"

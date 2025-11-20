@@ -59,7 +59,7 @@ su - omm -c "gsql -d blog_db -p 5434 -c 'SELECT * FROM cluster_test;'" 2>&1 || e
 
 echo ""
 echo "6. 测试备库只读限制:"
-su - omm -c "gsql -d blog_db -p 5433 -c 'INSERT INTO cluster_test VALUES (2, '\''should_fail'\'');'" 2>&1 && echo "错误：备库允许写入！" || echo "✓ 备库1正确拒绝写操作"
+su - omm -c "gsql -d blog_db -p 5433 -c 'INSERT INTO cluster_test VALUES (2, '\''should_fail'\'');'" 2>&1 && echo "错误：备库允许写入！" || echo "备库1正确拒绝写操作"
 
 echo ""
 echo "========================================="

@@ -40,7 +40,7 @@ public class CorsConfig {
                 "http://localhost:8080",
                 "http://10.211.55.11:8080"
             ));
-            System.out.println("🔧 CORS配置: 生产模式 - 仅允许指定来源");
+            System.out.println("CORS配置: 生产模式 - 仅允许指定来源");
         }
         
         // 允许携带认证信息（cookies, authorization headers）

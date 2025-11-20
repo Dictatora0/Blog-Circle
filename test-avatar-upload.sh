@@ -15,18 +15,18 @@ cd "$(dirname "$0")/frontend"
 
 # 检查是否安装了依赖
 if [ ! -d "node_modules" ]; then
-  echo "⚠️  未检测到 node_modules，正在安装依赖..."
+  echo "未检测到 node_modules，正在安装依赖..."
   npm install
 fi
 
 # 检查 Playwright 是否已安装
 if [ ! -d "node_modules/@playwright" ]; then
-  echo "⚠️  Playwright 未安装，正在安装..."
+  echo "Playwright 未安装，正在安装..."
   npx playwright install chromium
 fi
 
 echo ""
-echo "🚀 开始运行头像上传功能测试..."
+echo "开始运行头像上传功能测试..."
 echo ""
 
 # 运行头像上传测试
@@ -37,7 +37,7 @@ echo "========================================="
 echo "    测试完成"
 echo "========================================="
 echo ""
-echo "📊 查看详细报告:"
+echo "查看详细报告:"
 echo "   npx playwright show-report"
 echo ""
 

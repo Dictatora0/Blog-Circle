@@ -35,7 +35,7 @@ test.describe("好友动态时间线核心功能", () => {
     const timelineResponse = await timelineResponsePromise;
     expect(timelineResponse.status()).toBe(200);
     expect(timelineResponse.request().method()).toBe("GET");
-    console.log("✓ 时间线API调用成功");
+    console.log("时间线API调用成功");
 
     // 验证响应数据格式
     const responseData = await timelineResponse.json();
@@ -43,12 +43,12 @@ test.describe("好友动态时间线核心功能", () => {
     expect(responseData.code).toBe(200);
     expect(responseData).toHaveProperty("data");
     expect(Array.isArray(responseData.data)).toBeTruthy();
-    console.log(`✓ 时间线API返回 ${responseData.data.length} 条动态`);
+    console.log(`时间线API返回 ${responseData.data.length} 条动态`);
 
     // 验证页面标题
     const pageTitle = page.locator("h1").first();
     await expect(pageTitle).toBeVisible();
-    console.log("✓ 时间线页面加载完成");
+    console.log("时间线页面加载完成");
   });
 
   test("核心流程2：验证时间线数据结构", async ({ page }) => {
@@ -65,7 +65,7 @@ test.describe("好友动态时间线核心功能", () => {
     const timelineResponse = await timelineResponsePromise;
     const apiData = await timelineResponse.json();
 
-    console.log(`✓ 时间线包含 ${apiData.data.length} 条动态`);
+    console.log(`时间线包含 ${apiData.data.length} 条动态`);
 
     // 验证每条动态的数据结构
     apiData.data.forEach((post: any, index: number) => {
@@ -83,7 +83,7 @@ test.describe("好友动态时间线核心功能", () => {
       expect(typeof post.liked).toBe("boolean");
 
       console.log(
-        `✓ 动态${index + 1}数据结构完整: ${
+        `动态${index + 1}数据结构完整: ${
           post.authorName
         } - ${post.content?.substring(0, 20)}...`
       );
@@ -99,10 +99,10 @@ test.describe("好友动态时间线核心功能", () => {
 
     if (apiData.data.length > 0) {
       expect(uiMomentCount).toBe(apiData.data.length);
-      console.log(`✓ UI显示 ${uiMomentCount} 条动态，与API数据一致`);
+      console.log(`UI显示 ${uiMomentCount} 条动态，与API数据一致`);
     } else {
       expect(emptyState).toBeTruthy();
-      console.log("✓ 无动态时正确显示空状态");
+      console.log("无动态时正确显示空状态");
     }
   });
 
@@ -117,14 +117,14 @@ test.describe("好友动态时间线核心功能", () => {
     const friendListResponse = await friendListPromise;
     const friendsData = await friendListResponse.json();
     const friendIds = friendsData.data.map((friend: any) => friend.id);
-    console.log(`✓ 当前用户有 ${friendIds.length} 个好友`);
+    console.log(`当前用户有 ${friendIds.length} 个好友`);
 
     // 获取当前用户信息
     const currentUserId = await page.evaluate(() => {
       const userInfo = localStorage.getItem("userInfo");
       return userInfo ? JSON.parse(userInfo).id : null;
     });
-    console.log(`✓ 当前用户ID: ${currentUserId}`);
+    console.log(`当前用户ID: ${currentUserId}`);
 
     // 获取时间线数据
     const timelinePromise = page.waitForResponse(
@@ -142,12 +142,10 @@ test.describe("好友动态时间线核心功能", () => {
     timelineData.data.forEach((post: any) => {
       const isAllowed = allowedAuthorIds.includes(post.authorId);
       expect(isAllowed).toBeTruthy();
-      console.log(
-        `✓ 动态作者 ${post.authorName}(ID:${post.authorId}) 验证通过`
-      );
+      console.log(`动态作者 ${post.authorName}(ID:${post.authorId}) 验证通过`);
     });
 
-    console.log("✓ 时间线所有动态都来自自己或好友");
+    console.log("时间线所有动态都来自自己或好友");
   });
 
   test("核心流程4：验证动态按时间倒序排列", async ({ page }) => {
@@ -171,16 +169,16 @@ test.describe("好友动态时间线核心功能", () => {
 
         expect(currentTime).toBeGreaterThanOrEqual(nextTime);
         console.log(
-          `✓ 动态${i + 1}(${posts[i].createdAt}) >= 动态${i + 2}(${
+          `动态${i + 1}(${posts[i].createdAt}) >= 动态${i + 2}(${
             posts[i + 1].createdAt
           })`
         );
       }
 
-      console.log("✓ 时间线数据按时间倒序排列验证通过");
+      console.log("时间线数据按时间倒序排列验证通过");
     } else {
       console.log(
-        `✓ 时间线只有 ${timelineData.data.length} 条动态，无需验证排序`
+        `时间线只有 ${timelineData.data.length} 条动态，无需验证排序`
       );
     }
   });
@@ -218,7 +216,7 @@ test.describe("好友动态时间线交互验证", () => {
     if (apiPostCount > 0) {
       expect(uiPostCount).toBe(apiPostCount);
       console.log(
-        `✓ UI显示 ${uiPostCount} 条动态，与API数据(${apiPostCount})一致`
+        `UI显示 ${uiPostCount} 条动态，与API数据(${apiPostCount})一致`
       );
 
       // 验证第一条动态的完整性
@@ -240,10 +238,10 @@ test.describe("好友动态时间线交互验证", () => {
       const content = firstMoment.locator(".moment-content").first();
       await expect(content).toBeVisible();
 
-      console.log(`✓ 第一条动态显示完整: 作者=${authorText}, 时间=${timeText}`);
+      console.log(`第一条动态显示完整: 作者=${authorText}, 时间=${timeText}`);
     } else {
       expect(emptyState).toBeTruthy();
-      console.log("✓ 无动态时正确显示空状态");
+      console.log("无动态时正确显示空状态");
     }
   });
 
@@ -275,11 +273,11 @@ test.describe("好友动态时间线交互验证", () => {
     const timelineResponse = await timelinePromise;
     const timelineData = await timelineResponse.json();
     const timelineCount = timelineData.data?.length || timelineData.length || 0;
-    console.log(`✓ 时间线显示自己和好友的 ${timelineCount} 条动态`);
+    console.log(`时间线显示自己和好友的 ${timelineCount} 条动态`);
 
     // 验证时间线API返回了数据
     expect(timelineCount).toBeGreaterThanOrEqual(0);
-    console.log("✓ 时间线数据验证通过");
+    console.log("时间线数据验证通过");
   });
 
   test("交互3：响应式布局验证", async ({ page }) => {
@@ -301,7 +299,7 @@ test.describe("好友动态时间线交互验证", () => {
     await expect(title1).toBeVisible();
     const pageContainer1 = page.locator(".timeline-page, .page-container");
     expect(await pageContainer1.count()).toBeGreaterThan(0);
-    console.log("✓ 桌面布局验证通过");
+    console.log("桌面布局验证通过");
 
     // 移动视图
     await page.setViewportSize({ width: 375, height: 667 });
@@ -311,7 +309,7 @@ test.describe("好友动态时间线交互验证", () => {
     await expect(title2).toBeVisible();
     const pageContainer2 = page.locator(".timeline-page, .page-container");
     expect(await pageContainer2.count()).toBeGreaterThan(0);
-    console.log("✓ 移动布局验证通过");
+    console.log("移动布局验证通过");
   });
 
   test("核心流程5：验证时间线动态包含点赞状态", async ({ page }) => {
@@ -333,11 +331,11 @@ test.describe("好友动态时间线交互验证", () => {
       expect(typeof post.likeCount).toBe("number");
 
       console.log(
-        `✓ 动态${index + 1}: liked=${post.liked}, likeCount=${post.likeCount}`
+        `动态${index + 1}: liked=${post.liked}, likeCount=${post.likeCount}`
       );
     });
 
-    console.log("✓ 所有动态都包含点赞状态信息");
+    console.log("所有动态都包含点赞状态信息");
   });
 
   test("核心流程6：验证时间线动态包含评论数量", async ({ page }) => {
@@ -357,10 +355,10 @@ test.describe("好友动态时间线交互验证", () => {
       expect(typeof post.commentCount).toBe("number");
       expect(post.commentCount).toBeGreaterThanOrEqual(0);
 
-      console.log(`✓ 动态${index + 1}: commentCount=${post.commentCount}`);
+      console.log(`动态${index + 1}: commentCount=${post.commentCount}`);
     });
 
-    console.log("✓ 所有动态都包含评论数量信息");
+    console.log("所有动态都包含评论数量信息");
   });
 });
 
@@ -382,7 +380,7 @@ test.describe("好友动态时间线集成验证", () => {
     await page.goto("/timeline");
     await timelinePromise;
     await expect(page).toHaveURL(/.*\/timeline/);
-    console.log("✓ 时间线页面访问成功");
+    console.log("时间线页面访问成功");
 
     // 切换到好友管理
     const friendsListPromise = page.waitForResponse(
@@ -393,7 +391,7 @@ test.describe("好友动态时间线集成验证", () => {
     await page.goto("/friends");
     await friendsListPromise;
     await expect(page).toHaveURL(/.*\/friends/);
-    console.log("✓ 好友管理页面访问成功");
+    console.log("好友管理页面访问成功");
 
     // 切换回时间线
     const timeline2Promise = page.waitForResponse(
@@ -404,7 +402,7 @@ test.describe("好友动态时间线集成验证", () => {
     await page.goto("/timeline");
     await timeline2Promise;
     await expect(page).toHaveURL(/.*\/timeline/);
-    console.log("✓ 路由切换验证通过");
+    console.log("路由切换验证通过");
   });
 
   test("集成2：时间线API端点完整性", async ({ page }) => {
@@ -419,22 +417,22 @@ test.describe("好友动态时间线集成验证", () => {
 
     // 验证HTTP请求方法
     expect(response.request().method()).toBe("GET");
-    console.log("✓ 时间线使用GET方法");
+    console.log("时间线使用GET方法");
 
     // 验证状态码
     expect(response.status()).toBe(200);
-    console.log("✓ 时间线返回200状态码");
+    console.log("时间线返回200状态码");
 
     // 验证响应头
     const contentType = response.headers()["content-type"];
     expect(contentType).toContain("application/json");
-    console.log("✓ 时间线返回JSON格式数据");
+    console.log("时间线返回JSON格式数据");
 
     // 验证响应体
     const data = await response.json();
     expect(data.code).toBe(200);
     expect(Array.isArray(data.data)).toBeTruthy();
-    console.log("✓ 时间线API端点完整性验证通过");
+    console.log("时间线API端点完整性验证通过");
   });
 
   test("集成3：验证时间线与主页使用不同的API", async ({ page }) => {
@@ -456,7 +454,7 @@ test.describe("好友动态时间线集成验证", () => {
       url.includes("/api/posts/timeline")
     );
     expect(homeTimelineAPI).toBeTruthy();
-    console.log("✓ 主页使用 /api/posts/timeline");
+    console.log("主页使用 /api/posts/timeline");
 
     // 清空记录
     calledAPIs.length = 0;
@@ -471,11 +469,11 @@ test.describe("好友动态时间线集成验证", () => {
       url.includes("/api/posts/timeline")
     );
     expect(timelineAPI).toBeTruthy();
-    console.log("✓ 时间线使用 /api/posts/timeline");
+    console.log("时间线使用 /api/posts/timeline");
 
     // 两个API应该不同
     expect(homeAPI).not.toBe(timelineAPI);
-    console.log("✓ 主页和时间线使用不同的API端点");
+    console.log("主页和时间线使用不同的API端点");
   });
 });
 
@@ -515,7 +513,7 @@ test.describe("时间线数据一致性", () => {
     if (apiPosts.length > 0) {
       expect(uiPosts).toBe(apiPosts.length);
       expect(emptyState).toBeFalsy();
-      console.log(`✓ UI显示 ${uiPosts} 条动态，与API完全一致`);
+      console.log(`UI显示 ${uiPosts} 条动态，与API完全一致`);
 
       // 验证每条动态的作者信息显示正确
       for (let i = 0; i < Math.min(apiPosts.length, 3); i++) {
@@ -526,12 +524,12 @@ test.describe("时间线数据一致性", () => {
           .locator(".moment-author, .author-name")
           .textContent();
         expect(uiAuthor).toContain(apiPost.authorName);
-        console.log(`✓ 动态${i + 1}作者显示一致: ${apiPost.authorName}`);
+        console.log(`动态${i + 1}作者显示一致: ${apiPost.authorName}`);
       }
     } else {
       expect(uiPosts).toBe(0);
       expect(emptyState).toBeTruthy();
-      console.log("✓ 无动态时UI正确显示空状态");
+      console.log("无动态时UI正确显示空状态");
     }
   });
 
@@ -564,6 +562,6 @@ test.describe("时间线数据一致性", () => {
 
     // 两次加载的数据应该一致（假设期间没有新动态）
     expect(count2).toBe(count1);
-    console.log("✓ 重新加载后数据一致");
+    console.log("重新加载后数据一致");
   });
 });

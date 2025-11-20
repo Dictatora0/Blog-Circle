@@ -80,7 +80,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     }
     // 保存用户ID
     testUser1.id = registerData.data?.id;
-    console.log(`✓ 创建用户A成功: ${testUser1.username}, ID: ${testUser1.id}`);
+    console.log(`创建用户A成功: ${testUser1.username}, ID: ${testUser1.id}`);
 
     // 等待数据库事务完成
     await page.waitForTimeout(1000);
@@ -133,7 +133,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     }
     // 保存用户ID
     testUser2.id = registerData2.data?.id;
-    console.log(`✓ 创建用户B成功: ${testUser2.username}, ID: ${testUser2.id}`);
+    console.log(`创建用户B成功: ${testUser2.username}, ID: ${testUser2.id}`);
 
     // 等待数据库事务完成
     await page.waitForTimeout(1000);
@@ -143,7 +143,7 @@ test.describe("好友系统完整工作流集成测试", () => {
 
     // Step 3: 用户A登录
     await loginUser(page, testUser1.username, testUser1.password);
-    console.log(`✓ 用户A登录成功`);
+    console.log(`用户A登录成功`);
 
     // Step 4: 搜索用户B
     const searchPromise = page.waitForResponse(
@@ -171,7 +171,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     );
     expect(foundUser).toBeTruthy();
     expect(foundUser.password).toBeFalsy(); // 密码不应该返回（可能是null或undefined）
-    console.log(`✓ 搜索到用户B: ${foundUser.nickname}`);
+    console.log(`搜索到用户B: ${foundUser.nickname}`);
 
     // ==================== 发送好友请求 ====================
     console.log("\n========== 阶段3: 用户A发送好友请求 ==========");
@@ -204,7 +204,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     expect(sendData.code).toBe(200);
     expect(sendData.data).toHaveProperty("id");
     expect(sendData.data.status).toBe("PENDING");
-    console.log(`✓ 好友请求已发送，请求ID: ${sendData.data.id}`);
+    console.log(`好友请求已发送，请求ID: ${sendData.data.id}`);
 
     await page.waitForTimeout(1500);
 
@@ -222,11 +222,11 @@ test.describe("好友系统完整工作流集成测试", () => {
         await page.waitForTimeout(1000);
       }
     }
-    console.log("✓ 用户A已登出");
+    console.log("用户A已登出");
 
     // Step 7: 用户B登录
     await loginUser(page, testUser2.username, testUser2.password);
-    console.log("✓ 用户B登录成功");
+    console.log("用户B登录成功");
 
     // Step 8: 查看待处理请求
     const requestsPromise = page.waitForResponse(
@@ -252,7 +252,7 @@ test.describe("好友系统完整工作流集成测试", () => {
             r.requester.id === testUser1.id))
     );
     expect(pendingRequest).toBeTruthy();
-    console.log(`✓ 用户B收到用户A的好友请求，请求ID: ${pendingRequest.id}`);
+    console.log(`用户B收到用户A的好友请求，请求ID: ${pendingRequest.id}`);
 
     // Step 9: 接受好友请求
     await page.waitForTimeout(1000);
@@ -280,7 +280,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     const acceptData = await acceptResponse.json();
     expect(acceptResponse.status()).toBe(200);
     expect(acceptData.code).toBe(200);
-    console.log("✓ 用户B已接受好友请求");
+    console.log("用户B已接受好友请求");
 
     await page.waitForTimeout(2000);
 
@@ -305,7 +305,7 @@ test.describe("好友系统完整工作流集成测试", () => {
       `.friend-name:has-text("${testUser1.nickname}"), .friend-name:has-text("${testUser1.username}")`
     );
     await expect(friendACard.first()).toBeVisible({ timeout: 3000 });
-    console.log("✓ 用户A已出现在用户B的好友列表中");
+    console.log("用户A已出现在用户B的好友列表中");
 
     // ==================== 删除好友 ====================
     console.log("\n========== 阶段5: 用户B删除好友 ==========");
@@ -355,7 +355,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     const deleteData = await deleteResponse.json();
     expect(deleteResponse.status()).toBe(200);
     expect(deleteData.code).toBe(200);
-    console.log("✓ 删除API调用成功");
+    console.log("删除API调用成功");
 
     // Step 13: 验证好友数量减少
     await page.waitForTimeout(2000);
@@ -369,7 +369,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     console.log(`删除后好友数量: ${friendCountAfter}`);
 
     expect(friendCountAfter).toBe(friendCountBefore - 1);
-    console.log("✓ 好友数量正确减少1");
+    console.log("好友数量正确减少1");
 
     // ==================== 验证双向删除 ====================
     console.log("\n========== 阶段6: 验证用户A的好友列表也已更新 ==========");
@@ -404,7 +404,7 @@ test.describe("好友系统完整工作流集成测试", () => {
       (f: any) => f.username === testUser2.username
     );
     expect(hasFriendB).toBeFalsy();
-    console.log("✓ 用户A的好友列表也已更新（双向删除生效）");
+    console.log("用户A的好友列表也已更新（双向删除生效）");
 
     console.log("\n========== 测试完成：完整工作流验证通过 ==========");
   });
@@ -470,7 +470,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     }
     // 保存用户ID
     testUser3.id = data3.data?.id;
-    console.log(`✓ 创建用户3成功: ${testUser3.username}, ID: ${testUser3.id}`);
+    console.log(`创建用户3成功: ${testUser3.username}, ID: ${testUser3.id}`);
     await page.waitForTimeout(1000);
 
     // 创建用户4
@@ -515,7 +515,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     }
     // 保存用户ID
     testUser4.id = data4.data?.id;
-    console.log(`✓ 创建用户4成功: ${testUser4.username}, ID: ${testUser4.id}`);
+    console.log(`创建用户4成功: ${testUser4.username}, ID: ${testUser4.id}`);
     await page.waitForTimeout(1000);
 
     // ==================== 发送请求 ====================
@@ -539,7 +539,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     const searchResponse = await searchPromise;
     const searchData = await searchResponse.json();
     expect(searchData.data.length).toBeGreaterThan(0);
-    console.log("✓ 搜索到用户4");
+    console.log("搜索到用户4");
 
     // 等待搜索结果渲染
     // 等待任何好友卡片出现（说明搜索结果已渲染）
@@ -564,7 +564,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     const sendData = await sendResponse.json();
     expect(sendData.code).toBe(200);
     const requestId = sendData.data.id;
-    console.log(`✓ 好友请求已发送，请求ID: ${requestId}`);
+    console.log(`好友请求已发送，请求ID: ${requestId}`);
 
     // ==================== 拒绝请求 ====================
     console.log("\n========== 阶段3: 用户4拒绝好友请求 ==========");
@@ -607,7 +607,7 @@ test.describe("好友系统完整工作流集成测试", () => {
             r.requester.id === testUser3.id))
     );
     expect(receivedRequest).toBeTruthy();
-    console.log(`✓ 用户4收到用户3的好友请求`);
+    console.log(`用户4收到用户3的好友请求`);
 
     await page.waitForTimeout(1000);
 
@@ -631,7 +631,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     const rejectResponse = await rejectPromise;
     const rejectData = await rejectResponse.json();
     expect(rejectData.code).toBe(200);
-    console.log("✓ 用户4已拒绝好友请求");
+    console.log("用户4已拒绝好友请求");
 
     // ==================== 验证拒绝结果 ====================
     console.log("\n========== 阶段4: 验证拒绝后状态 ==========");
@@ -645,7 +645,7 @@ test.describe("好友系统完整工作流集成测试", () => {
     const requestsAfter = await page
       .locator(".requests-section .friend-card")
       .count();
-    console.log(`✓ 拒绝后待处理请求数: ${requestsAfter}`);
+    console.log(`拒绝后待处理请求数: ${requestsAfter}`);
 
     // 验证好友列表中没有用户3
     const friendListPromise2 = page.waitForResponse(
@@ -660,7 +660,7 @@ test.describe("好友系统完整工作流集成测试", () => {
       (f: any) => f.username === testUser3.username
     );
     expect(hasFriend3).toBeFalsy();
-    console.log("✓ 拒绝后用户3未成为好友（验证通过）");
+    console.log("拒绝后用户3未成为好友（验证通过）");
 
     console.log("\n========== 测试完成：拒绝流程验证通过 ==========");
   });

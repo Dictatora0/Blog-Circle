@@ -1,12 +1,12 @@
 #!/bin/bash
 # Blog Circle CORS修复与测试自动化脚本
 # 生成时间: 2025-11-05
-# 作者: DevOps + 全栈调试专家 AI
+# 作者: DevOps + 全栈调试团队
 
 set -e
 
 echo "=================================================="
-echo "🔧 Blog Circle CORS修复与测试自动化脚本"
+echo "Blog Circle CORS修复与测试自动化脚本"
 echo "=================================================="
 echo ""
 
@@ -22,19 +22,19 @@ NC='\033[0m' # No Color
 
 # 日志函数
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+    echo -e "${BLUE}[INFO] $1${NC}"
 }
 
 log_success() {
-    echo -e "${GREEN}$1${NC}"
+    echo -e "${GREEN}[OK] $1${NC}"
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "${YELLOW}[WARN] $1${NC}"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "${RED}[ERROR] $1${NC}"
 }
 
 # 1. 备份原始文件
@@ -194,7 +194,7 @@ cd ..
 log_info "10. 生成测试报告..."
 echo ""
 echo "=================================================="
-echo "📊 测试结果摘要"
+echo "测试结果摘要"
 echo "=================================================="
 
 if [ -f frontend/test-results/junit.xml ]; then

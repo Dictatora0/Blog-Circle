@@ -1,0 +1,191 @@
+version: "3.8"
+
+services:
+  gaussdb-primary:
+    image: postgres:13
+    container_name: gaussdb-primary
+    ports:
+      - "5432:5432"
+    volumes:
+      - gaussdb-data-primary:/var/lib/postgresql/data
+      - ./backend/src/main/resources/db/01_init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./gaussdb-docker/setup-replication.sh:/docker-entrypoint-initdb.d/setup-replication.sh
+    networks:
+      - gaussdb-network
+    environment:
+      - POSTGRES_DB=blog_db
+      - POSTGRES_USER=bloguser
+      - POSTGRES_PASSWORD=747599qw@
+    command: >
+      postgres -c wal_level=replica -c max_wal_senders=10 -c hot_standby=on
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bloguser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gaussdb-standby1:
+    image: postgres:13
+    container_name: gaussdb-standby1
+    user: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - gaussdb-data-standby1:/var/lib/postgresql/data
+    depends_on:
+      gaussdb-primary:
+        condition: service_healthy
+    networks:
+      - gaussdb-network
+    environment:
+      - POSTGRES_DB=blog_db
+      - POSTGRES_USER=bloguser
+      - POSTGRES_PASSWORD=747599qw@
+      - PGPASSWORD=747599qw@
+    command: >
+      bash -c "
+        if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+          rm -rf /var/lib/postgresql/data/* 2>/dev/null || true
+          until PGPASSWORD=747599qw@ pg_basebackup -h gaussdb-primary -p 5432 -U bloguser -D /var/lib/postgresql/data -Fp -Xs -P -R --wal-method=stream; do
+            echo 'Retrying pg_basebackup for standby1...'
+            rm -rf /var/lib/postgresql/data/* 2>/dev/null || true
+            sleep 5
+          done
+          chmod 700 /var/lib/postgresql/data
+          echo 'hot_standby = on' >> /var/lib/postgresql/data/postgresql.conf
+        fi
+        exec postgres
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bloguser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gaussdb-standby2:
+    image: postgres:13
+    container_name: gaussdb-standby2
+    user: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - gaussdb-data-standby2:/var/lib/postgresql/data
+    depends_on:
+      gaussdb-primary:
+        condition: service_healthy
+    networks:
+      - gaussdb-network
+    environment:
+      - POSTGRES_DB=blog_db
+      - POSTGRES_USER=bloguser
+      - POSTGRES_PASSWORD=747599qw@
+      - PGPASSWORD=747599qw@
+    command: >
+      bash -c "
+        sleep 10
+        if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+          rm -rf /var/lib/postgresql/data/* 2>/dev/null || true
+          until PGPASSWORD=747599qw@ pg_basebackup -h gaussdb-primary -p 5432 -U bloguser -D /var/lib/postgresql/data -Fp -Xs -P -R --wal-method=stream; do
+            echo 'Retrying pg_basebackup...'
+            rm -rf /var/lib/postgresql/data/* 2>/dev/null || true
+            sleep 5
+          done
+          chmod 700 /var/lib/postgresql/data
+          echo 'hot_standby = on' >> /var/lib/postgresql/data/postgresql.conf
+        fi
+        exec postgres
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bloguser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: blogcircle-backend-pseudo
+    environment:
+      - SPRING_PROFILES_ACTIVE=gaussdb-cluster
+      - GAUSSDB_PRIMARY_URL=jdbc:postgresql://gaussdb-primary:5432/blog_db
+      - GAUSSDB_REPLICA_URL=jdbc:postgresql://gaussdb-standby1:5432,gaussdb-standby2:5432/blog_db?targetServerType=preferSlave&loadBalanceHosts=true
+      - GAUSSDB_USERNAME=bloguser
+      - GAUSSDB_PASSWORD=747599qw@
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
+    ports:
+      - "8081:8080"
+    depends_on:
+      gaussdb-standby2:
+        condition: service_healthy
+    networks:
+      - gaussdb-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/posts/list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: blogcircle-frontend-pseudo
+    ports:
+      - "8082:80"
+    depends_on:
+      - backend
+    networks:
+      - gaussdb-network
+    restart: unless-stopped
+
+  spark-master:
+    image: apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
+    container_name: blogcircle-spark-master-pseudo
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - GAUSSDB_PRIMARY_HOST=gaussdb-primary
+      - GAUSSDB_STANDBY1_HOST=gaussdb-standby1
+      - GAUSSDB_STANDBY2_HOST=gaussdb-standby2
+    ports:
+      - "7077:7077"
+      - "8090:8080"
+    networks:
+      - gaussdb-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  spark-worker:
+    image: apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
+    container_name: blogcircle-spark-worker-pseudo
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=2
+      - GAUSSDB_PRIMARY_HOST=gaussdb-primary
+      - GAUSSDB_STANDBY1_HOST=gaussdb-standby1
+      - GAUSSDB_STANDBY2_HOST=gaussdb-standby2
+    ports:
+      - "8091:8081"
+    networks:
+      - gaussdb-network
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  gaussdb-data-primary:
+  gaussdb-data-standby1:
+  gaussdb-data-standby2:
+
+networks:
+  gaussdb-network:
+    driver: bridge

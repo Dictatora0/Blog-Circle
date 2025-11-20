@@ -25,7 +25,7 @@ log_test() {
 }
 
 log_pass() {
-    echo -e "${GREEN}[✓ 通过]${NC} $1"
+    echo -e "${GREEN}[通过]${NC} $1"
     ((PASSED++))
 }
 

@@ -14,17 +14,17 @@ echo ""
 
 # 检查是否在git仓库中
 if [ ! -d ".git" ]; then
-  echo "❌ 错误：当前目录不是git仓库"
+  echo "错误：当前目录不是git仓库"
   exit 1
 fi
 
 # 显示当前状态
-echo "📋 当前Git状态："
+echo "当前 Git 状态："
 git status --short
 echo ""
 
 # 添加所有更改的文件
-echo "📦 添加文件到暂存区..."
+echo "添加文件到暂存区..."
 git add backend/src/main/java/com/cloudcom/blog/entity/User.java
 git add backend/src/main/java/com/cloudcom/blog/config/WebConfig.java
 git add backend/src/main/resources/db/init.sql
@@ -57,7 +57,7 @@ echo "文件已添加到暂存区"
 echo ""
 
 # 显示将要提交的文件
-echo "📝 将要提交的文件："
+echo "将要提交的文件："
 git status --short
 echo ""
 
@@ -65,19 +65,19 @@ echo ""
 read -p "确认提交？(y/n) " -n 1 -r
 echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-  echo "❌ 提交已取消"
+  echo "提交已取消"
   exit 1
 fi
 
 # 提交
 echo ""
-echo "💾 提交更改..."
+echo "提交更改..."
 git commit -m "$COMMIT_MSG"
 
 echo ""
 echo "提交成功！"
 echo ""
-echo "📤 推送到远程仓库："
+echo "推送到远程仓库："
 echo "   git push origin dev"
 echo ""
 

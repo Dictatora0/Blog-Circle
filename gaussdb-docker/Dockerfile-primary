@@ -1,0 +1,26 @@
+FROM postgres:13-alpine
+
+# 创建 omm 用户和数据目录
+RUN addgroup -g 1001 omm && \
+    adduser -D -u 1001 -G omm omm && \
+    mkdir -p /var/lib/postgresql/data && \
+    chown -R omm:omm /var/lib/postgresql
+
+# 设置环境变量
+ENV POSTGRES_DB=blog_db
+ENV POSTGRES_USER=bloguser
+ENV POSTGRES_PASSWORD=747599qw@
+ENV PGDATA=/var/lib/postgresql/data
+
+# 切换到 omm 用户
+USER omm
+
+# 复制初始化脚本
+COPY entrypoint-primary.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# 暴露端口
+EXPOSE 5432
+
+# 设置入口点
+ENTRYPOINT ["/entrypoint.sh"]

@@ -44,7 +44,9 @@ public class DataSourceConfig {
     @Bean(name = "replicaDataSource")
     @ConfigurationProperties(prefix = "spring.datasource.replica")
     public DataSource replicaDataSource() {
-        return DataSourceBuilder.create().type(HikariDataSource.class).build();
+        HikariDataSource dataSource = DataSourceBuilder.create().type(HikariDataSource.class).build();
+        dataSource.setReadOnly(true);  // 启用只读模式
+        return dataSource;
     }
 
     /**

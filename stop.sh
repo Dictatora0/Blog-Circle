@@ -15,7 +15,7 @@ if [ -f "logs/backend.pid" ]; then
     rm logs/backend.pid
     echo "后端服务已停止"
 else
-    echo "⚠️  未找到后端服务 PID"
+    echo "未找到后端服务 PID"
 fi
 
 # 停止前端
@@ -26,7 +26,7 @@ if [ -f "logs/frontend.pid" ]; then
     rm logs/frontend.pid
     echo "前端服务已停止"
 else
-    echo "⚠️  未找到前端服务 PID"
+    echo "未找到前端服务 PID"
 fi
 
 # 清理可能残留的进程

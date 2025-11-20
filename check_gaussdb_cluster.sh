@@ -58,7 +58,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # 使用临时 PostgreSQL 容器执行 psql 命令
-echo "✓ 使用临时 PostgreSQL 容器执行数据库操作"
+echo "使用临时 PostgreSQL 容器执行数据库操作"
 
 # 前置数据库连接测试（使用 psql 直接连接，不需要 SSH）
 echo "测试 PostgreSQL 数据库连接..."
@@ -72,7 +72,7 @@ PG_DB="blog_db"
 echo "测试主库连接 (${PRIMARY_IP}:${DB_PORT})..."
 $DOCKER_CMD run --rm -e PGPASSWORD="${PG_PASSWORD}" postgres:15-alpine psql -h "${PRIMARY_IP}" -p "${DB_PORT}" -U "${PG_USER}" -d "${PG_DB}" -c "SELECT 'PRIMARY OK' as status, version();" 2>&1 | head -5
 if [ $? -eq 0 ]; then
-    echo "  ✓ 主库连接成功"
+    echo "  主库连接成功"
 else
     echo "  ✗ 主库连接失败"
     echo "请检查："
@@ -87,7 +87,7 @@ if [ -n "${STANDBY1_IP}" ]; then
     echo "测试备库1连接 (${STANDBY1_IP}:${DB_PORT})..."
     $DOCKER_CMD run --rm -e PGPASSWORD="${STANDBY1_ROOT_PWD}" postgres:15-alpine psql -h "${STANDBY1_IP}" -p "${DB_PORT}" -U "${PG_USER}" -d "${PG_DB}" -c "SELECT 'STANDBY1 OK' as status;" 2>&1 | head -3
     if [ $? -eq 0 ]; then
-        echo "  ✓ 备库1连接成功"
+        echo "  备库1连接成功"
     else
         echo "  ⚠ 备库1连接失败（可能未配置）"
     fi
@@ -97,7 +97,7 @@ if [ -n "${STANDBY2_IP}" ]; then
     echo "测试备库2连接 (${STANDBY2_IP}:${DB_PORT})..."
     $DOCKER_CMD run --rm -e PGPASSWORD="${STANDBY2_ROOT_PWD}" postgres:15-alpine psql -h "${STANDBY2_IP}" -p "${DB_PORT}" -U "${PG_USER}" -d "${PG_DB}" -c "SELECT 'STANDBY2 OK' as status;" 2>&1 | head -3
     if [ $? -eq 0 ]; then
-        echo "  ✓ 备库2连接成功"
+        echo "  备库2连接成功"
     else
         echo "  ⚠ 备库2连接失败（可能未配置）"
     fi
@@ -132,7 +132,7 @@ record_test() {
   
   if [ "$result" = "PASS" ]; then
     test_passed=$((test_passed + 1))
-    echo "✓ [PASS] $test_name" >> "$REPORT_FILE"
+    echo "[PASS] $test_name" >> "$REPORT_FILE"
   else
     test_failed=$((test_failed + 1))
     echo "✗ [FAIL] $test_name" >> "$REPORT_FILE"
@@ -484,7 +484,7 @@ echo "" >> "$REPORT_FILE"
 
 echo "验证结论：" >> "$REPORT_FILE"
 if [ "$overall_ok" -eq 1 ]; then
-  echo "✓ 集群一主两备运行正常" >> "$REPORT_FILE"
+  echo "集群一主两备运行正常" >> "$REPORT_FILE"
   echo "  - 所有节点进程和端口正常" >> "$REPORT_FILE"
   echo "  - 数据库连接正常" >> "$REPORT_FILE"
   echo "  - 数据复制功能正常" >> "$REPORT_FILE"
@@ -508,7 +508,7 @@ echo "总测试数：$test_total"
 echo "通过：$test_passed"
 echo "失败：$test_failed"
 if [ "$overall_ok" -eq 1 ]; then
-  echo "状态：✓ 全部通过"
+  echo "状态：全部通过"
 else
   echo "状态：✗ 存在失败项"
 fi

@@ -310,7 +310,7 @@ jobs:
 
           # 检查后端测试结果
           if [ "${{ needs.backend-test.result }}" != "success" ]; then
-            echo "❌ 后端测试失败"
+            echo "后端测试失败"
             BACKEND_FAILED=true
           else
             echo "后端测试通过"
@@ -318,7 +318,7 @@ jobs:
 
           # 检查前端测试结果
           if [ "${{ needs.frontend-test.result }}" != "success" ]; then
-            echo "❌ 前端测试失败"
+            echo "前端测试失败"
             FRONTEND_FAILED=true
           else
             echo "前端测试通过"
@@ -331,11 +331,11 @@ jobs:
 
           # 如果有测试失败，退出并返回错误码
           if [ "${{ needs.backend-test.result }}" != "success" ] || [ "${{ needs.frontend-test.result }}" != "success" ]; then
-            echo "⚠️  部分测试失败，请查看详细报告"
+            echo "部分测试失败，请查看详细报告"
             echo "tests_passed=false" >> $GITHUB_OUTPUT
             exit 1
           else
-            echo "🎉 所有测试通过！"
+            echo "所有测试通过"
             echo "tests_passed=true" >> $GITHUB_OUTPUT
           fi
 
@@ -372,14 +372,14 @@ jobs:
             const backendResult = '${{ needs.backend-test.result }}';
             const frontendResult = '${{ needs.frontend-test.result }}';
 
-            const comment = `## 🧪 测试结果
+            const comment = `## 测试结果
 
             | 测试类型 | 状态 |
             |---------|------|
-            | 后端测试 | ${backendResult === 'success' ? '通过' : '❌ 失败'} |
-            | 前端测试 | ${frontendResult === 'success' ? '通过' : '❌ 失败'} |
+            | 后端测试 | ${backendResult === 'success' ? '通过' : '失败'} |
+            | 前端测试 | ${frontendResult === 'success' ? '通过' : '失败'} |
 
-            ### 📊 测试覆盖
+            ### 测试覆盖
 
             - 头像上传功能测试 (\`avatar.spec.ts\`)
             - 个人主页功能测试 (\`profile.spec.ts\`) - 封面、布局、动态显示
@@ -390,7 +390,7 @@ jobs:
             - 动态发布测试
             - 评论和点赞测试
 
-            ### 🎯 测试严格度提升
+            ### 测试严格度
 
             - 100% API调用验证（所有测试都监听API）
             - 100% 数据变化验证（操作前后对比）

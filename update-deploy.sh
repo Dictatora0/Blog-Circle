@@ -46,7 +46,7 @@ if [ ! -f "docker-compose.yml" ]; then
     echo "错误: docker-compose.yml 文件不存在"
     exit 1
 fi
-echo "✓ docker-compose.yml 存在"
+echo "docker-compose.yml 存在"
 echo ""
 
 echo "5. 停止现有容器（保留数据卷）..."

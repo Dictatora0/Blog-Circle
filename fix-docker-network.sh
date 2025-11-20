@@ -12,7 +12,7 @@ echo ""
 
 # 检查是否在容器内运行
 if [ -f /.dockerenv ]; then
-    echo "❌ 此脚本不应在容器内运行，请在主机上运行"
+    echo "此脚本不应在容器内运行，请在主机上运行"
     exit 1
 fi
 
@@ -39,7 +39,7 @@ for i in {1..10}; do
 done
 
 if [ -z "$BACKEND_IP" ]; then
-    echo "❌ 无法获取 backend 容器 IP"
+    echo "无法获取 backend 容器 IP"
     docker-compose ps
     exit 1
 fi
@@ -106,7 +106,7 @@ echo "[6] 检查前端状态..."
 if docker-compose ps frontend | grep -q "Up"; then
     echo "前端容器已启动"
 else
-    echo "⚠️  前端容器可能未完全启动，查看日志..."
+    echo "前端容器可能未完全启动，查看日志..."
     docker-compose logs frontend | tail -10
 fi
 

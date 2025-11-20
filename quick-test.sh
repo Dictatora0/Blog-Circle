@@ -17,7 +17,7 @@ echo "检查后端服务..."
 if curl -f http://localhost:8080/ > /dev/null 2>&1; then
     echo -e "${GREEN}后端运行中${NC}"
 else
-    echo -e "${RED}❌ 后端未运行，请先启动：cd backend && mvn spring-boot:run${NC}"
+    echo -e "${RED}后端未运行，请先启动：cd backend && mvn spring-boot:run${NC}"
     exit 1
 fi
 
@@ -25,7 +25,7 @@ echo "检查前端服务..."
 if curl -f http://localhost:5173 > /dev/null 2>&1; then
     echo -e "${GREEN}前端运行中${NC}"
 else
-    echo -e "${RED}❌ 前端未运行，请先启动：cd frontend && npm run dev${NC}"
+    echo -e "${RED}前端未运行，请先启动：cd frontend && npm run dev${NC}"
     exit 1
 fi
 

@@ -90,7 +90,7 @@ chmod +x test-gaussdb-single-vm-cluster.sh
 失败: 0
 通过率: 100%
 
-✓ 所有测试通过！GaussDB 单机一主二备集群部署成功。
+所有测试通过！GaussDB 单机一主二备集群部署成功。
 
 集群信息:
   主库: 10.211.55.11:5432
