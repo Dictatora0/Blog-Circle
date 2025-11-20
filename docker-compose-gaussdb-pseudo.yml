@@ -1,105 +1,95 @@
-version: "3.8"
-
 services:
   gaussdb-primary:
-    image: postgres:13
+    image: opengauss/opengauss:5.0.0
     container_name: gaussdb-primary
+    privileged: true
     ports:
       - "5432:5432"
     volumes:
-      - gaussdb-data-primary:/var/lib/postgresql/data
+      - gaussdb-data-primary:/var/lib/opengauss
       - ./backend/src/main/resources/db/01_init.sql:/docker-entrypoint-initdb.d/01_init.sql
-      - ./gaussdb-docker/setup-replication.sh:/docker-entrypoint-initdb.d/setup-replication.sh
     networks:
       - gaussdb-network
     environment:
-      - POSTGRES_DB=blog_db
-      - POSTGRES_USER=bloguser
-      - POSTGRES_PASSWORD=747599qw@
-    command: >
-      postgres -c wal_level=replica -c max_wal_senders=10 -c hot_standby=on
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bloguser"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - GS_PASSWORD=OpenGauss@123
+      - GS_DB=blog_db
+      - GS_USER=bloguser
+      - GS_PORT=5432
 
   gaussdb-standby1:
-    image: postgres:13
+    image: opengauss/opengauss:5.0.0
     container_name: gaussdb-standby1
-    user: postgres
+    privileged: true
     ports:
       - "5433:5432"
     volumes:
-      - gaussdb-data-standby1:/var/lib/postgresql/data
+      - gaussdb-data-standby1:/var/lib/opengauss
     depends_on:
-      gaussdb-primary:
-        condition: service_healthy
+      - gaussdb-primary
     networks:
       - gaussdb-network
     environment:
-      - POSTGRES_DB=blog_db
-      - POSTGRES_USER=bloguser
-      - POSTGRES_PASSWORD=747599qw@
-      - PGPASSWORD=747599qw@
+      - GS_PASSWORD=OpenGauss@123
+      - GS_DB=blog_db
+      - GS_USER=bloguser
+      - GS_PORT=5432
+      - PRIMARY_HOST=gaussdb-primary
+      - PRIMARY_PORT=5432
+      - NODE_NAME=standby1
     command: >
       bash -c "
-        if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
-          rm -rf /var/lib/postgresql/data/* 2>/dev/null || true
-          until PGPASSWORD=747599qw@ pg_basebackup -h gaussdb-primary -p 5432 -U bloguser -D /var/lib/postgresql/data -Fp -Xs -P -R --wal-method=stream; do
-            echo 'Retrying pg_basebackup for standby1...'
-            rm -rf /var/lib/postgresql/data/* 2>/dev/null || true
+        if [ ! -f /var/lib/opengauss/PG_VERSION ]; then
+          echo 'Initializing standby1 from primary...'
+          rm -rf /var/lib/opengauss/* 2>/dev/null || true
+          until gs_basebackup -h gaussdb-primary -p 5432 -U bloguser -W OpenGauss@123 -D /var/lib/opengauss -Fp -Xs -P; do
+            echo 'Retrying gs_basebackup for standby1...'
+            rm -rf /var/lib/opengauss/* 2>/dev/null || true
             sleep 5
           done
-          chmod 700 /var/lib/postgresql/data
-          echo 'hot_standby = on' >> /var/lib/postgresql/data/postgresql.conf
+          chmod 700 /var/lib/opengauss
+          echo \"standby_mode = 'on'\" >> /var/lib/opengauss/recovery.conf
+          echo \"primary_conninfo = 'host=gaussdb-primary port=5432 user=bloguser password=OpenGauss@123'\" >> /var/lib/opengauss/recovery.conf
         fi
-        exec postgres
+        exec gaussdb
       "
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bloguser"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   gaussdb-standby2:
-    image: postgres:13
+    image: opengauss/opengauss:5.0.0
     container_name: gaussdb-standby2
-    user: postgres
+    privileged: true
     ports:
       - "5434:5432"
     volumes:
-      - gaussdb-data-standby2:/var/lib/postgresql/data
+      - gaussdb-data-standby2:/var/lib/opengauss
     depends_on:
-      gaussdb-primary:
-        condition: service_healthy
+      - gaussdb-primary
     networks:
       - gaussdb-network
     environment:
-      - POSTGRES_DB=blog_db
-      - POSTGRES_USER=bloguser
-      - POSTGRES_PASSWORD=747599qw@
-      - PGPASSWORD=747599qw@
+      - GS_PASSWORD=OpenGauss@123
+      - GS_DB=blog_db
+      - GS_USER=bloguser
+      - GS_PORT=5432
+      - PRIMARY_HOST=gaussdb-primary
+      - PRIMARY_PORT=5432
+      - NODE_NAME=standby2
     command: >
       bash -c "
         sleep 10
-        if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
-          rm -rf /var/lib/postgresql/data/* 2>/dev/null || true
-          until PGPASSWORD=747599qw@ pg_basebackup -h gaussdb-primary -p 5432 -U bloguser -D /var/lib/postgresql/data -Fp -Xs -P -R --wal-method=stream; do
-            echo 'Retrying pg_basebackup...'
-            rm -rf /var/lib/postgresql/data/* 2>/dev/null || true
+        if [ ! -f /var/lib/opengauss/PG_VERSION ]; then
+          echo 'Initializing standby2 from primary...'
+          rm -rf /var/lib/opengauss/* 2>/dev/null || true
+          until gs_basebackup -h gaussdb-primary -p 5432 -U bloguser -W OpenGauss@123 -D /var/lib/opengauss -Fp -Xs -P; do
+            echo 'Retrying gs_basebackup for standby2...'
+            rm -rf /var/lib/opengauss/* 2>/dev/null || true
             sleep 5
           done
-          chmod 700 /var/lib/postgresql/data
-          echo 'hot_standby = on' >> /var/lib/postgresql/data/postgresql.conf
+          chmod 700 /var/lib/opengauss
+          echo \"standby_mode = 'on'\" >> /var/lib/opengauss/recovery.conf
+          echo \"primary_conninfo = 'host=gaussdb-primary port=5432 user=bloguser password=OpenGauss@123'\" >> /var/lib/opengauss/recovery.conf
         fi
-        exec postgres
+        exec gaussdb
       "
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bloguser"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   backend:
     build: ./backend
@@ -109,7 +99,7 @@ services:
       - GAUSSDB_PRIMARY_URL=jdbc:postgresql://gaussdb-primary:5432/blog_db
       - GAUSSDB_REPLICA_URL=jdbc:postgresql://gaussdb-standby1:5432,gaussdb-standby2:5432/blog_db?targetServerType=preferSlave&loadBalanceHosts=true
       - GAUSSDB_USERNAME=bloguser
-      - GAUSSDB_PASSWORD=747599qw@
+      - GAUSSDB_PASSWORD=OpenGauss@123
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
     ports:
       - "8081:8080"

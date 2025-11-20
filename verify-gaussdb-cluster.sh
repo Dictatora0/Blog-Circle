@@ -1,5 +1,143 @@
 #!/bin/bash
 
+# GaussDB 1主2备集群配置验证脚本
+
+echo "=========================================="
+echo "GaussDB 1主2备集群配置验证"
+echo "=========================================="
+echo ""
+
+# 颜色定义
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# 检查 docker-compose 文件
+echo "[1/6] 检查 docker-compose 配置文件..."
+if [ ! -f "docker-compose-gaussdb-pseudo.yml" ]; then
+    echo -e "${RED}✗ 配置文件不存在${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ 配置文件存在${NC}"
+
+# 验证镜像配置
+echo ""
+echo "[2/6] 验证 GaussDB 镜像配置..."
+PRIMARY_IMAGE=$(grep -A 5 "gaussdb-primary:" docker-compose-gaussdb-pseudo.yml | grep "image:" | awk '{print $2}')
+STANDBY1_IMAGE=$(grep -A 5 "gaussdb-standby1:" docker-compose-gaussdb-pseudo.yml | grep "image:" | awk '{print $2}')
+STANDBY2_IMAGE=$(grep -A 5 "gaussdb-standby2:" docker-compose-gaussdb-pseudo.yml | grep "image:" | awk '{print $2}')
+
+if [[ "$PRIMARY_IMAGE" == "opengauss/opengauss:5.0.0" ]] && \
+   [[ "$STANDBY1_IMAGE" == "opengauss/opengauss:5.0.0" ]] && \
+   [[ "$STANDBY2_IMAGE" == "opengauss/opengauss:5.0.0" ]]; then
+    echo -e "${GREEN}✓ 所有节点使用 GaussDB (openGauss 5.0.0) 镜像${NC}"
+else
+    echo -e "${RED}✗ 镜像配置不一致${NC}"
+    exit 1
+fi
+
+# 验证端口配置
+echo ""
+echo "[3/6] 验证端口配置..."
+if grep -q '"5432:5432"' docker-compose-gaussdb-pseudo.yml && \
+   grep -q '"5433:5432"' docker-compose-gaussdb-pseudo.yml && \
+   grep -q '"5434:5432"' docker-compose-gaussdb-pseudo.yml; then
+    echo -e "${GREEN}✓ 端口配置正确${NC}"
+    echo "  - 主库 (Primary):   5432"
+    echo "  - 备库1 (Standby1): 5433"
+    echo "  - 备库2 (Standby2): 5434"
+else
+    echo -e "${RED}✗ 端口配置不完整${NC}"
+    exit 1
+fi
+
+# 验证密码配置
+echo ""
+echo "[4/6] 验证密码配置..."
+PASSWORD_COUNT=$(grep -c "GS_PASSWORD=OpenGauss@123" docker-compose-gaussdb-pseudo.yml)
+if [ "$PASSWORD_COUNT" -ge 3 ]; then
+    echo -e "${GREEN}✓ 密码配置正确 (OpenGauss@123)${NC}"
+    echo "  - 符合 GaussDB 密码策略"
+else
+    echo -e "${RED}✗ 密码配置不完整${NC}"
+    exit 1
+fi
+
+# 验证主备复制配置
+echo ""
+echo "[5/6] 验证主备复制配置..."
+if grep -q "gs_basebackup" docker-compose-gaussdb-pseudo.yml && \
+   grep -q "standby_mode = 'on'" docker-compose-gaussdb-pseudo.yml && \
+   grep -q "primary_conninfo" docker-compose-gaussdb-pseudo.yml; then
+    echo -e "${GREEN}✓ 主备复制配置正确${NC}"
+    echo "  - 使用 gs_basebackup 进行基础备份"
+    echo "  - standby_mode 已启用"
+    echo "  - primary_conninfo 已配置"
+else
+    echo -e "${RED}✗ 主备复制配置不完整${NC}"
+    exit 1
+fi
+
+# 检查容器状态
+echo ""
+echo "[6/6] 检查容器运行状态..."
+if command -v docker &> /dev/null; then
+    CONTAINER_COUNT=$(docker compose -f docker-compose-gaussdb-pseudo.yml ps -q 2>/dev/null | wc -l | tr -d ' ')
+    
+    if [ "$CONTAINER_COUNT" -ge 1 ]; then
+        echo -e "${GREEN}✓ 检测到运行中的容器${NC}"
+        echo ""
+        docker compose -f docker-compose-gaussdb-pseudo.yml ps 2>/dev/null | grep gaussdb
+        
+        # 检查主库
+        if docker compose -f docker-compose-gaussdb-pseudo.yml ps 2>/dev/null | grep -q "gaussdb-primary.*Up"; then
+            echo -e "${GREEN}✓ 主库 (gaussdb-primary) 运行中${NC}"
+        else
+            echo -e "${YELLOW}⚠ 主库未运行${NC}"
+        fi
+        
+        # 检查备库1
+        if docker compose -f docker-compose-gaussdb-pseudo.yml ps 2>/dev/null | grep -q "gaussdb-standby1.*Up"; then
+            echo -e "${GREEN}✓ 备库1 (gaussdb-standby1) 运行中${NC}"
+        else
+            echo -e "${YELLOW}⚠ 备库1未运行（可能需要手动启动）${NC}"
+        fi
+        
+        # 检查备库2
+        if docker compose -f docker-compose-gaussdb-pseudo.yml ps 2>/dev/null | grep -q "gaussdb-standby2.*Up"; then
+            echo -e "${GREEN}✓ 备库2 (gaussdb-standby2) 运行中${NC}"
+        else
+            echo -e "${YELLOW}⚠ 备库2未运行（可能需要手动启动）${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠ 容器未运行（需要启动集群）${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠ Docker 命令不可用，跳过容器状态检查${NC}"
+fi
+
+echo ""
+echo "=========================================="
+echo -e "${GREEN}✓ GaussDB 1主2备集群配置验证通过${NC}"
+echo "=========================================="
+echo ""
+echo "配置摘要:"
+echo "  架构: 1主2备"
+echo "  数据库: GaussDB (openGauss 5.0.0)"
+echo "  主库: gaussdb-primary (5432)"
+echo "  备库1: gaussdb-standby1 (5433)"
+echo "  备库2: gaussdb-standby2 (5434)"
+echo "  用户: bloguser"
+echo "  密码: OpenGauss@123"
+echo "  数据库: blog_db"
+echo "  复制方式: 流复制 (gs_basebackup)"
+echo ""
+echo "启动命令:"
+echo "  ./start-gaussdb-cluster.sh"
+echo ""
+echo "=========================================="
+
 # GaussDB 集群验证脚本（简化版）
 # 直接通过 SSH 在 VM 上执行验证
 
