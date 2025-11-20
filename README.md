@@ -51,20 +51,16 @@
 
 ### 数据统计
 
-- 用户发文统计
-- 文章浏览统计
-- 评论数量统计
-- 支持 SQL 直接查询或 Spark 分析 (可配置)
+- 实时统计 (文章数、浏览量、点赞数、评论数)
+- 用户活跃度分析
+- 文章热度排行
+- Spark 大数据分析 (可选)
 
 ## 项目结构
 
 ```
 CloudCom/
-├── backend/                      # Spring Boot 后端
-│   ├── src/main/
-│   │   ├── java/com/cloudcom/blog/
-│   │   │   ├── controller/      # REST API 控制器
-│   │   │   ├── service/         # 业务逻辑层
+├── backend/              # Spring Boot 后端
 │   │   │   ├── mapper/          # MyBatis 数据访问层
 │   │   │   ├── entity/          # 实体类
 │   │   │   ├── dto/             # 数据传输对象
