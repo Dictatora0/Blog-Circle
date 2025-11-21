@@ -3,12 +3,31 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudcom.blog.mapper.StatisticMapper">
 
+    <insert id="insert" parameterType="Statistic">
+        INSERT INTO statistics (stat_type, stat_key, stat_value, created_at, updated_at)
+        VALUES (#{statType}, #{statKey}, #{statValue}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    </insert>
+
+    <update id="update" parameterType="Statistic">
+        UPDATE statistics 
+        SET stat_value = #{statValue}, updated_at = CURRENT_TIMESTAMP
+        WHERE stat_type = #{statType} AND stat_key = #{statKey}
+    </update>
+    
     <insert id="insertOrUpdate" parameterType="Statistic">
         INSERT INTO statistics (stat_type, stat_key, stat_value, created_at, updated_at)
         VALUES (#{statType}, #{statKey}, #{statValue}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT (stat_type, stat_key) 
-        DO UPDATE SET stat_value = #{statValue}, updated_at = CURRENT_TIMESTAMP
+        DO UPDATE SET 
+            stat_value = #{statValue},
+            updated_at = CURRENT_TIMESTAMP
     </insert>
+    
+    <select id="selectOne" resultType="Statistic">
+        SELECT * FROM statistics 
+        WHERE stat_type = #{param1} AND stat_key = #{param2}
+        LIMIT 1
+    </select>
 
     <select id="selectByType" resultType="Statistic">
         SELECT * FROM statistics 
@@ -51,6 +70,30 @@
         GROUP BY post_id
     </select>
 
-</mapper>
+    <!-- 聚合统计：总动态数 -->
+    <select id="countTotalPosts" resultType="long">
+        SELECT COUNT(*) FROM posts
+    </select>
 
+    <!-- 聚合统计：总浏览量 -->
+    <select id="countTotalViews" resultType="long">
+        SELECT COALESCE(SUM(view_count), 0) FROM posts
+    </select>
+
+    <!-- 聚合统计：总点赞数 -->
+    <select id="countTotalLikes" resultType="long">
+        SELECT COUNT(*) FROM likes
+    </select>
+
+    <!-- 聚合统计：总评论数 -->
+    <select id="countTotalComments" resultType="long">
+        SELECT COUNT(*) FROM comments
+    </select>
+
+    <!-- 聚合统计：总用户数 -->
+    <select id="countTotalUsers" resultType="long">
+        SELECT COUNT(*) FROM users
+    </select>
+
+</mapper>
 

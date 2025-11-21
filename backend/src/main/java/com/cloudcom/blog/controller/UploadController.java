@@ -61,7 +61,7 @@ public class UploadController {
             Path filePath = Paths.get(uploadPath, filename);
             Files.write(filePath, file.getBytes());
 
-            // 返回URL
+            // 返回URL（相对路径，前端会组合完整URL）
             Map<String, String> result = new HashMap<>();
             String url = urlPrefix + "/" + filename;
             result.put("url", url);

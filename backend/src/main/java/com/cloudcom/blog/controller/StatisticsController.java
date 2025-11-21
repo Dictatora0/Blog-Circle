@@ -1,12 +1,14 @@
 package com.cloudcom.blog.controller;
 
 import com.cloudcom.blog.common.Result;
+import com.cloudcom.blog.dto.StatisticsSummary;
 import com.cloudcom.blog.entity.Statistic;
 import com.cloudcom.blog.service.SparkAnalyticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 统计分析控制器
@@ -33,13 +35,36 @@ public class StatisticsController {
     }
 
     /**
-     * 获取所有统计结果
+     * 获取统计汇总（聚合 + 明细）
      */
     @GetMapping
+    public Result<StatisticsSummary> getStatisticsSummary() {
+        try {
+            return Result.success(sparkAnalyticsService.getStatisticsSummary());
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 仅获取聚合统计数据
+     */
+    @GetMapping("/aggregated")
+    public Result<Map<String, Long>> getAggregatedStatistics() {
+        try {
+            return Result.success(sparkAnalyticsService.getAggregatedStatistics());
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取全部统计明细列表
+     */
+    @GetMapping("/list")
     public Result<List<Statistic>> getAllStatistics() {
         try {
-            List<Statistic> statistics = sparkAnalyticsService.getAllStatistics();
-            return Result.success(statistics);
+            return Result.success(sparkAnalyticsService.getAllStatistics());
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
@@ -58,5 +83,7 @@ public class StatisticsController {
         }
     }
 }
+
+
 
 

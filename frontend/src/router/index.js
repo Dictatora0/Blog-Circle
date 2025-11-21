@@ -24,7 +24,7 @@ const routes = [
         path: '/home',
         name: 'Home',
         component: () => import('@/views/Home.vue'),
-        meta: { requiresAuth: false }
+        meta: { requiresAuth: true }
       },
       {
         path: '/publish',
@@ -48,6 +48,18 @@ const routes = [
         path: '/statistics',
         name: 'Statistics',
         component: () => import('@/views/Statistics.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: '/friends',
+        name: 'Friends',
+        component: () => import('@/views/Friends.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: '/timeline',
+        name: 'Timeline',
+        component: () => import('@/views/Timeline.vue'),
         meta: { requiresAuth: true }
       }
     ]

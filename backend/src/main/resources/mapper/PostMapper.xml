@@ -3,9 +3,12 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudcom.blog.mapper.PostMapper">
 
-    <insert id="insert" parameterType="Post" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO posts (title, content, author_id, view_count, images, created_at, updated_at)
-        VALUES (#{title}, #{content}, #{authorId}, 0, #{images}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    <insert id="insert" parameterType="Post">
+        <selectKey keyProperty="id" resultType="long" order="BEFORE">
+            SELECT nextval('posts_id_seq')
+        </selectKey>
+        INSERT INTO posts (id, title, content, author_id, view_count, images, created_at, updated_at)
+        VALUES (#{id}, #{title}, #{content}, #{authorId}, 0, #{images}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     </insert>
 
     <delete id="deleteById">
@@ -54,6 +57,22 @@
         WHERE id = #{id}
     </update>
 
+    <select id="selectFriendTimeline" resultType="Post">
+        SELECT p.*, u.nickname as author_name, u.avatar as author_avatar,
+               (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count,
+               (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) as like_count
+        FROM posts p
+        LEFT JOIN users u ON p.author_id = u.id
+        WHERE p.author_id IN
+        <foreach item="userId" collection="userIds" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        ORDER BY p.created_at DESC
+    </select>
+
 </mapper>
+
+
+
 
 

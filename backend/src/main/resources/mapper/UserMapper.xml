@@ -37,6 +37,16 @@
         SELECT * FROM users ORDER BY created_at DESC
     </select>
 
+    <select id="searchUsers" resultType="User">
+        SELECT id, username, email, nickname, avatar, cover_image as coverImage, created_at as createdAt, updated_at as updatedAt
+        FROM users 
+        WHERE username LIKE CONCAT('%', #{keyword}, '%') 
+           OR email LIKE CONCAT('%', #{keyword}, '%')
+           OR nickname LIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY created_at DESC
+        LIMIT 20
+    </select>
+
 </mapper>
 
 

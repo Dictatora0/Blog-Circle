@@ -6,7 +6,6 @@
     <insert id="insert" parameterType="Like" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO likes (post_id, user_id, created_at)
         VALUES (#{postId}, #{userId}, CURRENT_TIMESTAMP)
-        ON CONFLICT (post_id, user_id) DO NOTHING
     </insert>
 
     <delete id="delete">

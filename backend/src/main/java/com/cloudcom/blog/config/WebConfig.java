@@ -23,9 +23,11 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173", "http://localhost:3000")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedOrigins("http://localhost:5173", "http://localhost:3000", 
+                               "http://10.211.55.11:8080", "http://localhost:8080")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
                 .allowedHeaders("*")
+                .exposedHeaders("Authorization", "Content-Type", "X-Total-Count")
                 .allowCredentials(true)
                 .maxAge(3600);
     }
@@ -43,6 +45,11 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/posts/list",
                         "/api/posts/*/detail",
                         "/api/comments/post/*",
+                        "/api/likes/*/count",
+                        "/api/stats",
+                        "/api/stats/list",
+                        "/api/stats/aggregated",
+                        "/api/stats/*",
                         "/uploads/**"
                 );
     }

@@ -5,6 +5,7 @@ backend/mvnw
 backend/mvnw.cmd
 backend/*.jar
 backend/*.war
+analytics/target/
 
 # Node
 frontend/node_modules/
@@ -72,15 +73,15 @@ Desktop.ini
 *.pid
 
 # Uploads (可选，如果不想提交上传的文件)
-# backend/uploads/
+backend/uploads/
+
+# Docker images
+*.tar
+*.tar.gz
 
 # Spark
 spark-warehouse/
 derby.log
 
-# Package manager
-package-lock.json.bak
-yarn.lock
-pnpm-lock.yaml
-
-
+# Reports
+reports/

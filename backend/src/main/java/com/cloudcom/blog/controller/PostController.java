@@ -54,9 +54,10 @@ public class PostController {
      * 删除文章
      */
     @DeleteMapping("/{id}")
-    public Result<Void> deletePost(@PathVariable Long id) {
+    public Result<Void> deletePost(@PathVariable Long id, HttpServletRequest request) {
         try {
-            postService.deletePost(id);
+            Long userId = (Long) request.getAttribute("userId");
+            postService.deletePost(id, userId);
             return Result.success("删除成功", null);
         } catch (Exception e) {
             return Result.error(e.getMessage());
@@ -102,6 +103,20 @@ public class PostController {
         try {
             Long userId = (Long) request.getAttribute("userId");
             List<Post> posts = postService.getPostsByAuthorId(userId, userId);
+            return Result.success(posts);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取好友时间线（自己+好友的动态）
+     */
+    @GetMapping("/timeline")
+    public Result<List<Post>> getFriendTimeline(HttpServletRequest request) {
+        try {
+            Long userId = (Long) request.getAttribute("userId");
+            List<Post> posts = postService.getFriendTimeline(userId);
             return Result.success(posts);
         } catch (Exception e) {
             return Result.error(e.getMessage());

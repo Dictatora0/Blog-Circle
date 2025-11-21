@@ -125,6 +125,7 @@ import { uploadImage } from "@/api/upload";
 import { updateUser, getCurrentUser } from "@/api/auth";
 import { ElMessage } from "element-plus";
 import MomentItem from "@/components/MomentItem.vue";
+import { getResourceUrl } from "@/config";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -137,7 +138,9 @@ const coverUrl = ref("");
 const avatarUploading = ref(false);
 const avatarInput = ref(null);
 const avatarUrl = ref("");
-const defaultAvatar = "https://via.placeholder.com/80?text=头像";
+// 使用本地 SVG 默认头像
+const defaultAvatar =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23E0E7FF'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='32' fill='%23667eea' font-family='Arial, sans-serif'%3E👤%3C/text%3E%3C/svg%3E";
 
 const userInfo = computed(() => userStore.userInfo);
 
@@ -216,7 +219,7 @@ const handleCoverUpload = async (event) => {
 
     // 如果返回的是相对路径，转换为完整URL
     if (uploadedUrl.startsWith("/")) {
-      uploadedUrl = `http://localhost:8080${uploadedUrl}`;
+      uploadedUrl = getResourceUrl(uploadedUrl);
     }
 
     // 3. 更新用户信息
@@ -304,7 +307,7 @@ const handleAvatarUpload = async (event) => {
 
     // 如果返回的是相对路径，转换为完整URL
     if (uploadedUrl.startsWith("/")) {
-      uploadedUrl = `http://localhost:8080${uploadedUrl}`;
+      uploadedUrl = getResourceUrl(uploadedUrl);
     }
 
     // 3. 更新用户信息
@@ -338,6 +341,16 @@ const handleAvatarUpload = async (event) => {
     }
 
     ElMessage.success("头像上传成功");
+
+    // 刷新当前页面的动态列表（确保显示最新头像）
+    await loadUserMoments();
+
+    // 发送全局事件，通知其他页面刷新
+    window.dispatchEvent(
+      new CustomEvent("user-avatar-updated", {
+        detail: { avatarUrl: uploadedUrl },
+      })
+    );
   } catch (error) {
     console.error("头像上传失败:", error);
     ElMessage.error(error.response?.data?.message || "头像上传失败，请重试");
@@ -364,11 +377,11 @@ const loadUserMoments = async () => {
 
     userMoments.value = posts.map((post) => {
       // 处理作者头像URL（相对路径转绝对路径）
-      let authorAvatar = post.authorAvatar || null
+      let authorAvatar = post.authorAvatar || null;
       if (authorAvatar && authorAvatar.startsWith("/")) {
-        authorAvatar = `http://localhost:8080${authorAvatar}`
+        authorAvatar = getResourceUrl(authorAvatar);
       }
-      
+
       // 处理图片列表
       let images = [];
       if (post.images) {
@@ -384,10 +397,19 @@ const loadUserMoments = async () => {
         }
       }
 
+      // 添加时间戳参数破坏浏览器缓存，确保显示最新头像
+      if (authorAvatar && !authorAvatar.startsWith("data:")) {
+        const separator = authorAvatar.includes("?") ? "&" : "?";
+        authorAvatar = `${authorAvatar}${separator}_v=${Date.now()}`;
+      }
+
       return {
         ...post,
         content: post.content || post.title,
-        authorName: post.authorName || userInfo.value?.nickname || userInfo.value?.username,
+        authorName:
+          post.authorName ||
+          userInfo.value?.nickname ||
+          userInfo.value?.username,
         authorAvatar, // 使用后端返回的头像，或从用户信息获取
         images,
         liked: post.liked || false,
@@ -416,7 +438,7 @@ onMounted(async () => {
   if (cover) {
     // 如果是相对路径，转换为完整URL
     if (cover.startsWith("/")) {
-      coverUrl.value = `http://localhost:8080${cover}`;
+      coverUrl.value = getResourceUrl(cover);
     } else {
       coverUrl.value = cover;
     }
@@ -427,7 +449,7 @@ onMounted(async () => {
   if (avatar) {
     // 如果是相对路径，转换为完整URL
     if (avatar.startsWith("/")) {
-      avatarUrl.value = `http://localhost:8080${avatar}`;
+      avatarUrl.value = getResourceUrl(avatar);
     } else {
       avatarUrl.value = avatar;
     }

@@ -54,9 +54,10 @@ public class CommentController {
      * 删除评论
      */
     @DeleteMapping("/{id}")
-    public Result<Void> deleteComment(@PathVariable Long id) {
+    public Result<Void> deleteComment(@PathVariable Long id, HttpServletRequest request) {
         try {
-            commentService.deleteComment(id);
+            Long userId = (Long) request.getAttribute("userId");
+            commentService.deleteComment(id, userId);
             return Result.success("删除成功", null);
         } catch (Exception e) {
             return Result.error(e.getMessage());

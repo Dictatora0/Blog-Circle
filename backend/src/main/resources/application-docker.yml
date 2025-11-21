@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: blog-system
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://db:5432/blog_db
+    username: bloguser
+    password: blogpass
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.cloudcom.blog.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+jwt:
+  secret: cloudcom-blog-system-secret-key-2025
+  expiration: 86400000
+
+spark:
+  app-name: BlogAnalytics
+  master: local[*]
+  enabled: false
+
+file:
+  upload:
+    path: /app/uploads
+    url-prefix: /uploads
+  
+server:
+  port: 8080
+
+logging:
+  level:
+    com.cloudcom.blog: INFO
+
+
+
+
+
+
+
+

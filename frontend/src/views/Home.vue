@@ -16,6 +16,7 @@
           <MomentItem 
             :moment="moment" 
             :index="index"
+            :key="`${moment.id}-${moment.authorAvatar || ''}`"
             @update="loadMoments"
           />
         </div>
@@ -34,12 +35,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, watch } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
-import { getPostList } from '@/api/post'
+import { getFriendTimeline } from '@/api/friends'
 import { useUserStore } from '@/stores/user'
 import MomentItem from '@/components/MomentItem.vue'
+import { getResourceUrl } from '@/config'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const userStore = useUserStore()
 const moments = ref([])
 const loading = ref(false)
@@ -55,7 +59,7 @@ const loadMoments = async (reset = false) => {
   
   loading.value = true
   try {
-    const res = await getPostList()
+    const res = await getFriendTimeline()
     // 后端返回格式: { code: 200, message: "...", data: [...] }
     const responseData = res.data?.data || res.data || []
     const newMoments = Array.isArray(responseData) ? responseData : []
@@ -64,7 +68,13 @@ const loadMoments = async (reset = false) => {
       // 处理作者头像URL（相对路径转绝对路径）
       let authorAvatar = post.authorAvatar || null
       if (authorAvatar && authorAvatar.startsWith("/")) {
-        authorAvatar = `http://localhost:8080${authorAvatar}`
+        authorAvatar = getResourceUrl(authorAvatar)
+      }
+      
+      // 添加时间戳参数破坏浏览器缓存，确保显示最新头像
+      if (authorAvatar && !authorAvatar.startsWith('data:')) {
+        const separator = authorAvatar.includes('?') ? '&' : '?'
+        authorAvatar = `${authorAvatar}${separator}_v=${Date.now()}`
       }
       
       // 处理图片列表
@@ -98,6 +108,7 @@ const loadMoments = async (reset = false) => {
     hasMore.value = newMoments.length >= 10
   } catch (error) {
     console.error('加载动态失败:', error)
+    moments.value = []
   } finally {
     loading.value = false
   }
@@ -154,8 +165,31 @@ const handleMouseUp = () => {
   mouseDown = false
 }
 
+// 页面激活时刷新数据（从其他页面返回时，确保头像等信息最新）
+onActivated(() => {
+  console.log('Home页面激活，刷新动态列表')
+  loadMoments(true)
+})
+
+// 监听用户头像变化
+watch(() => userStore.userInfo?.avatar, (newAvatar, oldAvatar) => {
+  if (newAvatar !== oldAvatar && oldAvatar !== undefined) {
+    console.log('检测到头像更新，刷新动态列表')
+    loadMoments(true)
+  }
+})
+
+// 监听全局头像更新事件
+const handleAvatarUpdated = () => {
+  console.log('收到头像更新事件，刷新动态列表')
+  loadMoments(true)
+}
+
 onMounted(() => {
   loadMoments(true)
+  
+  // 监听全局头像更新事件
+  window.addEventListener('user-avatar-updated', handleAvatarUpdated)
   
   // 无限滚动
   const target = document.querySelector('.loading-more')
@@ -178,7 +212,22 @@ onMounted(() => {
   window.addEventListener('mouseup', handleMouseUp)
 })
 
+// 页面激活时刷新数据（从其他页面返回时，确保头像等信息最新）
+onActivated(() => {
+  console.log('Home页面激活，刷新动态列表')
+  loadMoments(true)
+})
+
+// 监听用户头像变化
+watch(() => userStore.userInfo?.avatar, (newAvatar, oldAvatar) => {
+  if (newAvatar !== oldAvatar && oldAvatar !== undefined) {
+    console.log('检测到头像更新，刷新动态列表')
+    loadMoments(true)
+  }
+})
+
 onUnmounted(() => {
+  window.removeEventListener('user-avatar-updated', handleAvatarUpdated)
   window.removeEventListener('touchstart', handleTouchStart)
   window.removeEventListener('touchmove', handleTouchMove)
   window.removeEventListener('mousedown', handleMouseDown)

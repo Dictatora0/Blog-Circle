@@ -3,12 +3,16 @@ package com.cloudcom.blog.service;
 import com.cloudcom.blog.entity.AccessLog;
 import com.cloudcom.blog.entity.Post;
 import com.cloudcom.blog.mapper.AccessLogMapper;
+import com.cloudcom.blog.mapper.FriendshipMapper;
 import com.cloudcom.blog.mapper.LikeMapper;
 import com.cloudcom.blog.mapper.PostMapper;
+import com.cloudcom.blog.util.InputSanitizer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -26,11 +30,65 @@ public class PostService {
     @Autowired
     private LikeMapper likeMapper;
 
+    @Autowired
+    private FriendshipMapper friendshipMapper;
+
     /**
      * 创建文章
      */
+    @Transactional
     public Post createPost(Post post) {
-        postMapper.insert(post);
+        // 验证内容不为空
+        if (post.getContent() == null || post.getContent().trim().isEmpty()) {
+            throw new RuntimeException("动态内容不能为空");
+        }
+        
+        // 验证内容长度
+        if (!InputSanitizer.isValidLength(post.getContent(), 10000)) {
+            throw new RuntimeException("动态内容过长（最多10000字符）");
+        }
+        
+        // 清理 XSS 攻击和特殊字符
+        String sanitizedContent = InputSanitizer.sanitizeXSS(post.getContent());
+        post.setContent(sanitizedContent);
+        
+        // 如果没有提供title，使用content的前50个字符作为title
+        if (post.getTitle() == null || post.getTitle().trim().isEmpty()) {
+            String content = post.getContent().trim();
+            // 如果content长度超过50，截取前50个字符并加上省略号
+            if (content.length() > 50) {
+                post.setTitle(content.substring(0, 50) + "...");
+            } else {
+                post.setTitle(content);
+            }
+        } else {
+            // 清理 title 中的 XSS
+            String sanitizedTitle = InputSanitizer.sanitizeXSS(post.getTitle());
+            post.setTitle(sanitizedTitle);
+        }
+        
+        // 调试日志：记录创建前的信息
+        System.out.println("PostService.createPost: BEFORE insert - authorId=" + post.getAuthorId() + ", title=" + post.getTitle() + ", content=" + (post.getContent() != null ? post.getContent().substring(0, Math.min(30, post.getContent().length())) : "null"));
+        
+        // 插入动态
+        System.out.println("PostService.createPost: Calling postMapper.insert - post.getId() before insert=" + post.getId());
+        try {
+            int result = postMapper.insert(post);
+            System.out.println("PostService.createPost: After postMapper.insert - result=" + result + ", post.getId()=" + post.getId());
+        } catch (Exception e) {
+            System.out.println("PostService.createPost: Exception during insert - " + e.getClass().getName() + ": " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+        
+        // 确保ID已设置（MyBatis useGeneratedKeys会自动设置）
+        if (post.getId() == null) {
+            System.out.println("PostService.createPost: ERROR - post.getId() is null after insert!");
+            throw new RuntimeException("创建动态失败：未获取到动态ID");
+        }
+        
+        // 调试日志：记录插入后的信息
+        System.out.println("PostService.createPost: AFTER insert - authorId=" + post.getAuthorId() + ", postId=" + post.getId());
         
         // 记录访问日志
         AccessLog log = new AccessLog();
@@ -39,6 +97,10 @@ public class PostService {
         log.setAction("CREATE_POST");
         accessLogMapper.insert(log);
         
+        // 调试日志：记录创建的动态信息（事务提交前）
+        System.out.println("PostService.createPost: BEFORE commit - authorId=" + post.getAuthorId() + ", postId=" + post.getId() + ", content=" + (post.getContent() != null ? post.getContent().substring(0, Math.min(30, post.getContent().length())) : "null"));
+        
+        // 事务提交后，数据立即可见（Spring的@Transactional默认行为）
         return post;
     }
 
@@ -50,9 +112,20 @@ public class PostService {
     }
 
     /**
-     * 删除文章
+     * 删除文章（带权限验证）
      */
-    public void deletePost(Long id) {
+    public void deletePost(Long id, Long userId) {
+        // 查询动态是否存在
+        Post post = postMapper.selectById(id);
+        if (post == null) {
+            throw new RuntimeException("动态不存在");
+        }
+        
+        // 验证是否是作者本人
+        if (!post.getAuthorId().equals(userId)) {
+            throw new RuntimeException("无权删除他人的动态");
+        }
+        
         postMapper.deleteById(id);
     }
 
@@ -63,17 +136,33 @@ public class PostService {
     public Post getPostById(Long id, Long userId) {
         Post post = postMapper.selectById(id);
         if (post != null) {
-            // 增加浏览次数
-            postMapper.incrementViewCount(id);
-            
             // 设置点赞状态
             if (userId != null && userId > 0) {
                 post.setLiked(likeMapper.selectByPostIdAndUserId(id, userId) != null);
             }
             
-            // 记录访问日志
+            // 处理浏览量和访问日志
+            Long actualUserId = userId != null ? userId : 0L;
+            boolean isAuthor = userId != null && userId.equals(post.getAuthorId());
+            
+            // 作者查看自己的文章不增加浏览量
+            if (!isAuthor) {
+                // 检查用户今天是否已经访问过这篇文章
+                int todayViewCount = accessLogMapper.countTodayViewByUserAndPost(actualUserId, id);
+                
+                // 只有在今天首次访问时才增加浏览量
+                if (todayViewCount == 0) {
+                    // 增加浏览次数
+                    postMapper.incrementViewCount(id);
+                    // 更新返回对象中的浏览量（处理 null 情况）
+                    int currentCount = post.getViewCount() != null ? post.getViewCount() : 0;
+                    post.setViewCount(currentCount + 1);
+                }
+            }
+            
+            // 记录访问日志（无论是否增加浏览量都记录）
             AccessLog log = new AccessLog();
-            log.setUserId(userId != null ? userId : 0L);
+            log.setUserId(actualUserId);
             log.setPostId(id);
             log.setAction("VIEW_POST");
             accessLogMapper.insert(log);
@@ -108,5 +197,41 @@ public class PostService {
         }
         return posts;
     }
-}
 
+    /**
+     * 获取好友时间线（自己+好友的动态）
+     */
+    @Transactional(readOnly = true, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public List<Post> getFriendTimeline(Long userId) {
+        // 获取所有好友ID
+        List<Long> friendIds = friendshipMapper.selectFriendIdsByUserId(userId);
+        
+        // 添加自己的ID（确保总是包含自己的动态）
+        List<Long> userIds = new ArrayList<>();
+        userIds.add(userId);
+        if (friendIds != null && !friendIds.isEmpty()) {
+            userIds.addAll(friendIds);
+        }
+        
+        // 查询这些用户的动态
+        List<Post> posts = postMapper.selectFriendTimeline(userIds);
+        
+        // 调试日志：记录查询到的动态数量
+        System.out.println("getFriendTimeline: userId=" + userId + ", userIds=" + userIds + ", posts count=" + posts.size());
+        if (posts.size() > 0) {
+            System.out.println("getFriendTimeline: first post authorId=" + posts.get(0).getAuthorId() + ", content=" + (posts.get(0).getContent() != null ? posts.get(0).getContent().substring(0, Math.min(30, posts.get(0).getContent().length())) : "null"));
+        } else {
+            System.out.println("getFriendTimeline: No posts found, checking if posts exist for userId=" + userId);
+            // 直接查询数据库验证
+            List<Post> directPosts = postMapper.selectByAuthorId(userId);
+            System.out.println("getFriendTimeline: Direct query by authorId=" + userId + " returned " + directPosts.size() + " posts");
+        }
+        
+        // 设置点赞状态
+        for (Post post : posts) {
+            post.setLiked(likeMapper.selectByPostIdAndUserId(post.getId(), userId) != null);
+        }
+        
+        return posts;
+    }
+}

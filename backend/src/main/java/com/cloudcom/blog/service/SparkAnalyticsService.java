@@ -1,5 +1,6 @@
 package com.cloudcom.blog.service;
 
+import com.cloudcom.blog.dto.StatisticsSummary;
 import com.cloudcom.blog.entity.Statistic;
 import com.cloudcom.blog.mapper.StatisticMapper;
 import org.apache.spark.sql.Dataset;
@@ -9,7 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,27 +29,25 @@ public class SparkAnalyticsService {
     @Autowired
     private StatisticMapper statisticMapper;
 
-    @Value("${spring.datasource.url}")
+    @Value("${spring.datasource.primary.jdbc-url:jdbc:opengauss://127.0.0.1:5432/blog_db}")
     private String dbUrl;
 
-    @Value("${spring.datasource.username}")
+    @Value("${spring.datasource.primary.username:bloguser}")
     private String dbUsername;
 
-    @Value("${spring.datasource.password}")
+    @Value("${spring.datasource.primary.password:Bloguser1234}")
     private String dbPassword;
 
-    // 默认禁用Spark，直接使用SQL分析（避免Java 17+兼容性问题）
-    @Value("${spark.enabled:false}")
-    private boolean sparkEnabled = false;  // 默认值false，确保即使配置缺失也使用SQL
+    // 默认启用Spark，失败时回退到SQL分析
+    @Value("${spark.enabled:true}")
+    private boolean sparkEnabled = true;  // 默认值true，优先使用Spark
 
     /**
      * 执行数据分析
-     * 默认使用SQL直接查询（避免Spark在Java 17+的兼容性问题）
-     * 如果将来需要Spark，可以通过配置启用
+     * 默认优先使用Spark，失败时回退到SQL分析
      */
     public void runAnalytics() {
-        // 默认使用SQL分析（更稳定可靠，避免Java 17+安全管理器问题）
-        // 只有在配置明确启用Spark时才尝试使用Spark
+        // 默认优先使用Spark（更强大），失败时回退到SQL分析
         logger.info("开始执行数据分析，sparkEnabled配置: {}", sparkEnabled);
         
         if (sparkEnabled) {
@@ -121,16 +123,15 @@ public class SparkAnalyticsService {
             
             logger.info("SparkSession创建成功，开始数据分析...");
 
-            // 配置数据库连接
-            Properties props = new Properties();
-            props.setProperty("user", dbUsername);
-            props.setProperty("password", dbPassword);
-            props.setProperty("driver", "org.postgresql.Driver");
-
             // 读取访问日志表
-            logger.info("连接到数据库: {}", dbUrl);
+            logger.info("从数据库读取访问日志表");
+            Properties connectionProperties = new Properties();
+            connectionProperties.put("user", dbUsername);
+            connectionProperties.put("password", dbPassword);
+            connectionProperties.put("driver", "org.postgresql.Driver");
+            
             Dataset<Row> accessLogs = spark.read()
-                    .jdbc(dbUrl, "access_logs", props);
+                    .jdbc(dbUrl, "access_logs", connectionProperties);
             
             logger.info("成功读取访问日志表，记录数: {}", accessLogs.count());
 
@@ -151,7 +152,7 @@ public class SparkAnalyticsService {
                 stat.setStatType("USER_POST_COUNT");
                 stat.setStatKey("user_" + userId);
                 stat.setStatValue(count);
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             // 统计文章浏览次数
@@ -170,7 +171,7 @@ public class SparkAnalyticsService {
                 stat.setStatType("POST_VIEW_COUNT");
                 stat.setStatKey("post_" + postId);
                 stat.setStatValue(count);
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             // 统计评论数量
@@ -189,7 +190,7 @@ public class SparkAnalyticsService {
                 stat.setStatType("POST_COMMENT_COUNT");
                 stat.setStatKey("post_" + postId);
                 stat.setStatValue(count);
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             logger.info("Spark分析完成，统计结果已写入数据库");
@@ -220,19 +221,19 @@ public class SparkAnalyticsService {
             // 统计每个用户的发文数量（从posts表）
             List<Statistic> userPostStats = statisticMapper.selectUserPostCounts();
             for (Statistic stat : userPostStats) {
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             // 统计文章浏览次数（从posts表的view_count字段）
             List<Statistic> postViewStats = statisticMapper.selectPostViewCounts();
             for (Statistic stat : postViewStats) {
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             // 统计评论数量（从comments表）
             List<Statistic> commentStats = statisticMapper.selectCommentCounts();
             for (Statistic stat : commentStats) {
-                statisticMapper.insertOrUpdate(stat);
+                insertOrUpdateStatistic(stat);
             }
 
             logger.info("SQL分析完成");
@@ -250,11 +251,50 @@ public class SparkAnalyticsService {
     }
 
     /**
+     * 获取统计汇总（聚合 + 明细）
+     */
+    public StatisticsSummary getStatisticsSummary() {
+        StatisticsSummary summary = new StatisticsSummary();
+        summary.setAggregated(getAggregatedStatistics());
+        summary.setDetails(getAllStatistics());
+        return summary;
+    }
+
+    /**
      * 根据类型获取统计结果
      */
     public List<Statistic> getStatisticsByType(String statType) {
         return statisticMapper.selectByType(statType);
     }
+
+    /**
+     * 获取聚合统计数据
+     * 返回包含 postCount, viewCount, likeCount, commentCount, userCount 的聚合对象
+     */
+    public Map<String, Long> getAggregatedStatistics() {
+        Map<String, Long> aggregated = new LinkedHashMap<>();
+
+        // 从数据库直接查询统计数据（避免依赖statistics表）
+        long postCount = statisticMapper.countTotalPosts();
+        long viewCount = statisticMapper.countTotalViews();
+        long likeCount = statisticMapper.countTotalLikes();
+        long commentCount = statisticMapper.countTotalComments();
+        long userCount = statisticMapper.countTotalUsers();
+
+        aggregated.put("postCount", postCount);
+        aggregated.put("viewCount", viewCount);
+        aggregated.put("likeCount", likeCount);
+        aggregated.put("commentCount", commentCount);
+        aggregated.put("userCount", userCount);
+
+        return aggregated;
+    }
+
+    /**
+     * 插入或更新统计数据的辅助方法
+     * 使用 UPSERT 操作（存在则更新，不存在则插入）
+     */
+    private void insertOrUpdateStatistic(Statistic stat) {
+        statisticMapper.insertOrUpdate(stat);
+    }
 }
-
-

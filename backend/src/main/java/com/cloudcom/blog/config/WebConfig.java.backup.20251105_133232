@@ -1,0 +1,80 @@
+package com.cloudcom.blog.config;
+
+import com.cloudcom.blog.interceptor.JwtInterceptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Web配置类
+ */
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Autowired
+    private JwtInterceptor jwtInterceptor;
+
+    /**
+     * 配置跨域
+     * 使用 allowedOriginPatterns 支持开发环境的灵活配置
+     */
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        // 获取当前运行环境
+        String activeProfile = System.getProperty("spring.profiles.active", "default");
+        
+        registry.addMapping("/**")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
+                .allowedHeaders("*")
+                .exposedHeaders("Authorization", "Content-Type", "X-Total-Count")
+                .allowCredentials(true)
+                .maxAge(3600);
+        
+        // 开发/测试环境：使用宽松的CORS策略
+        if ("default".equals(activeProfile) || "test".equals(activeProfile)) {
+            registry.addMapping("/**")
+                    .allowedOriginPatterns("*");  // 允许所有来源
+        } else {
+            // 生产环境：明确指定允许的来源
+            registry.addMapping("/**")
+                    .allowedOrigins(
+                        "http://localhost:5173",
+                        "http://localhost:3000",
+                        "http://localhost:8080",
+                        "http://10.211.55.11:8080",
+                        "https://your-production-domain.com"
+                    );
+        }
+    }
+
+    /**
+     * 配置拦截器
+     */
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(jwtInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns(
+                        "/api/auth/login",
+                        "/api/auth/register",
+                        "/api/posts/list",
+                        "/api/posts/*/detail",
+                        "/api/comments/post/*",
+                        "/api/likes/*/count",
+                        "/uploads/**"
+                );
+    }
+
+    /**
+     * 配置静态资源
+     */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:./uploads/");
+    }
+}
+

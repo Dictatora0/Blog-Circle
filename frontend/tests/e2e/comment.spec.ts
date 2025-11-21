@@ -12,10 +12,16 @@ import { waitForMomentsLoad } from './utils/helpers'
 test.describe('评论功能场景', () => {
   let testComment: string
 
-  test.beforeEach(async ({ page }) => {
-    // 每次测试前先登录
-    const { loginUser, createTestPost } = await import('./utils/helpers')
-    await loginUser(page)
+  test.beforeEach(async ({ page, request }) => {
+    // 每次测试前先创建并登录测试用户
+    const { AuthHelpers } = await import('../fixtures/auth-helpers')
+    const { createTestPost } = await import('./utils/helpers')
+    const auth = new AuthHelpers(page, request)
+    const { user, token } = await auth.createAndLoginTestUser(Date.now() % 10000)
+    
+    // 导航到首页
+    await page.goto('/home')
+    await page.waitForLoadState('networkidle')
     
     // 确保至少有一条动态用于测试
     await createTestPost(page)
@@ -168,10 +174,25 @@ test.describe('评论功能场景', () => {
     
     // 刷新页面以确保状态更新
     await page.reload({ waitUntil: 'domcontentloaded' })
+    
+    // 等待时间线API响应完成
+    await page.waitForResponse(
+      response => response.url().includes('/api/posts/timeline') && response.status() === 200,
+      { timeout: 15000 }
+    ).catch(() => {
+      return page.waitForResponse(
+        response => response.url().includes('/api/posts') && response.status() === 200,
+        { timeout: 10000 }
+      );
+    }).catch(() => {});
+    
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    
     await waitForMomentsLoad(page)
     
     const firstMoment = page.locator('.moment-wrapper, .moment-item').first()
-    
+    await expect(firstMoment).toBeVisible({ timeout: 10000 });
     
     const actionButtons = firstMoment.locator('button.action-btn')
     const commentButton = actionButtons.filter({ hasText: '💬' }).first() || actionButtons.nth(1)
