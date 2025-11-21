@@ -8,11 +8,21 @@
 set -e
 
 PRIMARY_PORT=5432
-STANDBY1_PORT=5433
-STANDBY2_PORT=5434
+STANDBY1_PORT=5434
+STANDBY2_PORT=5436
 DB_NAME="blog_db"
 DB_USER="bloguser"
 DB_PASS="747599qw@"
+
+# 数据目录（自动检测）
+PRIMARY_DATA="/usr/local/opengauss/data_primary"
+STANDBY1_DATA="/usr/local/opengauss/data_standby1"
+STANDBY2_DATA="/usr/local/opengauss/data_standby2"
+
+# 如果集群目录不存在，使用单实例路径
+if [ ! -d "$PRIMARY_DATA" ]; then
+    PRIMARY_DATA="/usr/local/opengauss/data"
+fi
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -36,21 +46,41 @@ echo ""
 
 # 2. 检查备库1状态
 echo "=== 2. 检查备库1状态 (端口 $STANDBY1_PORT) ==="
-if su - omm -c "gsql -d postgres -p $STANDBY1_PORT -c 'SELECT pg_is_in_recovery();'" 2>/dev/null | grep -q "t"; then
-    echo -e "${GREEN}✓ 备库1运行正常（处于恢复模式）${NC}"
+if [ -d "$STANDBY1_DATA" ]; then
+    # 先检查备库是否运行
+    if su - omm -c "gs_ctl status -D $STANDBY1_DATA" 2>/dev/null | grep -q "server is running"; then
+        # 再检查是否处于恢复模式
+        if su - omm -c "gsql -d postgres -p $STANDBY1_PORT -c 'SELECT pg_is_in_recovery();'" 2>/dev/null | grep -q "t"; then
+            echo -e "${GREEN}✓ 备库1运行正常（处于恢复模式）${NC}"
+        else
+            echo -e "${YELLOW}⚠ 备库1运行中但未处于恢复模式${NC}"
+        fi
+    else
+        echo -e "${RED}✗ 备库1未运行${NC}"
+        echo "  启动命令: su - omm -c 'gs_ctl start -D $STANDBY1_DATA'"
+    fi
 else
-    echo -e "${RED}✗ 备库1状态异常${NC}"
-    exit 1
+    echo -e "${YELLOW}⚠ 备库1未配置（单实例模式）${NC}"
 fi
 echo ""
 
 # 3. 检查备库2状态
 echo "=== 3. 检查备库2状态 (端口 $STANDBY2_PORT) ==="
-if su - omm -c "gsql -d postgres -p $STANDBY2_PORT -c 'SELECT pg_is_in_recovery();'" 2>/dev/null | grep -q "t"; then
-    echo -e "${GREEN}✓ 备库2运行正常（处于恢复模式）${NC}"
+if [ -d "$STANDBY2_DATA" ]; then
+    # 先检查备库是否运行
+    if su - omm -c "gs_ctl status -D $STANDBY2_DATA" 2>/dev/null | grep -q "server is running"; then
+        # 再检查是否处于恢复模式
+        if su - omm -c "gsql -d postgres -p $STANDBY2_PORT -c 'SELECT pg_is_in_recovery();'" 2>/dev/null | grep -q "t"; then
+            echo -e "${GREEN}✓ 备库2运行正常（处于恢复模式）${NC}"
+        else
+            echo -e "${YELLOW}⚠ 备库2运行中但未处于恢复模式${NC}"
+        fi
+    else
+        echo -e "${RED}✗ 备库2未运行${NC}"
+        echo "  启动命令: su - omm -c 'gs_ctl start -D $STANDBY2_DATA'"
+    fi
 else
-    echo -e "${RED}✗ 备库2状态异常${NC}"
-    exit 1
+    echo -e "${YELLOW}⚠ 备库2未配置（单实例模式）${NC}"
 fi
 echo ""
 

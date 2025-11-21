@@ -9,7 +9,7 @@ set -e
 
 PRIMARY_HOST="${1:-127.0.0.1}"
 PRIMARY_PORT="${2:-5432}"
-REPLICA_PORT="${3:-5433}"
+REPLICA_PORT="${3:-5434}"
 DB_NAME="blog_db"
 DB_USER="bloguser"
 DB_PASS="747599qw@"
