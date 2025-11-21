@@ -292,14 +292,9 @@ public class SparkAnalyticsService {
 
     /**
      * 插入或更新统计数据的辅助方法
-     * 先查询，存在则更新，不存在则插入
+     * 使用 UPSERT 操作（存在则更新，不存在则插入）
      */
     private void insertOrUpdateStatistic(Statistic stat) {
-        Statistic existing = statisticMapper.selectOne(stat.getStatType(), stat.getStatKey());
-        if (existing != null) {
-            statisticMapper.update(stat);
-        } else {
-            statisticMapper.insert(stat);
-        }
+        statisticMapper.insertOrUpdate(stat);
     }
 }
