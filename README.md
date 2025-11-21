@@ -264,18 +264,20 @@ docker-compose -f docker-compose-gaussdb-pseudo.yml down -v
 
 **集群架构**：
 
-- **gaussdb-primary** (主库): 端口 5432，负责写操作
-- **gaussdb-standby1** (备库 1): 端口 5433，负责读操作
-- **gaussdb-standby2** (备库 2): 端口 5434，负责读操作
+- **gaussdb-primary** (主库): 端口 5432（HA 端口 5433），负责写操作
+- **gaussdb-standby1** (备库 1): 端口 5434（HA 端口 5435），负责读操作
+- **gaussdb-standby2** (备库 2): 端口 5436（HA 端口 5437），负责读操作
 - **backend**: 端口 8081，自动实现读写分离
 - **frontend**: 端口 8082
 - **spark-master**: 端口 8090 (Web UI)
 - **spark-worker**: 端口 8091
 
+> **注意**：GaussDB 每个实例需要 2 个连续端口（主端口+HA 端口），使用间隔端口避免冲突。
+
 **读写分离配置**：
 
 - 写操作（INSERT/UPDATE/DELETE）→ 主库 (5432)
-- 读操作（SELECT）→ 备库 (5433, 5434) 负载均衡
+- 读操作（SELECT）→ 备库 (5434, 5436) 负载均衡
 
 **验证集群状态**：
 
@@ -283,10 +285,10 @@ docker-compose -f docker-compose-gaussdb-pseudo.yml down -v
 # 连接主库
 docker exec -it gaussdb-primary gsql -U bloguser -d blog_db -c "SELECT * FROM pg_stat_replication;"
 
-# 连接备库1
+# 连接备库1（端口 5434）
 docker exec -it gaussdb-standby1 gsql -U bloguser -d blog_db -c "SELECT pg_is_in_recovery();"
 
-# 连接备库2
+# 连接备库2（端口 5436）
 docker exec -it gaussdb-standby2 gsql -U bloguser -d blog_db -c "SELECT pg_is_in_recovery();"
 ```
 
@@ -311,11 +313,37 @@ curl http://localhost:8081/api/stats \
 
 - VM IP: 10.211.55.11
 - 用户: root / 747599qw@
+- 系统: openEuler 22.03 LTS
+- GaussDB 版本: openGauss 5.0.0 / 9.2.4
 - GaussDB 安装路径: /usr/local/opengauss
+- 数据目录:
+  - 主库: `/usr/local/opengauss/data_primary` (端口 5432)
+  - 备库 1: `/usr/local/opengauss/data_standby1` (端口 5434)
+  - 备库 2: `/usr/local/opengauss/data_standby2` (端口 5436)
 - 数据库: blog_db
 - 用户: bloguser / 747599qw@
+- 管理用户: omm
 
 **部署步骤**：
+
+**方案 A：快速部署（推荐）**
+
+```bash
+# 1. 同步脚本到虚拟机（在本地 Mac 上）
+./sync-scripts-to-vm.sh
+
+# 2. SSH 登录虚拟机
+ssh root@10.211.55.11
+
+# 3. 重构端口配置
+cd CloudCom
+./scripts/refactor-ports.sh
+
+# 4. 验证集群
+./scripts/verify-gaussdb-cluster.sh
+```
+
+**方案 B：完整部署**
 
 1. **使用自动化脚本部署**：
 
@@ -342,13 +370,15 @@ sshpass -p "747599qw@" rsync -avz \
 # 2. SSH 登录虚拟机
 ssh root@10.211.55.11
 
-# 3. 在虚拟机上启动服务
+# 3. 初始化 GaussDB 集群
 cd ~/CloudCom
-docker-compose up -d --build
+./setup-gaussdb-single-vm-cluster.sh
 
-# 4. 查看服务状态
-docker-compose ps
-docker-compose logs -f
+# 4. 重构端口配置（避免端口冲突）
+./scripts/refactor-ports.sh
+
+# 5. 验证集群状态
+./scripts/verify-gaussdb-cluster.sh
 ```
 
 **访问地址**：
@@ -356,42 +386,75 @@ docker-compose logs -f
 - 前端：http://10.211.55.11:8080
 - 后端：http://10.211.55.11:8081
 - GaussDB 主库：10.211.55.11:5432
+- GaussDB 备库 1：10.211.55.11:5434
+- GaussDB 备库 2：10.211.55.11:5436
+
+**集群管理脚本**：
+
+系统提供完整的管理和故障排查脚本（位于 `scripts/` 目录）：
+
+| 脚本名称                     | 功能说明                     | 使用场景     |
+| ---------------------------- | ---------------------------- | ------------ |
+| `refactor-ports.sh`          | 重构端口配置（推荐首次运行） | 解决端口冲突 |
+| `verify-gaussdb-cluster.sh`  | 验证集群状态                 | 健康检查     |
+| `test-gaussdb-readwrite.sh`  | 测试读写功能                 | 功能验证     |
+| `diagnose-gaussdb-ports.sh`  | 诊断端口问题                 | 故障排查     |
+| `fix-primary-replication.sh` | 修复主库复制配置             | 复制问题修复 |
+| `rebuild-standby2.sh`        | 重建备库 2                   | 备库重建     |
+| `check-standby2-logs.sh`     | 检查备库 2 日志              | 日志分析     |
+| `fix-backup-permissions.sh`  | 修复备份文件权限             | 权限问题     |
+| `start-vm-services.sh`       | 启动所有服务                 | 服务启动     |
+| `stop-vm-services.sh`        | 停止所有服务                 | 服务停止     |
+| `restart-vm-services.sh`     | 重启所有服务                 | 服务重启     |
+| `check-vm-status.sh`         | 检查虚拟机状态               | 完整状态检查 |
+
+详细说明请查看：[scripts/README.md](scripts/README.md)
 
 **验证 GaussDB 集群**：
 
 ```bash
-# SSH 登录虚拟机
-ssh root@10.211.55.11
+# 使用验证脚本（推荐）
+./scripts/verify-gaussdb-cluster.sh
 
+# 或手动验证
 # 检查 GaussDB 进程
 ps aux | grep gaussdb
 
-# 连接主库
-gsql -h 10.211.55.11 -p 5432 -U bloguser -d blog_db
+# 连接主库（端口 5432）
+su - omm -c "gsql -d blog_db -p 5432 -c 'SELECT version();'"
 
 # 查看复制状态
-gsql -h 10.211.55.11 -p 5432 -U bloguser -d blog_db \
-  -c "SELECT * FROM pg_stat_replication;"
+su - omm -c "gsql -d postgres -p 5432 -c 'SELECT * FROM pg_stat_replication;'"
 
-# 检查备库状态
-gsql -h 10.211.55.11 -p 5433 -U bloguser -d blog_db \
-  -c "SELECT pg_is_in_recovery();"
+# 检查备库1状态（端口 5434）
+su - omm -c "gsql -d blog_db -p 5434 -c 'SELECT pg_is_in_recovery();'"
+
+# 检查备库2状态（端口 5436）
+su - omm -c "gsql -d blog_db -p 5436 -c 'SELECT pg_is_in_recovery();'"
 ```
 
-**常用运维脚本**：
+**常用运维命令**：
 
 ```bash
-# 启动 GaussDB 主库
-su - omm -c "gs_ctl start -D /usr/local/opengauss/data"
+# 启动主库
+su - omm -c "gs_ctl start -D /usr/local/opengauss/data_primary"
 
-# 停止 GaussDB 主库
-su - omm -c "gs_ctl stop -D /usr/local/opengauss/data"
+# 启动备库1
+su - omm -c "gs_ctl start -D /usr/local/opengauss/data_standby1"
 
-# 查看 GaussDB 状态
-su - omm -c "gs_ctl status -D /usr/local/opengauss/data"
+# 启动备库2
+su - omm -c "gs_ctl start -D /usr/local/opengauss/data_standby2"
 
-# 重启 GaussDB
-su - omm -c "gs_ctl restart -D /usr/local/opengauss/data"
+# 停止实例
+su - omm -c "gs_ctl stop -D /usr/local/opengauss/data_primary -m fast"
+
+# 查看实例状态
+su - omm -c "gs_ctl status -D /usr/local/opengauss/data_primary"
+
+# 查看端口监听
+lsof -i :5432
+lsof -i :5434
+lsof -i :5436
 ```
 
 ## 配置说明
@@ -764,18 +827,84 @@ npm run test:coverage
 
 ## 常见问题
 
-### 1. 后端启动失败
+### 1. GaussDB 端口冲突
+
+**问题**：备库启动失败，提示 "port already in use" 或进程监听多个端口
+
+**原因**：GaussDB 每个实例需要 2 个连续端口（主端口+HA 端口），端口间隔太小导致冲突
+
+**解决方案**：
+
+```bash
+# 1. 诊断问题
+./scripts/diagnose-gaussdb-ports.sh
+
+# 2. 重构端口配置
+./scripts/refactor-ports.sh
+
+# 3. 验证结果
+./scripts/verify-gaussdb-cluster.sh
+```
+
+### 2. 主备复制未建立
+
+**问题**：备库无法连接到主库，复制状态显示为空
+
+**解决方案**：
+
+```bash
+# 1. 修复主库复制配置
+./scripts/fix-primary-replication.sh
+
+# 2. 重建备库（如果必要）
+./scripts/rebuild-standby2.sh
+
+# 3. 验证复制状态
+su - omm -c "gsql -d postgres -p 5432 -c 'SELECT * FROM pg_stat_replication;'"
+```
+
+### 3. 备库启动失败
+
+**问题**：备库一直启动失败，日志显示连接错误
+
+**解决方案**：
+
+```bash
+# 1. 检查日志
+./scripts/check-standby2-logs.sh
+
+# 2. 检查主库配置
+./scripts/fix-primary-replication.sh
+
+# 3. 重建备库
+./scripts/rebuild-standby2.sh
+```
+
+### 4. 文件权限问题
+
+**问题**：gs_basebackup 失败，提示 "Permission denied"
+
+**解决方案**：
+
+```bash
+./scripts/fix-backup-permissions.sh
+```
+
+选择 `y` 删除备份文件
+
+### 5. 后端启动失败
 
 **问题**：数据库连接失败
 
 **解决方案**：
 
-- 确认 PostgreSQL 已启动：`brew services list` (macOS)
+- 确认 GaussDB 已启动：`ps aux | grep gaussdb`
 - 检查数据库配置是否正确
-- 确认数据库 `blog_db` 已创建：`psql -l | grep blog_db`
+- 确认数据库 `blog_db` 已创建
 - 查看日志：`logs/backend.log`
+- 验证连接：`su - omm -c "gsql -d blog_db -p 5432"`
 
-### 2. 前端无法访问后端
+### 6. 前端无法访问后端
 
 **问题**：API 请求失败或跨域错误
 
@@ -785,7 +914,7 @@ npm run test:coverage
 - 检查 Vite 代理配置 (`vite.config.js`)
 - 确认后端 CORS 配置 (`WebConfig.java`)
 
-### 3. 文件上传失败
+### 7. 文件上传失败
 
 **问题**：上传图片时报错
 
@@ -795,7 +924,7 @@ npm run test:coverage
 - 检查文件大小限制 (默认 10MB)
 - 查看后端日志中的错误信息
 
-### 4. Docker 容器启动失败
+### 8. Docker 容器启动失败
 
 **问题**：容器无法启动或健康检查失败
 
@@ -804,6 +933,10 @@ npm run test:coverage
 - 查看容器日志：`docker-compose logs backend`
 - 确认端口未被占用
 - 等待数据库完全启动后再启动后端
+
+---
+
+**更多故障排查指南**：参见 [scripts/README.md](scripts/README.md)
 
 ## 开发指南
 
