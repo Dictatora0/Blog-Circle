@@ -22,7 +22,7 @@ if ! command -v sshpass &> /dev/null; then
     if [ -f "/opt/homebrew/bin/sshpass" ]; then
         SSHPASS="/opt/homebrew/bin/sshpass"
     else
-        echo -e "${RED}✗ 未找到 sshpass，请先安装: brew install hudochenkov/sshpass/sshpass${NC}"
+        echo -e "${RED}[FAIL] 未找到 sshpass，请先安装: brew install hudochenkov/sshpass/sshpass${NC}"
         exit 1
     fi
 else
@@ -47,7 +47,7 @@ echo ""
 # 1. 停止 Docker 服务
 echo "=== 1. 停止应用服务 (Docker Compose) ==="
 vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f docker-compose-vm-gaussdb.yml down" 2>/dev/null || echo "Docker 服务已停止或不存在"
-echo -e "${GREEN}✓ Docker 服务已停止${NC}"
+echo -e "${GREEN}[OK] Docker 服务已停止${NC}"
 echo ""
 
 # 2. 停止 GaussDB 集群（如果存在）
@@ -57,17 +57,17 @@ if vm_cmd "[ -d /usr/local/opengauss/data_standby2 ] && echo 'exists'" | grep -q
     
     # 停止备库2
     vm_cmd "su - omm -c 'gs_ctl stop -D /usr/local/opengauss/data_standby2' 2>/dev/null || echo 'stopped'"
-    echo -e "${GREEN}✓ 备库2 已停止${NC}"
+    echo -e "${GREEN}[OK] 备库2 已停止${NC}"
     
     # 停止备库1
     vm_cmd "su - omm -c 'gs_ctl stop -D /usr/local/opengauss/data_standby1' 2>/dev/null || echo 'stopped'"
-    echo -e "${GREEN}✓ 备库1 已停止${NC}"
+    echo -e "${GREEN}[OK] 备库1 已停止${NC}"
 fi
 
 # 3. 停止主库
 echo "停止主库..."
 vm_cmd "su - omm -c 'gs_ctl stop -D /usr/local/opengauss/data' 2>/dev/null || echo 'stopped'"
-echo -e "${GREEN}✓ 主库已停止${NC}"
+echo -e "${GREEN}[OK] 主库已停止${NC}"
 echo ""
 
 # 4. 验证所有服务已停止
@@ -75,17 +75,17 @@ echo "=== 3. 验证服务状态 ==="
 echo -n "检查 Docker 容器: "
 CONTAINER_COUNT=$(vm_cmd "docker ps -q | wc -l" 2>/dev/null | tr -d ' ')
 if [ "$CONTAINER_COUNT" == "0" ]; then
-    echo -e "${GREEN}✓ 无运行中的容器${NC}"
+    echo -e "${GREEN}[OK] 无运行中的容器${NC}"
 else
-    echo -e "${YELLOW}⚠ 仍有 $CONTAINER_COUNT 个容器在运行${NC}"
+    echo -e "${YELLOW}[WARN] 仍有 $CONTAINER_COUNT 个容器在运行${NC}"
 fi
 
 echo -n "检查 GaussDB 进程: "
 GAUSSDB_COUNT=$(vm_cmd "ps aux | grep gaussdb | grep -v grep | wc -l" 2>/dev/null | tr -d ' ')
 if [ "$GAUSSDB_COUNT" == "0" ]; then
-    echo -e "${GREEN}✓ GaussDB 已完全停止${NC}"
+    echo -e "${GREEN}[OK] GaussDB 已完全停止${NC}"
 else
-    echo -e "${YELLOW}⚠ 仍有 $GAUSSDB_COUNT 个 GaussDB 进程在运行${NC}"
+    echo -e "${YELLOW}[WARN] 仍有 $GAUSSDB_COUNT 个 GaussDB 进程在运行${NC}"
 fi
 echo ""
 

@@ -40,7 +40,7 @@ if [ "$REMAINING" -gt 0 ]; then
     sleep 2
 fi
 
-echo -e "${GREEN}✓ 所有实例已停止${NC}"
+echo -e "${GREEN}[OK] 所有实例已停止${NC}"
 echo ""
 
 # 2. 清理配置文件
@@ -58,7 +58,7 @@ if [ -f "$PRIMARY_DATA/postgresql.conf" ]; then
     echo "" >> "$PRIMARY_DATA/postgresql.conf"
     echo "# Port configuration" >> "$PRIMARY_DATA/postgresql.conf"
     echo "port = 5432" >> "$PRIMARY_DATA/postgresql.conf"
-    echo -e "${GREEN}✓ 主库配置已清理（端口 5432）${NC}"
+    echo -e "${GREEN}[OK] 主库配置已清理（端口 5432）${NC}"
 fi
 
 # 清理备库1配置
@@ -70,7 +70,7 @@ if [ -f "$STANDBY1_DATA/postgresql.conf" ]; then
     echo "" >> "$STANDBY1_DATA/postgresql.conf"
     echo "# Port configuration" >> "$STANDBY1_DATA/postgresql.conf"
     echo "port = 5433" >> "$STANDBY1_DATA/postgresql.conf"
-    echo -e "${GREEN}✓ 备库1配置已清理（端口 5433）${NC}"
+    echo -e "${GREEN}[OK] 备库1配置已清理（端口 5433）${NC}"
 fi
 
 # 清理备库2配置
@@ -82,7 +82,7 @@ if [ -f "$STANDBY2_DATA/postgresql.conf" ]; then
     echo "" >> "$STANDBY2_DATA/postgresql.conf"
     echo "# Port configuration" >> "$STANDBY2_DATA/postgresql.conf"
     echo "port = 5434" >> "$STANDBY2_DATA/postgresql.conf"
-    echo -e "${GREEN}✓ 备库2配置已清理（端口 5434）${NC}"
+    echo -e "${GREEN}[OK] 备库2配置已清理（端口 5434）${NC}"
 fi
 echo ""
 
@@ -103,15 +103,15 @@ echo "=== 4. 清理 PID 文件和锁文件 ==="
 rm -f "$PRIMARY_DATA/postmaster.pid"
 rm -f "$STANDBY1_DATA/postmaster.pid"
 rm -f "$STANDBY2_DATA/postmaster.pid"
-echo -e "${GREEN}✓ PID 文件已清理${NC}"
+echo -e "${GREEN}[OK] PID 文件已清理${NC}"
 echo ""
 
 # 5. 启动主库
 echo "=== 5. 启动主库 ==="
 if su - omm -c "gs_ctl start -D $PRIMARY_DATA" 2>&1 | grep -E "server started|already running"; then
-    echo -e "${GREEN}✓ 主库启动成功${NC}"
+    echo -e "${GREEN}[OK] 主库启动成功${NC}"
 else
-    echo -e "${RED}✗ 主库启动失败${NC}"
+    echo -e "${RED}[FAIL] 主库启动失败${NC}"
     exit 1
 fi
 sleep 5
@@ -125,16 +125,16 @@ if [ -n "$PRIMARY_PID" ]; then
     echo "监听端口:"
     lsof -p $PRIMARY_PID | grep LISTEN || echo "  无法获取端口信息"
 else
-    echo -e "${RED}✗ 主库进程未找到${NC}"
+    echo -e "${RED}[FAIL] 主库进程未找到${NC}"
 fi
 echo ""
 
 # 7. 启动备库1
 echo "=== 7. 启动备库1 ==="
 if su - omm -c "gs_ctl start -D $STANDBY1_DATA" 2>&1 | grep -E "server started|already running"; then
-    echo -e "${GREEN}✓ 备库1启动成功${NC}"
+    echo -e "${GREEN}[OK] 备库1启动成功${NC}"
 else
-    echo -e "${RED}✗ 备库1启动失败${NC}"
+    echo -e "${RED}[FAIL] 备库1启动失败${NC}"
 fi
 sleep 5
 echo ""
@@ -147,16 +147,16 @@ if [ -n "$STANDBY1_PID" ]; then
     echo "监听端口:"
     lsof -p $STANDBY1_PID | grep LISTEN || echo "  无法获取端口信息"
 else
-    echo -e "${RED}✗ 备库1进程未找到${NC}"
+    echo -e "${RED}[FAIL] 备库1进程未找到${NC}"
 fi
 echo ""
 
 # 9. 启动备库2
 echo "=== 9. 启动备库2 ==="
 if su - omm -c "gs_ctl start -D $STANDBY2_DATA" 2>&1 | grep -E "server started|already running"; then
-    echo -e "${GREEN}✓ 备库2启动成功${NC}"
+    echo -e "${GREEN}[OK] 备库2启动成功${NC}"
 else
-    echo -e "${RED}✗ 备库2启动失败${NC}"
+    echo -e "${RED}[FAIL] 备库2启动失败${NC}"
 fi
 sleep 5
 echo ""
@@ -169,7 +169,7 @@ if [ -n "$STANDBY2_PID" ]; then
     echo "监听端口:"
     lsof -p $STANDBY2_PID | grep LISTEN || echo "  无法获取端口信息"
 else
-    echo -e "${RED}✗ 备库2进程未找到${NC}"
+    echo -e "${RED}[FAIL] 备库2进程未找到${NC}"
 fi
 echo ""
 

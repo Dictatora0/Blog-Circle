@@ -43,14 +43,14 @@ fix_permissions() {
         chown omm:omm "$data_dir"/*.bak.* 2>/dev/null || true
         chmod 600 "$data_dir"/*.bak.* 2>/dev/null || true
         
-        echo -e "${GREEN}✓ $name 备份文件权限已修复${NC}"
+        echo -e "${GREEN}[OK] $name 备份文件权限已修复${NC}"
         
         # 或者删除它们（更安全）
         read -p "是否删除这些备份文件？(y/n) " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             rm -f "$data_dir"/*.bak.*
-            echo -e "${GREEN}✓ 备份文件已删除${NC}"
+            echo -e "${GREEN}[OK] 备份文件已删除${NC}"
         fi
     else
         echo "没有找到备份文件"

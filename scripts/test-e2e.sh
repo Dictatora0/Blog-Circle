@@ -43,11 +43,11 @@ test_api() {
     fi
     
     if echo "$response" | grep -q "$expected"; then
-        echo -e "${GREEN}✓ 通过${NC}"
+        echo -e "${GREEN}[OK] 通过${NC}"
         PASSED=$((PASSED + 1))
         return 0
     else
-        echo -e "${RED}✗ 失败${NC}"
+        echo -e "${RED}[FAIL] 失败${NC}"
         echo "  响应: $response"
         FAILED=$((FAILED + 1))
         return 1
@@ -74,10 +74,10 @@ LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/api/auth/login" \
 TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"token":"[^"]*"' | sed 's/"token":"//' | sed 's/"//')
 
 if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
-    echo -e "测试: 用户登录 ... ${GREEN}✓ 通过${NC}"
+    echo -e "测试: 用户登录 ... ${GREEN}[OK] 通过${NC}"
     PASSED=$((PASSED + 1))
 else
-    echo -e "测试: 用户登录 ... ${RED}✗ 失败${NC}"
+    echo -e "测试: 用户登录 ... ${RED}[FAIL] 失败${NC}"
     FAILED=$((FAILED + 1))
 fi
 echo ""
@@ -93,10 +93,10 @@ echo -n "测试: 获取当前用户 ... "
 USER_RESPONSE=$(curl -s -X GET "$BASE_URL/api/users/current" \
     -H "Authorization: Bearer $TOKEN")
 if echo "$USER_RESPONSE" | grep -q "\"code\":200"; then
-    echo -e "${GREEN}✓ 通过${NC}"
+    echo -e "${GREEN}[OK] 通过${NC}"
     PASSED=$((PASSED + 1))
 else
-    echo -e "${RED}✗ 失败${NC}"
+    echo -e "${RED}[FAIL] 失败${NC}"
     FAILED=$((FAILED + 1))
 fi
 echo ""
@@ -111,10 +111,10 @@ POST_RESPONSE=$(curl -s -X POST "$BASE_URL/api/posts" \
 POST_ID=$(echo "$POST_RESPONSE" | grep -o '"id":[0-9]*' | head -1 | sed 's/"id"://')
 
 if [ -n "$POST_ID" ] && [ "$POST_ID" != "null" ]; then
-    echo -e "测试: 创建帖子 ... ${GREEN}✓ 通过${NC} (ID: $POST_ID)"
+    echo -e "测试: 创建帖子 ... ${GREEN}[OK] 通过${NC} (ID: $POST_ID)"
     PASSED=$((PASSED + 1))
 else
-    echo -e "测试: 创建帖子 ... ${RED}✗ 失败${NC}"
+    echo -e "测试: 创建帖子 ... ${RED}[FAIL] 失败${NC}"
     FAILED=$((FAILED + 1))
 fi
 
@@ -134,10 +134,10 @@ if [ -n "$POST_ID" ]; then
     LIKE_RESPONSE=$(curl -s -X POST "$BASE_URL/api/likes/$POST_ID" \
         -H "Authorization: Bearer $TOKEN")
     if echo "$LIKE_RESPONSE" | grep -q "\"code\":200"; then
-        echo -e "${GREEN}✓ 通过${NC}"
+        echo -e "${GREEN}[OK] 通过${NC}"
         PASSED=$((PASSED + 1))
     else
-        echo -e "${RED}✗ 失败${NC}"
+        echo -e "${RED}[FAIL] 失败${NC}"
         FAILED=$((FAILED + 1))
     fi
     echo ""
@@ -152,10 +152,10 @@ if [ -n "$POST_ID" ]; then
         -H "Content-Type: application/json" \
         -d "{\"postId\":$POST_ID,\"content\":\"这是测试评论\"}")
     if echo "$COMMENT_RESPONSE" | grep -q "\"code\":200"; then
-        echo -e "${GREEN}✓ 通过${NC}"
+        echo -e "${GREEN}[OK] 通过${NC}"
         PASSED=$((PASSED + 1))
     else
-        echo -e "${RED}✗ 失败${NC}"
+        echo -e "${RED}[FAIL] 失败${NC}"
         FAILED=$((FAILED + 1))
     fi
     
@@ -184,7 +184,7 @@ echo ""
 
 if [ $FAILED -eq 0 ]; then
     echo -e "${GREEN}=========================================${NC}"
-    echo -e "${GREEN}   所有测试通过！${NC}"
+    echo -e "${GREEN}   所有测试通过!${NC}"
     echo -e "${GREEN}=========================================${NC}"
     exit 0
 else

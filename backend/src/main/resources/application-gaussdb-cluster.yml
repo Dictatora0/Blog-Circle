@@ -4,11 +4,11 @@ spring:
   datasource:
     primary:
       driver-class-name: org.opengauss.Driver
-      jdbc-url: jdbc:opengauss://127.0.0.1:5432/blog_db
+      jdbc-url: jdbc:opengauss://10.211.55.11:5432/blog_db
       username: bloguser
-      password: Bloguser1234
-      maximum-pool-size: 10
-      minimum-idle: 3
+      password: 747599qw@
+      maximum-pool-size: 20
+      minimum-idle: 5
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -17,11 +17,11 @@ spring:
       pool-name: GaussDB-Primary-HikariCP
     replica:
       driver-class-name: org.opengauss.Driver
-      jdbc-url: jdbc:opengauss://127.0.0.1:5432/blog_db
+      jdbc-url: jdbc:opengauss://10.211.55.11:5434/blog_db
       username: bloguser
-      password: Bloguser1234
-      maximum-pool-size: 10
-      minimum-idle: 3
+      password: 747599qw@
+      maximum-pool-size: 20
+      minimum-idle: 5
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000

@@ -25,7 +25,7 @@ echo ""
 
 # 检查 analytics 模块是否存在
 if [ ! -d "analytics" ]; then
-    echo -e "${RED}✗ analytics 模块不存在${NC}"
+    echo -e "${RED}[FAIL] analytics 模块不存在${NC}"
     exit 1
 fi
 
@@ -34,9 +34,9 @@ cd analytics
 # 1. 编译 Spark 项目
 echo "=== 1. 编译 Spark 项目 ==="
 if mvn clean package -DskipTests > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ 编译成功${NC}"
+    echo -e "${GREEN}[OK] 编译成功${NC}"
 else
-    echo -e "${RED}✗ 编译失败${NC}"
+    echo -e "${RED}[FAIL] 编译失败${NC}"
     exit 1
 fi
 echo ""
@@ -52,7 +52,7 @@ export GAUSSDB_PRIMARY_PASSWORD=$GAUSSDB_PASSWORD
 JAR_FILE=$(find target -name "analytics-*.jar" | head -1)
 
 if [ -z "$JAR_FILE" ]; then
-    echo -e "${RED}✗ 未找到编译后的 JAR 文件${NC}"
+    echo -e "${RED}[FAIL] 未找到编译后的 JAR 文件${NC}"
     exit 1
 fi
 
@@ -69,13 +69,13 @@ timeout 60s spark-submit \
 
 if grep -q "分析任务完成" /tmp/spark-test.log; then
     echo ""
-    echo -e "${GREEN}✓ Spark 任务执行成功${NC}"
+    echo -e "${GREEN}[OK] Spark 任务执行成功${NC}"
 elif grep -q "主库连接成功" /tmp/spark-test.log; then
     echo ""
-    echo -e "${GREEN}✓ Spark 连接 GaussDB 成功${NC}"
+    echo -e "${GREEN}[OK] Spark 连接 GaussDB 成功${NC}"
 else
     echo ""
-    echo -e "${YELLOW}⚠ Spark 任务可能未完全成功，请查看日志${NC}"
+    echo -e "${YELLOW}[WARN] Spark 任务可能未完全成功，请查看日志${NC}"
 fi
 
 echo ""

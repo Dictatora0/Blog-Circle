@@ -27,7 +27,7 @@ echo ""
 # 2. 等待清理完成
 echo "=== 2. 等待清理完成 ==="
 sleep 5
-echo -e "${GREEN}✓ 等待完成${NC}"
+echo -e "${GREEN}[OK] 等待完成${NC}"
 echo ""
 
 # 3. 启动服务

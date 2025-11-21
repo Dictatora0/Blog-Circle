@@ -25,7 +25,7 @@ echo ""
 echo "=== 1. 强制停止所有 GaussDB 进程 ==="
 ps aux | grep -E "gaussdb.*(data_primary|data_standby)" | grep -v grep | awk '{print $2}' | xargs -r kill -9 2>/dev/null || echo "没有运行的进程"
 sleep 3
-echo -e "${GREEN}✓ 所有进程已终止${NC}"
+echo -e "${GREEN}[OK] 所有进程已终止${NC}"
 echo ""
 
 # 2. 清理所有配置文件
@@ -65,7 +65,7 @@ clean_port_config() {
     rm -f "/tmp/.s.PGSQL.$port"
     rm -f "/tmp/.s.PGSQL.$port.lock"
     
-    echo -e "${GREEN}✓ $name 配置已清理 (端口 $port)${NC}"
+    echo -e "${GREEN}[OK] $name 配置已清理 (端口 $port)${NC}"
 }
 
 clean_port_config "$PRIMARY_DATA" 5432 "主库"
@@ -76,7 +76,7 @@ echo ""
 # 3. 清理所有 socket 文件
 echo "=== 3. 清理 socket 文件 ==="
 rm -f /tmp/.s.PGSQL.*
-echo -e "${GREEN}✓ Socket 文件已清理${NC}"
+echo -e "${GREEN}[OK] Socket 文件已清理${NC}"
 echo ""
 
 # 4. 验证配置
@@ -94,15 +94,15 @@ echo ""
 # 5. 检查 auto.conf
 echo "=== 5. 检查 auto.conf 文件 ==="
 if grep -q "port" "$PRIMARY_DATA/postgresql.auto.conf" 2>/dev/null; then
-    echo -e "${YELLOW}⚠ 主库 auto.conf 包含端口配置${NC}"
+    echo -e "${YELLOW}[WARN] 主库 auto.conf 包含端口配置${NC}"
     grep "port" "$PRIMARY_DATA/postgresql.auto.conf"
 fi
 if grep -q "port" "$STANDBY1_DATA/postgresql.auto.conf" 2>/dev/null; then
-    echo -e "${YELLOW}⚠ 备库1 auto.conf 包含端口配置${NC}"
+    echo -e "${YELLOW}[WARN] 备库1 auto.conf 包含端口配置${NC}"
     grep "port" "$STANDBY1_DATA/postgresql.auto.conf"
 fi
 if grep -q "port" "$STANDBY2_DATA/postgresql.auto.conf" 2>/dev/null; then
-    echo -e "${YELLOW}⚠ 备库2 auto.conf 包含端口配置${NC}"
+    echo -e "${YELLOW}[WARN] 备库2 auto.conf 包含端口配置${NC}"
     grep "port" "$STANDBY2_DATA/postgresql.auto.conf"
 fi
 echo ""
@@ -114,11 +114,11 @@ sleep 5
 
 PRIMARY_PID=$(ps aux | grep "gaussdb.*data_primary" | grep -v grep | awk '{print $2}')
 if [ -n "$PRIMARY_PID" ]; then
-    echo -e "${GREEN}✓ 主库已启动 (PID: $PRIMARY_PID)${NC}"
+    echo -e "${GREEN}[OK] 主库已启动 (PID: $PRIMARY_PID)${NC}"
     echo "主库监听端口:"
     lsof -p $PRIMARY_PID 2>/dev/null | grep LISTEN
 else
-    echo -e "${RED}✗ 主库启动失败${NC}"
+    echo -e "${RED}[FAIL] 主库启动失败${NC}"
     exit 1
 fi
 echo ""
@@ -130,11 +130,11 @@ sleep 5
 
 STANDBY1_PID=$(ps aux | grep "gaussdb.*data_standby1" | grep -v grep | awk '{print $2}')
 if [ -n "$STANDBY1_PID" ]; then
-    echo -e "${GREEN}✓ 备库1已启动 (PID: $STANDBY1_PID)${NC}"
+    echo -e "${GREEN}[OK] 备库1已启动 (PID: $STANDBY1_PID)${NC}"
     echo "备库1监听端口:"
     lsof -p $STANDBY1_PID 2>/dev/null | grep LISTEN
 else
-    echo -e "${RED}✗ 备库1启动失败${NC}"
+    echo -e "${RED}[FAIL] 备库1启动失败${NC}"
 fi
 echo ""
 
@@ -145,11 +145,11 @@ sleep 5
 
 STANDBY2_PID=$(ps aux | grep "gaussdb.*data_standby2" | grep -v grep | awk '{print $2}')
 if [ -n "$STANDBY2_PID" ]; then
-    echo -e "${GREEN}✓ 备库2已启动 (PID: $STANDBY2_PID)${NC}"
+    echo -e "${GREEN}[OK] 备库2已启动 (PID: $STANDBY2_PID)${NC}"
     echo "备库2监听端口:"
     lsof -p $STANDBY2_PID 2>/dev/null | grep LISTEN
 else
-    echo -e "${RED}✗ 备库2启动失败${NC}"
+    echo -e "${RED}[FAIL] 备库2启动失败${NC}"
 fi
 echo ""
 

@@ -109,10 +109,10 @@ for api_path in "${!API_MAPPINGS[@]}"; do
     done
     
     if [ "$found" = true ]; then
-        echo -e "${GREEN}✓${NC} $api_path"
+        echo -e "${GREEN}[OK]${NC} $api_path"
         MATCHED_APIS=$((MATCHED_APIS + 1))
     else
-        echo -e "${RED}✗${NC} $api_path ${YELLOW}(后端接口未找到)${NC}"
+        echo -e "${RED}[FAIL]${NC} $api_path ${YELLOW}(后端接口未找到)${NC}"
         UNMATCHED_APIS=$((UNMATCHED_APIS + 1))
     fi
 done
@@ -136,9 +136,9 @@ echo "   前端 API 文件检查"
 echo "========================================="
 for file in "${FRONTEND_API_FILES[@]}"; do
     if [ -f "$file" ]; then
-        echo -e "${GREEN}✓${NC} $file"
+        echo -e "${GREEN}[OK]${NC} $file"
     else
-        echo -e "${RED}✗${NC} $file ${YELLOW}(文件不存在)${NC}"
+        echo -e "${RED}[FAIL]${NC} $file ${YELLOW}(文件不存在)${NC}"
     fi
 done
 echo ""
@@ -149,16 +149,16 @@ echo "   后端 Controller 文件检查"
 echo "========================================="
 for file in "${BACKEND_CONTROLLER_FILES[@]}"; do
     if [ -f "$file" ]; then
-        echo -e "${GREEN}✓${NC} $file"
+        echo -e "${GREEN}[OK]${NC} $file"
     else
-        echo -e "${RED}✗${NC} $file ${YELLOW}(文件不存在)${NC}"
+        echo -e "${RED}[FAIL]${NC} $file ${YELLOW}(文件不存在)${NC}"
     fi
 done
 echo ""
 
 if [ $UNMATCHED_APIS -eq 0 ]; then
     echo -e "${GREEN}=========================================${NC}"
-    echo -e "${GREEN}   所有 API 映射验证通过！${NC}"
+    echo -e "${GREEN}   所有 API 映射验证通过!${NC}"
     echo -e "${GREEN}=========================================${NC}"
     exit 0
 else

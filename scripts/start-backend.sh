@@ -27,16 +27,16 @@ cd backend
 
 # 1. 检查 Maven
 if ! command -v mvn &> /dev/null; then
-    echo -e "${RED}✗ 未找到 Maven，请先安装${NC}"
+    echo -e "${RED}[FAIL] 未找到 Maven，请先安装${NC}"
     exit 1
 fi
 
 # 2. 编译项目
 echo "=== 编译项目 ==="
 if mvn clean package -Dmaven.test.skip=true > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ 编译成功${NC}"
+    echo -e "${GREEN}[OK] 编译成功${NC}"
 else
-    echo -e "${RED}✗ 编译失败${NC}"
+    echo -e "${RED}[FAIL] 编译失败${NC}"
     exit 1
 fi
 echo ""
@@ -44,7 +44,7 @@ echo ""
 # 3. 查找 JAR 文件
 JAR_FILE=$(find target -name "*.jar" -not -name "*-sources.jar" | head -1)
 if [ -z "$JAR_FILE" ]; then
-    echo -e "${RED}✗ 未找到编译后的 JAR 文件${NC}"
+    echo -e "${RED}[FAIL] 未找到编译后的 JAR 文件${NC}"
     exit 1
 fi
 

@@ -27,13 +27,13 @@ cd frontend
 
 # 1. 检查 Node.js
 if ! command -v node &> /dev/null; then
-    echo -e "${RED}✗ 未找到 Node.js，请先安装${NC}"
+    echo -e "${RED}[FAIL] 未找到 Node.js，请先安装${NC}"
     exit 1
 fi
 
 # 2. 检查 npm
 if ! command -v npm &> /dev/null; then
-    echo -e "${RED}✗ 未找到 npm，请先安装${NC}"
+    echo -e "${RED}[FAIL] 未找到 npm，请先安装${NC}"
     exit 1
 fi
 
@@ -49,7 +49,7 @@ if [ "$MODE" == "prod" ] || [ "$MODE" == "build" ]; then
     echo "=== 构建生产版本 ==="
     npm run build
     echo ""
-    echo -e "${GREEN}✓ 构建完成${NC}"
+    echo -e "${GREEN}[OK] 构建完成${NC}"
     echo "构建文件位于: dist/"
     echo ""
     echo "使用以下命令启动生产服务器:"

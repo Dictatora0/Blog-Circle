@@ -9,7 +9,7 @@
 - Spring Boot 3.1.5 + MyBatis 3.0.3
 - PostgreSQL 42.6.0 / openGauss 3.0.0
 - JWT 0.11.5 (身份认证)
-- Apache Spark 3.5.0 (可选数据分析)
+- Apache Spark 3.5.0 (数据分析)
 - JDK 17
 
 **前端**
@@ -23,7 +23,7 @@
 **数据库**
 
 - PostgreSQL 15 (开发/生产)
-- openGauss/GaussDB (可选，支持主备集群)
+- openGauss/GaussDB (支持主备集群)
 
 ## 核心功能
 
@@ -242,61 +242,66 @@ docker-compose down
 - 后端：http://localhost:8081
 - 数据库：localhost:5432
 
-### 方式三：GaussDB 集群 + Spark (实验环境)
+### 方式三：虚拟机 GaussDB 集群部署（生产环境）
 
-#### 3.1 本地 GaussDB 一主二备集群
+#### 3.1 虚拟机 openGauss 9.2.4 一主二备集群
 
-使用 Docker Compose 启动完整的 GaussDB 集群环境（1 个主库 + 2 个备库 + Spark 集群）：
+在虚拟机（10.211.55.11）上部署真实的 openGauss 集群：
 
 ```bash
-# 启动 GaussDB 集群 + Spark + 后端 + 前端
-docker-compose -f docker-compose-gaussdb-pseudo.yml up -d
+# SSH 登录虚拟机
+ssh root@10.211.55.11
 
-# 查看集群状态
-docker-compose -f docker-compose-gaussdb-pseudo.yml ps
+# 进入项目目录
+cd ~/CloudCom
 
-# 查看日志
-docker-compose -f docker-compose-gaussdb-pseudo.yml logs -f
+# 快速部署 openGauss 集群
+./scripts/refactor-ports.sh
+./scripts/verify-gaussdb-cluster.sh
 
-# 停止集群
-docker-compose -f docker-compose-gaussdb-pseudo.yml down -v
+# 启动后端服务
+cd backend
+mvn clean package -DskipTests
+nohup java -jar target/blog-backend-1.0.0.jar \
+  --spring.profiles.active=gaussdb-cluster \
+  > logs/backend.log 2>&1 &
 ```
 
 **集群架构**：
 
-- **gaussdb-primary** (主库): 端口 5432（HA 端口 5433），负责写操作
-- **gaussdb-standby1** (备库 1): 端口 5434（HA 端口 5435），负责读操作
-- **gaussdb-standby2** (备库 2): 端口 5436（HA 端口 5437），负责读操作
-- **backend**: 端口 8081，自动实现读写分离
-- **frontend**: 端口 8082
-- **spark-master**: 端口 8090 (Web UI)
-- **spark-worker**: 端口 8091
+- **openGauss 主库**: 端口 5432（HA 端口 5433），负责写操作
+- **openGauss 备库 1**: 端口 5434（HA 端口 5435），负责读操作
+- **openGauss 备库 2**: 端口 5436（HA 端口 5437），负责读操作
+- **Spring Boot 后端**: 端口 8081，自动实现读写分离
+- **Vue 3 前端**: 端口 8080（Nginx）
+- **Spark**: 内嵌在后端服务中（local 模式）
 
-> **注意**：GaussDB 每个实例需要 2 个连续端口（主端口+HA 端口），使用间隔端口避免冲突。
+> **注意**：openGauss 每个实例需要 2 个连续端口（主端口+HA 端口），使用间隔端口（5432、5434、5436）避免冲突。
 
 **读写分离配置**：
 
-- 写操作（INSERT/UPDATE/DELETE）→ 主库 (5432)
-- 读操作（SELECT）→ 备库 (5434, 5436) 负载均衡
+- 写操作（INSERT/UPDATE/DELETE）→ 主库 (10.211.55.11:5432)
+- 读操作（SELECT）→ 备库 (10.211.55.11:5434)
 
 **验证集群状态**：
 
 ```bash
 # 连接主库
-docker exec -it gaussdb-primary gsql -U bloguser -d blog_db -c "SELECT * FROM pg_stat_replication;"
+su - omm -c "gsql -d blog_db -p 5432 -c 'SELECT * FROM pg_stat_replication;'"
 
 # 连接备库1（端口 5434）
-docker exec -it gaussdb-standby1 gsql -U bloguser -d blog_db -c "SELECT pg_is_in_recovery();"
+su - omm -c "gsql -d blog_db -p 5434 -c 'SELECT pg_is_in_recovery();'"
 
 # 连接备库2（端口 5436）
-docker exec -it gaussdb-standby2 gsql -U bloguser -d blog_db -c "SELECT pg_is_in_recovery();"
+su - omm -c "gsql -d blog_db -p 5436 -c 'SELECT pg_is_in_recovery();'"
 ```
 
 **Spark 分析任务**：
 
 ```bash
-# 访问 Spark Master Web UI
-open http://localhost:8090
+# Spark 内嵌在后端中，通过 API 触发分析
+curl -X POST http://10.211.55.11:8081/api/stats/analyze \
+  -H "Authorization: Bearer YOUR_TOKEN"
 
 # 触发数据分析 (通过后端 API)
 curl -X POST http://localhost:8081/api/stats/analyze \
@@ -585,34 +590,28 @@ location /api {
 
 ### Spark 架构
 
-系统集成了 Apache Spark 3.5.0 用于大规模数据分析：
+系统集成了 Apache Spark 3.5.0 用于数据分析：
 
-**组件**：
+**特点**：
 
-- **Spark Master**: 集群管理节点，端口 7077 (内部) / 8090 (Web UI)
-- **Spark Worker**: 计算节点，1G 内存，2 核 CPU
-- **后端集成**: 通过 Spark SQL 读取 GaussDB 数据
+- **内嵌模式**: Spark 引擎集成在 Spring Boot 后端服务中
+- **local[*] 模式**: 本地多线程执行，无需独立集群
+- **读取数据**: 通过 JDBC 从 openGauss 读取数据
+- **备用方案**: Spark 失败时自动回退到 SQL 查询
 
-### 启用 Spark 分析
+### Spark 分析说明
 
-1. **修改配置** (`application.yml`):
+**运行模式**：
+
+- Spark 采用 **内嵌模式**，集成在 Spring Boot 后端服务中
+- 使用 `local[*]` 本地多线程模式，无需独立集群
+- 默认启用，失败时自动回退到 SQL 直接查询
+
+**配置选项** (`application.yml`):
 
 ```yaml
 spark:
-  enabled: true # 启用 Spark (默认 false，使用 SQL)
-```
-
-2. **启动 Spark 集群**:
-
-```bash
-# 使用 GaussDB 集群配置启动 (包含 Spark)
-docker-compose -f docker-compose-gaussdb-pseudo.yml up -d
-```
-
-3. **访问 Spark Web UI**:
-
-```
-http://localhost:8090
+  enabled: true # 默认启用，设为 false 则直接使用 SQL
 ```
 
 ### 数据分析任务
@@ -702,27 +701,21 @@ docker exec -it gaussdb-standby1 gsql -U bloguser -d blog_db \
   -c "SELECT username FROM users WHERE username='test_user';"
 ```
 
-#### 4. 验证负载均衡
+#### 4. 验证读写分离
 
-查看后端日志，确认读操作分布到不同备库：
-
-```bash
-docker-compose -f docker-compose-gaussdb-pseudo.yml logs backend | grep "HikariCP"
-```
-
-### 验证 Spark 集群
-
-#### 1. 检查 Spark 服务状态
+查看后端日志，确认读写操作路由到正确的数据源：
 
 ```bash
-# 查看 Spark Master
-curl http://localhost:8090
+# 虚拟机环境
+tail -f ~/CloudCom/backend/logs/backend.log | grep "HikariCP"
 
-# 查看 Worker 注册情况
-docker-compose -f docker-compose-gaussdb-pseudo.yml logs spark-master | grep "Registering worker"
+# Docker 本地环境
+docker-compose logs -f backend | grep "HikariCP"
 ```
 
-#### 2. 执行测试分析任务
+### 验证 Spark 分析
+
+#### 1. 执行测试分析任务
 
 ```bash
 # 1. 登录系统
@@ -741,10 +734,14 @@ curl -X POST http://localhost:8081/api/stats/analyze \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # 4. 查看 Spark 执行日志
-docker-compose -f docker-compose-gaussdb-pseudo.yml logs backend | grep "Spark"
+# 虚拟机环境
+tail -f ~/CloudCom/backend/logs/backend.log | grep "Spark"
+
+# Docker 本地环境
+docker-compose logs -f backend | grep "Spark"
 ```
 
-#### 3. 验证统计结果
+#### 2. 验证统计结果
 
 ```bash
 # 查询所有统计数据
@@ -762,7 +759,11 @@ curl http://localhost:8081/api/stats/USER_POST_COUNT \
 
 ```bash
 # 查看连接池状态
-docker-compose -f docker-compose-gaussdb-pseudo.yml logs backend | grep "HikariPool"
+# 虚拟机环境
+tail -f ~/CloudCom/backend/logs/backend.log | grep "HikariPool"
+
+# Docker 本地环境
+docker-compose logs -f backend | grep "HikariPool"
 ```
 
 #### 2. 并发请求测试

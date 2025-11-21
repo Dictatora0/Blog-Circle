@@ -23,21 +23,21 @@ echo ""
 # 1. 检查主库状态
 echo "=== 1. 检查主库状态 ==="
 if ! su - omm -c "gs_ctl status -D $PRIMARY_DATA" | grep -q "server is running"; then
-    echo -e "${RED}✗ 主库未运行${NC}"
+    echo -e "${RED}[FAIL] 主库未运行${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓ 主库运行正常${NC}"
+echo -e "${GREEN}[OK] 主库运行正常${NC}"
 echo ""
 
 # 2. 检查复制用户
 echo "=== 2. 检查复制用户 ==="
 REPL_USER=$(su - omm -c "gsql -d postgres -p 5432 -t -c \"SELECT rolname FROM pg_roles WHERE rolname='replicator';\"" 2>/dev/null | tr -d ' ')
 if [ "$REPL_USER" == "replicator" ]; then
-    echo -e "${GREEN}✓ replicator 用户存在${NC}"
+    echo -e "${GREEN}[OK] replicator 用户存在${NC}"
 else
-    echo -e "${YELLOW}⚠ replicator 用户不存在，正在创建...${NC}"
+    echo -e "${YELLOW}[WARN] replicator 用户不存在，正在创建...${NC}"
     su - omm -c "gsql -d postgres -p 5432 -c \"CREATE USER replicator WITH REPLICATION ENCRYPTED PASSWORD '$DB_PASSWORD';\"" 2>&1
-    echo -e "${GREEN}✓ replicator 用户已创建${NC}"
+    echo -e "${GREEN}[OK] replicator 用户已创建${NC}"
 fi
 echo ""
 
@@ -47,15 +47,15 @@ echo "现有复制槽:"
 su - omm -c "gsql -d postgres -p 5432 -c \"SELECT slot_name, slot_type, active FROM pg_replication_slots;\"" 2>/dev/null || echo "无法查询复制槽"
 
 # 创建缺失的复制槽 (GaussDB 可能不支持，跳过)
-echo -e "${YELLOW}⚠ GaussDB 可能不需要预创建复制槽，跳过${NC}"
+echo -e "${YELLOW}[WARN] GaussDB 可能不需要预创建复制槽，跳过${NC}"
 echo ""
 
 # 4. 检查 pg_hba.conf
 echo "=== 4. 检查 pg_hba.conf ==="
 if grep -q "host.*replication.*replicator" "$PRIMARY_DATA/pg_hba.conf"; then
-    echo -e "${GREEN}✓ pg_hba.conf 包含复制规则${NC}"
+    echo -e "${GREEN}[OK] pg_hba.conf 包含复制规则${NC}"
 else
-    echo -e "${YELLOW}⚠ 添加复制规则到 pg_hba.conf...${NC}"
+    echo -e "${YELLOW}[WARN] 添加复制规则到 pg_hba.conf...${NC}"
     
     # 备份
     cp "$PRIMARY_DATA/pg_hba.conf" "$PRIMARY_DATA/pg_hba.conf.bak.$(date +%s)"
@@ -69,7 +69,7 @@ host    replication     replicator     ::1/128               md5
 host    replication     all            0.0.0.0/0             md5
 EOF
     
-    echo -e "${GREEN}✓ 复制规则已添加${NC}"
+    echo -e "${GREEN}[OK] 复制规则已添加${NC}"
     
     # 重新加载配置
     echo "重新加载配置..."
@@ -87,7 +87,7 @@ echo ""
 echo "=== 6. 重置 replicator 密码 ==="
 echo "重置 replicator 用户密码..."
 su - omm -c "gsql -d postgres -p 5432 -c \"ALTER USER replicator WITH PASSWORD '$DB_PASSWORD';\"" 2>&1
-echo -e "${GREEN}✓ 密码已重置${NC}"
+echo -e "${GREEN}[OK] 密码已重置${NC}"
 echo ""
 
 # 7. 显示当前复制状态

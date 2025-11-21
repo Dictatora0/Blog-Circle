@@ -30,7 +30,7 @@ rm -f /tmp/.s.PGSQL.*
 rm -f "$PRIMARY_DATA/postmaster.pid"
 rm -f "$STANDBY1_DATA/postmaster.pid"
 rm -f "$STANDBY2_DATA/postmaster.pid"
-echo -e "${GREEN}✓ 所有实例已停止${NC}"
+echo -e "${GREEN}[OK] 所有实例已停止${NC}"
 echo ""
 
 # 2. 修改端口配置
@@ -58,7 +58,7 @@ configure_port() {
         sed -i '/^port/d' "$data_dir/postgresql.auto.conf"
     fi
     
-    echo -e "${GREEN}✓ $name 端口设置为 $port${NC}"
+    echo -e "${GREEN}[OK] $name 端口设置为 $port${NC}"
 }
 
 configure_port "$PRIMARY_DATA" 5432 "主库"
@@ -69,9 +69,9 @@ echo ""
 # 3. 启动主库
 echo "=== 3. 启动主库 (5432) ==="
 if su - omm -c "gs_ctl start -D $PRIMARY_DATA -Z single_node -o '-p 5432'"; then
-    echo -e "${GREEN}✓ 主库启动成功${NC}"
+    echo -e "${GREEN}[OK] 主库启动成功${NC}"
 else
-    echo -e "${RED}✗ 主库启动失败${NC}"
+    echo -e "${RED}[FAIL] 主库启动失败${NC}"
     exit 1
 fi
 sleep 5
@@ -79,18 +79,18 @@ sleep 5
 # 4. 启动备库1
 echo "=== 4. 启动备库1 (5434) ==="
 if su - omm -c "gs_ctl start -D $STANDBY1_DATA -Z single_node -o '-p 5434'"; then
-    echo -e "${GREEN}✓ 备库1启动成功${NC}"
+    echo -e "${GREEN}[OK] 备库1启动成功${NC}"
 else
-    echo -e "${RED}✗ 备库1启动失败${NC}"
+    echo -e "${RED}[FAIL] 备库1启动失败${NC}"
 fi
 sleep 5
 
 # 5. 启动备库2
 echo "=== 5. 启动备库2 (5436) ==="
 if su - omm -c "gs_ctl start -D $STANDBY2_DATA -Z single_node -o '-p 5436'"; then
-    echo -e "${GREEN}✓ 备库2启动成功${NC}"
+    echo -e "${GREEN}[OK] 备库2启动成功${NC}"
 else
-    echo -e "${RED}✗ 备库2启动失败${NC}"
+    echo -e "${RED}[FAIL] 备库2启动失败${NC}"
 fi
 sleep 5
 

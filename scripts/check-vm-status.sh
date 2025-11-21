@@ -23,7 +23,7 @@ if ! command -v sshpass &> /dev/null; then
     if [ -f "/opt/homebrew/bin/sshpass" ]; then
         SSHPASS="/opt/homebrew/bin/sshpass"
     else
-        echo -e "${RED}✗ 未找到 sshpass，请先安装: brew install hudochenkov/sshpass/sshpass${NC}"
+        echo -e "${RED}[FAIL] 未找到 sshpass，请先安装: brew install hudochenkov/sshpass/sshpass${NC}"
         exit 1
     fi
 else
@@ -48,9 +48,9 @@ echo ""
 # 1. 检查虚拟机连接
 echo "=== 1. 虚拟机连接 ==="
 if vm_cmd "echo 'connected'" 2>/dev/null | grep -q "connected"; then
-    echo -e "${GREEN}✓ 虚拟机连接正常${NC}"
+    echo -e "${GREEN}[OK] 虚拟机连接正常${NC}"
 else
-    echo -e "${RED}✗ 无法连接到虚拟机${NC}"
+    echo -e "${RED}[FAIL] 无法连接到虚拟机${NC}"
     exit 1
 fi
 echo ""
@@ -59,7 +59,7 @@ echo ""
 echo "=== 2. GaussDB 服务状态 ==="
 GAUSSDB_STATUS=$(vm_cmd "su - omm -c 'gs_ctl status -D /usr/local/opengauss/data' 2>/dev/null || echo 'stopped'")
 if echo "$GAUSSDB_STATUS" | grep -q "running"; then
-    echo -e "${GREEN}✓ 主库运行正常${NC} (端口 5432)"
+    echo -e "${GREEN}[OK] 主库运行正常${NC} (端口 5432)"
     
     # 获取主库版本和连接数
     VERSION=$(vm_cmd "su - omm -c 'gsql -d postgres -p 5432 -t -c \"SELECT version();\"' 2>/dev/null" | head -1 | xargs)
@@ -67,7 +67,7 @@ if echo "$GAUSSDB_STATUS" | grep -q "running"; then
     echo "  版本: $VERSION"
     echo "  当前连接数: $CONNECTIONS"
 else
-    echo -e "${RED}✗ 主库未运行${NC}"
+    echo -e "${RED}[FAIL] 主库未运行${NC}"
 fi
 
 # 3. 检查集群配置
@@ -78,17 +78,17 @@ if vm_cmd "[ -d /usr/local/opengauss/data_standby1 ] && echo 'exists'" | grep -q
     # 检查备库1
     STANDBY1_STATUS=$(vm_cmd "su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_standby1' 2>/dev/null || echo 'stopped'")
     if echo "$STANDBY1_STATUS" | grep -q "running"; then
-        echo -e "${GREEN}✓ 备库1运行正常${NC} (端口 5434)"
+        echo -e "${GREEN}[OK] 备库1运行正常${NC} (端口 5434)"
     else
-        echo -e "${RED}✗ 备库1未运行${NC}"
+        echo -e "${RED}[FAIL] 备库1未运行${NC}"
     fi
     
     # 检查备库2
     STANDBY2_STATUS=$(vm_cmd "su - omm -c 'gs_ctl status -D /usr/local/opengauss/data_standby2' 2>/dev/null || echo 'stopped'")
     if echo "$STANDBY2_STATUS" | grep -q "running"; then
-        echo -e "${GREEN}✓ 备库2运行正常${NC} (端口 5436)"
+        echo -e "${GREEN}[OK] 备库2运行正常${NC} (端口 5436)"
     else
-        echo -e "${RED}✗ 备库2未运行${NC}"
+        echo -e "${RED}[FAIL] 备库2未运行${NC}"
     fi
     
     # 检查复制状态
@@ -102,7 +102,7 @@ echo ""
 echo "=== 4. Docker 容器状态 ==="
 DOCKER_PS=$(vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f docker-compose-vm-gaussdb.yml ps" 2>/dev/null || echo "ERROR")
 if echo "$DOCKER_PS" | grep -q "ERROR"; then
-    echo -e "${RED}✗ 无法获取 Docker 容器状态${NC}"
+    echo -e "${RED}[FAIL] 无法获取 Docker 容器状态${NC}"
 else
     echo "$DOCKER_PS"
     echo ""
@@ -119,9 +119,9 @@ check_port() {
     local port=$1
     local service=$2
     if vm_cmd "netstat -an | grep LISTEN | grep :$port" > /dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC} $service (端口 $port)"
+        echo -e "${GREEN}[OK]${NC} $service (端口 $port)"
     else
-        echo -e "${RED}✗${NC} $service (端口 $port) ${YELLOW}未监听${NC}"
+        echo -e "${RED}[FAIL]${NC} $service (端口 $port) ${YELLOW}未监听${NC}"
     fi
 }
 
@@ -139,16 +139,16 @@ echo "=== 6. 应用健康检查 ==="
 echo -n "后端服务: "
 BACKEND_HEALTH=$(curl -s "http://${VM_IP}:8081/actuator/health" 2>/dev/null || echo "ERROR")
 if echo "$BACKEND_HEALTH" | grep -q "UP"; then
-    echo -e "${GREEN}✓ 健康${NC}"
+    echo -e "${GREEN}[OK] 健康${NC}"
 else
-    echo -e "${RED}✗ 不健康或无法访问${NC}"
+    echo -e "${RED}[FAIL] 不健康或无法访问${NC}"
 fi
 
 echo -n "前端服务: "
 if curl -s "http://${VM_IP}:8080" > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ 可访问${NC}"
+    echo -e "${GREEN}[OK] 可访问${NC}"
 else
-    echo -e "${RED}✗ 无法访问${NC}"
+    echo -e "${RED}[FAIL] 无法访问${NC}"
 fi
 echo ""
 

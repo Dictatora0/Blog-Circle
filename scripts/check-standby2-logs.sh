@@ -21,10 +21,10 @@ echo ""
 # 1. 检查数据目录
 echo "=== 1. 检查数据目录 ==="
 if [ -d "$STANDBY2_DATA" ]; then
-    echo -e "${GREEN}✓ 数据目录存在${NC}"
+    echo -e "${GREEN}[OK] 数据目录存在${NC}"
     ls -lh "$STANDBY2_DATA" | head -20
 else
-    echo -e "${RED}✗ 数据目录不存在${NC}"
+    echo -e "${RED}[FAIL] 数据目录不存在${NC}"
     exit 1
 fi
 echo ""
@@ -33,24 +33,24 @@ echo ""
 echo "=== 2. 检查关键文件 ==="
 echo "检查 standby.signal:"
 if [ -f "$STANDBY2_DATA/standby.signal" ]; then
-    echo -e "${GREEN}✓ standby.signal 存在${NC}"
+    echo -e "${GREEN}[OK] standby.signal 存在${NC}"
 else
-    echo -e "${RED}✗ standby.signal 不存在 (备库必需)${NC}"
+    echo -e "${RED}[FAIL] standby.signal 不存在 (备库必需)${NC}"
 fi
 
 echo ""
 echo "检查 postgresql.auto.conf:"
 if [ -f "$STANDBY2_DATA/postgresql.auto.conf" ]; then
-    echo -e "${GREEN}✓ postgresql.auto.conf 存在${NC}"
+    echo -e "${GREEN}[OK] postgresql.auto.conf 存在${NC}"
     cat "$STANDBY2_DATA/postgresql.auto.conf"
 else
-    echo -e "${YELLOW}⚠ postgresql.auto.conf 不存在${NC}"
+    echo -e "${YELLOW}[WARN] postgresql.auto.conf 不存在${NC}"
 fi
 
 echo ""
 echo "检查 recovery.conf (旧版):"
 if [ -f "$STANDBY2_DATA/recovery.conf" ]; then
-    echo -e "${YELLOW}⚠ 发现 recovery.conf (旧版配置)${NC}"
+    echo -e "${YELLOW}[WARN] 发现 recovery.conf (旧版配置)${NC}"
     cat "$STANDBY2_DATA/recovery.conf"
 fi
 echo ""

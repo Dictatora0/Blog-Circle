@@ -70,30 +70,30 @@ ISSUES=0
 # 检查主库端口
 if [ -f "$PRIMARY_DATA/postgresql.conf" ]; then
     if [ "$PRIMARY_PORT" != "5432" ]; then
-        echo -e "${RED}✗ 主库端口配置错误: $PRIMARY_PORT (应为 5432)${NC}"
+        echo -e "${RED}[FAIL] 主库端口配置错误: $PRIMARY_PORT (应为 5432)${NC}"
         ISSUES=$((ISSUES + 1))
     else
-        echo -e "${GREEN}✓ 主库端口配置正确: $PRIMARY_PORT${NC}"
+        echo -e "${GREEN}[OK] 主库端口配置正确: $PRIMARY_PORT${NC}"
     fi
 fi
 
 # 检查备库1端口
 if [ -f "$STANDBY1_DATA/postgresql.conf" ]; then
     if [ "$STANDBY1_PORT" != "5433" ]; then
-        echo -e "${RED}✗ 备库1端口配置错误: $STANDBY1_PORT (应为 5433)${NC}"
+        echo -e "${RED}[FAIL] 备库1端口配置错误: $STANDBY1_PORT (应为 5433)${NC}"
         ISSUES=$((ISSUES + 1))
     else
-        echo -e "${GREEN}✓ 备库1端口配置正确: $STANDBY1_PORT${NC}"
+        echo -e "${GREEN}[OK] 备库1端口配置正确: $STANDBY1_PORT${NC}"
     fi
 fi
 
 # 检查备库2端口
 if [ -f "$STANDBY2_DATA/postgresql.conf" ]; then
     if [ "$STANDBY2_PORT" != "5434" ]; then
-        echo -e "${RED}✗ 备库2端口配置错误: $STANDBY2_PORT (应为 5434)${NC}"
+        echo -e "${RED}[FAIL] 备库2端口配置错误: $STANDBY2_PORT (应为 5434)${NC}"
         ISSUES=$((ISSUES + 1))
     else
-        echo -e "${GREEN}✓ 备库2端口配置正确: $STANDBY2_PORT${NC}"
+        echo -e "${GREEN}[OK] 备库2端口配置正确: $STANDBY2_PORT${NC}"
     fi
 fi
 echo ""

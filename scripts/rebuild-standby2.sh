@@ -20,7 +20,7 @@ echo "========================================="
 echo "   重建备库2"
 echo "========================================="
 echo ""
-echo -e "${YELLOW}⚠️  警告: 这将删除备库2的所有数据并从主库重新同步${NC}"
+echo -e "${YELLOW}[WARN]️  警告: 这将删除备库2的所有数据并从主库重新同步${NC}"
 echo ""
 read -p "是否继续？(y/n) " -n 1 -r
 echo
@@ -34,7 +34,7 @@ echo ""
 echo "=== 1. 停止备库2 ==="
 su - omm -c "gs_ctl stop -D $STANDBY2_DATA -m fast" 2>/dev/null || echo "备库2已停止"
 sleep 2
-echo -e "${GREEN}✓ 备库2已停止${NC}"
+echo -e "${GREEN}[OK] 备库2已停止${NC}"
 echo ""
 
 # 2. 备份旧数据
@@ -42,7 +42,7 @@ echo "=== 2. 备份旧数据 ==="
 if [ -d "$STANDBY2_DATA" ]; then
     BACKUP_DIR="${STANDBY2_DATA}.backup.$(date +%Y%m%d_%H%M%S)"
     mv "$STANDBY2_DATA" "$BACKUP_DIR"
-    echo -e "${GREEN}✓ 旧数据已备份到: $BACKUP_DIR${NC}"
+    echo -e "${GREEN}[OK] 旧数据已备份到: $BACKUP_DIR${NC}"
 else
     echo "数据目录不存在，跳过备份"
 fi
@@ -54,7 +54,7 @@ mkdir -p "$STANDBY2_DATA"
 # 使用 omm:omm 而不是 omm:dbgrp
 chown omm:omm "$STANDBY2_DATA"
 chmod 700 "$STANDBY2_DATA"
-echo -e "${GREEN}✓ 数据目录已创建${NC}"
+echo -e "${GREEN}[OK] 数据目录已创建${NC}"
 echo ""
 
 # 4. 从主库同步数据
@@ -65,9 +65,9 @@ export PGPASSWORD='$DB_PASSWORD'
 gs_basebackup -h 127.0.0.1 -p 5432 -U replicator -D $STANDBY2_DATA -Fp -Xs -P
 EOSU
 then
-    echo -e "${GREEN}✓ 数据同步完成${NC}"
+    echo -e "${GREEN}[OK] 数据同步完成${NC}"
 else
-    echo -e "${RED}✗ 数据同步失败${NC}"
+    echo -e "${RED}[FAIL] 数据同步失败${NC}"
     echo ""
     echo "可能的原因:"
     echo "1. 主库未运行"
@@ -82,7 +82,7 @@ echo ""
 # 5. 配置端口
 echo "=== 5. 配置备库2端口 ==="
 echo "port = 5434" >> "$STANDBY2_DATA/postgresql.conf"
-echo -e "${GREEN}✓ 端口已设置为 5434${NC}"
+echo -e "${GREEN}[OK] 端口已设置为 5434${NC}"
 echo ""
 
 # 6. 配置复制连接
@@ -94,22 +94,22 @@ primary_slot_name = 'standby2_slot'
 hot_standby = on
 EOF
 chown omm:omm "$STANDBY2_DATA/postgresql.auto.conf"
-echo -e "${GREEN}✓ 复制配置已设置${NC}"
+echo -e "${GREEN}[OK] 复制配置已设置${NC}"
 echo ""
 
 # 7. 创建 standby.signal
 echo "=== 7. 创建 standby.signal ==="
 touch "$STANDBY2_DATA/standby.signal"
 chown omm:omm "$STANDBY2_DATA/standby.signal"
-echo -e "${GREEN}✓ standby.signal 已创建${NC}"
+echo -e "${GREEN}[OK] standby.signal 已创建${NC}"
 echo ""
 
 # 8. 启动备库2
 echo "=== 8. 启动备库2 ==="
 if su - omm -c "gs_ctl start -D $STANDBY2_DATA -o '-c port=5434'"; then
-    echo -e "${GREEN}✓ 备库2启动成功${NC}"
+    echo -e "${GREEN}[OK] 备库2启动成功${NC}"
 else
-    echo -e "${RED}✗ 备库2启动失败${NC}"
+    echo -e "${RED}[FAIL] 备库2启动失败${NC}"
     echo ""
     echo "查看错误日志:"
     echo "  tail -50 $STANDBY2_DATA/pg_log/*.log"
@@ -121,16 +121,16 @@ echo ""
 # 9. 验证备库2
 echo "=== 9. 验证备库2状态 ==="
 if su - omm -c "gs_ctl status -D $STANDBY2_DATA" | grep -q "server is running"; then
-    echo -e "${GREEN}✓ 备库2运行正常${NC}"
+    echo -e "${GREEN}[OK] 备库2运行正常${NC}"
     
     # 检查是否处于恢复模式
     if su - omm -c "gsql -d postgres -p 5434 -c 'SELECT pg_is_in_recovery();'" 2>/dev/null | grep -q "t"; then
-        echo -e "${GREEN}✓ 备库2处于恢复模式${NC}"
+        echo -e "${GREEN}[OK] 备库2处于恢复模式${NC}"
     else
-        echo -e "${YELLOW}⚠ 备库2未处于恢复模式${NC}"
+        echo -e "${YELLOW}[WARN] 备库2未处于恢复模式${NC}"
     fi
 else
-    echo -e "${RED}✗ 备库2未运行${NC}"
+    echo -e "${RED}[FAIL] 备库2未运行${NC}"
 fi
 echo ""
 
