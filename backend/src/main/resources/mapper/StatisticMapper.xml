@@ -14,6 +14,15 @@
         WHERE stat_type = #{statType} AND stat_key = #{statKey}
     </update>
     
+    <insert id="insertOrUpdate" parameterType="Statistic">
+        INSERT INTO statistics (stat_type, stat_key, stat_value, created_at, updated_at)
+        VALUES (#{statType}, #{statKey}, #{statValue}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT (stat_type, stat_key) 
+        DO UPDATE SET 
+            stat_value = #{statValue},
+            updated_at = CURRENT_TIMESTAMP
+    </insert>
+    
     <select id="selectOne" resultType="Statistic">
         SELECT * FROM statistics 
         WHERE stat_type = #{param1} AND stat_key = #{param2}

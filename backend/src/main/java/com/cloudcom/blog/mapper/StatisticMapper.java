@@ -22,6 +22,12 @@ public interface StatisticMapper {
     int update(Statistic statistic);
     
     /**
+     * 插入或更新统计数据（UPSERT）
+     * 如果记录存在则更新，不存在则插入
+     */
+    int insertOrUpdate(Statistic statistic);
+    
+    /**
      * 查询单个统计数据
      */
     Statistic selectOne(String statType, String statKey);
