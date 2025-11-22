@@ -1,0 +1,160 @@
+version: "3.3"
+
+services:
+  # openGauss 主库
+  opengauss-primary:
+    image: enmotech/opengauss-lite:latest
+    container_name: opengauss-primary
+    hostname: opengauss-primary
+    privileged: true
+    environment:
+      GS_PASSWORD: "Blog@2025"
+      GS_NODENAME: "gaussdb_primary"
+    volumes:
+      - opengauss-primary-data:/var/lib/opengauss
+    ports:
+      - "5432:5432"
+    # healthcheck:
+    #   test: ["CMD-SHELL", "ps aux | grep gaussdb | grep -v grep || exit 1"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 60s
+    networks:
+      opengauss-network:
+        ipv4_address: 172.26.0.10
+    restart: unless-stopped
+
+  # openGauss 备库1
+  opengauss-standby1:
+    image: enmotech/opengauss-lite:latest
+    container_name: opengauss-standby1
+    hostname: opengauss-standby1
+    privileged: true
+    environment:
+      GS_PASSWORD: "Blog@2025"
+      GS_NODENAME: "gaussdb_standby1"
+      GS_PORT: "15432"
+    volumes:
+      - opengauss-standby1-data:/var/lib/opengauss
+    ports:
+      - "5434:15432"
+    depends_on:
+      - opengauss-primary
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep gaussdb | grep -v grep || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    networks:
+      opengauss-network:
+        ipv4_address: 172.26.0.11
+    restart: unless-stopped
+
+  # openGauss 备库2
+  opengauss-standby2:
+    image: enmotech/opengauss-lite:latest
+    container_name: opengauss-standby2
+    hostname: opengauss-standby2
+    privileged: true
+    environment:
+      GS_PASSWORD: "Blog@2025"
+      GS_NODENAME: "gaussdb_standby2"
+      GS_PORT: "25432"
+    volumes:
+      - opengauss-standby2-data:/var/lib/opengauss
+    ports:
+      - "5436:25432"
+    depends_on:
+      - opengauss-primary
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep gaussdb | grep -v grep || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    networks:
+      opengauss-network:
+        ipv4_address: 172.26.0.12
+    restart: unless-stopped
+
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: blogcircle-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: opengauss-cluster
+      SPRING_DATASOURCE_URL: jdbc:opengauss://opengauss-primary:5432/blog_db
+      SPRING_DATASOURCE_USERNAME: bloguser
+      SPRING_DATASOURCE_PASSWORD: "Blog@2025"
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.opengauss.Driver
+      SERVER_PORT: 8080
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx256m -XX:+UseG1GC
+    volumes:
+      - backend-uploads:/app/uploads
+      - ./backend/src/main/resources/application-opengauss-cluster.yml:/app/config/application-opengauss-cluster.yml:ro
+    ports:
+      - "8082:8080"
+    depends_on:
+      - opengauss-primary
+      - opengauss-standby1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - opengauss-network
+    restart: unless-stopped
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: blogcircle-frontend
+    environment:
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - opengauss-network
+    restart: unless-stopped
+
+volumes:
+  opengauss-primary-data:
+    driver: local
+  opengauss-standby1-data:
+    driver: local
+  opengauss-standby2-data:
+    driver: local
+  backend-uploads:
+    driver: local
+
+networks:
+  opengauss-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.26.0.0/16
