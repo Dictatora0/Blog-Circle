@@ -22,13 +22,14 @@ echo -e "${BOLD}${CYAN}═══ Blog Circle 服务状态 ═══${NC}"
 echo ""
 
 if [ "$MODE" = "local" ]; then
-    echo -e "${BOLD}环境：${NC}本地 (localhost)"
+    echo -e "${BOLD}环境：${NC}本地开发环境 (localhost)"
+    echo -e "${BOLD}数据库：${NC}PostgreSQL 15"
     echo ""
     
     # 检查容器状态
     echo -e "${YELLOW}容器状态：${NC}"
     if command -v docker &>/dev/null && docker info &>/dev/null; then
-        docker-compose -f docker-compose-opengauss-cluster.yml ps 2>/dev/null || echo "  无运行中的容器"
+        docker-compose ps 2>/dev/null || echo "  无运行中的容器"
     else
         echo "  Docker 未运行"
     fi
@@ -45,30 +46,16 @@ if [ "$MODE" = "local" ]; then
     fi
     
     # 检查后端
-    echo -n "  • 后端 (8082): "
-    if curl -sf http://localhost:8082/actuator/health &>/dev/null; then
+    echo -n "  • 后端 (8081): "
+    if curl -sf http://localhost:8081/actuator/health &>/dev/null; then
         echo -e "${GREEN}✓ 健康${NC}"
     else
         echo -e "${RED}✗ 停止${NC}"
     fi
     
     # 检查数据库
-    echo -n "  • openGauss 主库 (5432): "
-    if docker exec opengauss-primary su - omm -c "/usr/local/opengauss/bin/gsql -d postgres -c 'SELECT 1'" &>/dev/null; then
-        echo -e "${GREEN}✓ 运行中${NC}"
-    else
-        echo -e "${RED}✗ 停止${NC}"
-    fi
-    
-    echo -n "  • openGauss 备库1 (5434): "
-    if docker exec opengauss-standby1 su - omm -c "PGPORT=15432 /usr/local/opengauss/bin/gsql -d postgres -p 15432 -c 'SELECT 1'" &>/dev/null; then
-        echo -e "${GREEN}✓ 运行中${NC}"
-    else
-        echo -e "${RED}✗ 停止${NC}"
-    fi
-    
-    echo -n "  • openGauss 备库2 (5436): "
-    if docker exec opengauss-standby2 su - omm -c "PGPORT=25432 /usr/local/opengauss/bin/gsql -d postgres -p 25432 -c 'SELECT 1'" &>/dev/null; then
+    echo -n "  • PostgreSQL (5432): "
+    if docker exec blogcircle-db pg_isready -U bloguser -d blog_db &>/dev/null; then
         echo -e "${GREEN}✓ 运行中${NC}"
     else
         echo -e "${RED}✗ 停止${NC}"
@@ -76,6 +63,7 @@ if [ "$MODE" = "local" ]; then
     
 elif [ "$MODE" = "vm" ]; then
     echo -e "${BOLD}环境：${NC}虚拟机 (${VM_IP})"
+    echo -e "${BOLD}数据库：${NC}openGauss 集群"
     echo ""
     
     # 检查 sshpass
@@ -103,7 +91,7 @@ elif [ "$MODE" = "vm" ]; then
     
     echo ""
     echo -e "${YELLOW}容器状态：${NC}"
-    vm_cmd "cd /root/CloudCom && docker-compose -f docker-compose-opengauss-cluster.yml ps" || echo "  无运行中的容器"
+    vm_cmd "cd /root/CloudCom && docker-compose -f docker-compose-opengauss-cluster-legacy.yml ps" || echo "  无运行中的容器"
     
     echo ""
     echo -e "${YELLOW}服务健康检查：${NC}"
@@ -144,7 +132,8 @@ echo -e "${BOLD}常用命令：${NC}"
 if [ "$MODE" = "local" ]; then
     echo "  • 启动服务: ${CYAN}./start-local.sh${NC}"
     echo "  • 停止服务: ${CYAN}./stop-local.sh${NC}"
-    echo "  • 查看日志: ${CYAN}docker-compose -f docker-compose-opengauss-cluster.yml logs -f${NC}"
+    echo "  • 查看日志: ${CYAN}docker-compose logs -f${NC}"
+    echo "  • 数据库连接: ${CYAN}docker exec -it blogcircle-db psql -U bloguser -d blog_db${NC}"
 else
     echo "  • 启动服务: ${CYAN}./start-vm.sh${NC}"
     echo "  • 停止服务: ${CYAN}./stop-vm.sh${NC}"

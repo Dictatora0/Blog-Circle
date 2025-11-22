@@ -2,7 +2,7 @@
 
 ###############################################################
 # Blog Circle 本地启动脚本
-# 使用 docker-compose-opengauss-cluster.yml 启动完整服务
+# 使用 PostgreSQL 数据库（简化开发环境）
 ###############################################################
 
 set -e
@@ -19,7 +19,8 @@ echo ""
 echo -e "${BOLD}${CYAN}╔════════════════════════════════════════════════╗${NC}"
 echo -e "${BOLD}${CYAN}║                                                ║${NC}"
 echo -e "${BOLD}${CYAN}║       Blog Circle 本地启动                     ║${NC}"
-echo -e "${BOLD}${CYAN}║       Local System Startup                     ║${NC}"
+echo -e "${BOLD}${CYAN}║       Local Development Environment            ║${NC}"
+echo -e "${BOLD}${CYAN}║       PostgreSQL + Spring Boot + Vue           ║${NC}"
 echo -e "${BOLD}${CYAN}║                                                ║${NC}"
 echo -e "${BOLD}${CYAN}╚════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -52,66 +53,52 @@ docker-compose --version
 # 停止已有容器
 echo ""
 echo -e "${BLUE}[2/5]${NC} 停止已有容器..."
-docker-compose -f docker-compose-opengauss-cluster.yml down 2>/dev/null || true
+docker-compose down 2>/dev/null || true
 echo -e "${GREEN}✓ 已清理旧容器${NC}"
 
 # 拉取镜像
 echo ""
-echo -e "${BLUE}[3/5]${NC} 拉取 openGauss 镜像..."
-docker pull enmotech/opengauss-lite:latest
+echo -e "${BLUE}[3/5]${NC} 拉取 PostgreSQL 镜像..."
+docker pull postgres:15-alpine
 echo -e "${GREEN}✓ 镜像已就绪${NC}"
 
 # 启动服务
 echo ""
 echo -e "${BLUE}[4/5]${NC} 启动服务..."
-echo "  • 启动 openGauss 三实例集群..."
+echo "  • 启动 PostgreSQL 数据库..."
 echo "  • 构建并启动后端服务..."
 echo "  • 构建并启动前端服务..."
-docker-compose -f docker-compose-opengauss-cluster.yml up -d --build
+docker-compose up -d --build
 
 # 等待服务启动
 echo ""
 echo -e "${BLUE}[5/5]${NC} 等待服务就绪..."
-echo "  • 等待数据库初始化（90秒）..."
-sleep 30
-echo "  • 等待后端服务启动（60秒）..."
-sleep 30
-echo "  • 等待前端服务就绪（30秒）..."
-sleep 30
+echo "  • 等待数据库初始化（10秒）..."
+sleep 10
+echo "  • 等待后端服务启动（20秒）..."
+sleep 20
+echo "  • 等待前端服务就绪（10秒）..."
+sleep 10
 
 # 检查服务状态
 echo ""
 echo -e "${YELLOW}═══ 服务状态 ═══${NC}"
-docker-compose -f docker-compose-opengauss-cluster.yml ps
+docker-compose ps
 
 # 检查健康状态
 echo ""
 echo -e "${YELLOW}═══ 健康检查 ═══${NC}"
 
 # 检查数据库
-echo -n "  • openGauss 主库: "
-if docker exec opengauss-primary su - omm -c "/usr/local/opengauss/bin/gsql -d postgres -c 'SELECT 1'" &>/dev/null; then
-    echo -e "${GREEN}✓ 健康${NC}"
-else
-    echo -e "${YELLOW}⚠ 未就绪${NC}"
-fi
-
-echo -n "  • openGauss 备库1: "
-if docker exec opengauss-standby1 su - omm -c "PGPORT=15432 /usr/local/opengauss/bin/gsql -d postgres -p 15432 -c 'SELECT 1'" &>/dev/null; then
-    echo -e "${GREEN}✓ 健康${NC}"
-else
-    echo -e "${YELLOW}⚠ 未就绪${NC}"
-fi
-
-echo -n "  • openGauss 备库2: "
-if docker exec opengauss-standby2 su - omm -c "PGPORT=25432 /usr/local/opengauss/bin/gsql -d postgres -p 25432 -c 'SELECT 1'" &>/dev/null; then
+echo -n "  • PostgreSQL 数据库: "
+if docker exec blogcircle-db pg_isready -U bloguser -d blog_db &>/dev/null; then
     echo -e "${GREEN}✓ 健康${NC}"
 else
     echo -e "${YELLOW}⚠ 未就绪${NC}"
 fi
 
 echo -n "  • 后端服务: "
-if curl -sf http://localhost:8082/actuator/health &>/dev/null; then
+if curl -sf http://localhost:8081/actuator/health &>/dev/null; then
     echo -e "${GREEN}✓ 健康${NC}"
 else
     echo -e "${YELLOW}⚠ 未就绪（可能仍在初始化）${NC}"
@@ -128,23 +115,26 @@ fi
 echo ""
 echo -e "${BOLD}${GREEN}╔════════════════════════════════════════════════╗${NC}"
 echo -e "${BOLD}${GREEN}║                                                ║${NC}"
-echo -e "${BOLD}${GREEN}║  ✓ 系统启动完成！                             ║${NC}"
-echo -e "${BOLD}${GREEN}║    System Started Successfully!                ║${NC}"
+echo -e "${BOLD}${GREEN}║  ✓ 本地开发环境启动完成！                     ║${NC}"
+echo -e "${BOLD}${GREEN}║    Local Environment Started!                  ║${NC}"
 echo -e "${BOLD}${GREEN}║                                                ║${NC}"
 echo -e "${BOLD}${GREEN}╚════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${BOLD}访问地址：${NC}"
 echo -e "  • 前端：${CYAN}http://localhost:8080${NC}"
-echo -e "  • 后端：${CYAN}http://localhost:8082${NC}"
-echo -e "  • 健康检查：${CYAN}http://localhost:8082/actuator/health${NC}"
+echo -e "  • 后端：${CYAN}http://localhost:8081${NC}"
+echo -e "  • 健康检查：${CYAN}http://localhost:8081/actuator/health${NC}"
 echo ""
 echo -e "${BOLD}数据库连接：${NC}"
-echo -e "  • 主库：${CYAN}localhost:5432${NC}"
-echo -e "  • 备库1：${CYAN}localhost:5434${NC}"
-echo -e "  • 备库2：${CYAN}localhost:5436${NC}"
+echo -e "  • PostgreSQL：${CYAN}localhost:5432${NC}"
+echo -e "  • 数据库名：${CYAN}blog_db${NC}"
+echo -e "  • 用户名：${CYAN}bloguser${NC}"
+echo -e "  • 密码：${CYAN}blogpass${NC}"
 echo ""
 echo -e "${BOLD}常用命令：${NC}"
-echo -e "  • 查看日志：${CYAN}docker-compose -f docker-compose-opengauss-cluster.yml logs -f${NC}"
+echo -e "  • 查看日志：${CYAN}docker-compose logs -f${NC}"
 echo -e "  • 停止服务：${CYAN}./stop-local.sh${NC}"
-echo -e "  • 系统验证：${CYAN}./scripts/full_verify.sh${NC}"
+echo -e "  • 重新构建：${CYAN}docker-compose up -d --build${NC}"
+echo ""
+echo -e "${YELLOW}提示：如需使用 openGauss 集群环境，请使用 start-vm.sh${NC}"
 echo ""

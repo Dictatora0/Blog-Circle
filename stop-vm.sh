@@ -19,7 +19,8 @@ VM_IP="10.211.55.11"
 VM_USER="root"
 VM_PASSWORD="747599qw@"
 VM_PROJECT_DIR="/root/CloudCom"
-COMPOSE_FILE="docker-compose-opengauss-cluster.yml"
+# 使用兼容旧版 Docker Compose 的配置文件
+COMPOSE_FILE="docker-compose-opengauss-cluster-legacy.yml"
 
 echo ""
 echo -e "${BOLD}${YELLOW}╔════════════════════════════════════════════════╗${NC}"
