@@ -15,12 +15,23 @@
     </update>
     
     <insert id="insertOrUpdate" parameterType="Statistic">
-        INSERT INTO statistics (stat_type, stat_key, stat_value, created_at, updated_at)
-        VALUES (#{statType}, #{statKey}, #{statValue}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ON CONFLICT (stat_type, stat_key) 
-        DO UPDATE SET 
-            stat_value = #{statValue},
-            updated_at = CURRENT_TIMESTAMP
+        <!-- openGauss 兼容的 UPSERT 语句 -->
+        MERGE INTO statistics AS target
+        USING (SELECT 
+            #{statType} as stat_type, 
+            #{statKey} as stat_key, 
+            #{statValue} as stat_value,
+            CURRENT_TIMESTAMP as created_at,
+            CURRENT_TIMESTAMP as updated_at
+        ) AS source
+        ON (target.stat_type = source.stat_type AND target.stat_key = source.stat_key)
+        WHEN MATCHED THEN
+            UPDATE SET 
+                stat_value = source.stat_value,
+                updated_at = CURRENT_TIMESTAMP
+        WHEN NOT MATCHED THEN
+            INSERT (stat_type, stat_key, stat_value, created_at, updated_at)
+            VALUES (source.stat_type, source.stat_key, source.stat_value, source.created_at, source.updated_at)
     </insert>
     
     <select id="selectOne" resultType="Statistic">
