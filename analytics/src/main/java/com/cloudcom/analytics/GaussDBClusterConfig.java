@@ -16,15 +16,14 @@ public class GaussDBClusterConfig {
     
     private static final Logger logger = LoggerFactory.getLogger(GaussDBClusterConfig.class);
     
-    // 集群节点配置
-    private static final String PRIMARY_HOST = System.getenv().getOrDefault("GAUSSDB_PRIMARY_HOST", "10.211.55.11");
-    private static final String STANDBY1_HOST = System.getenv().getOrDefault("GAUSSDB_STANDBY1_HOST", "10.211.55.14");
-    private static final String STANDBY2_HOST = System.getenv().getOrDefault("GAUSSDB_STANDBY2_HOST", "10.211.55.13");
-    private static final String PORT = System.getenv().getOrDefault("GAUSSDB_PORT", "5432");
+    // 集群节点配置 - 容器化部署（单虚拟机，不同端口）
+    private static final String VM_HOST = System.getenv().getOrDefault("GAUSSDB_HOST", "10.211.55.11");
+    private static final String PRIMARY_PORT = System.getenv().getOrDefault("GAUSSDB_PRIMARY_PORT", "5432");
+    private static final String STANDBY1_PORT = System.getenv().getOrDefault("GAUSSDB_STANDBY1_PORT", "5434");
+    private static final String STANDBY2_PORT = System.getenv().getOrDefault("GAUSSDB_STANDBY2_PORT", "5436");
     private static final String DATABASE = System.getenv().getOrDefault("GAUSSDB_DATABASE", "blog_db");
     private static final String USERNAME = System.getenv().getOrDefault("GAUSSDB_USERNAME", "bloguser");
-    private static final String PRIMARY_PASSWORD = System.getenv().getOrDefault("GAUSSDB_PRIMARY_PASSWORD", "747599qw@");
-    private static final String STANDBY_PASSWORD = System.getenv().getOrDefault("GAUSSDB_STANDBY_PASSWORD", "747599qw@");
+    private static final String PASSWORD = System.getenv().getOrDefault("GAUSSDB_PASSWORD", "Blog@2025");
     
     // 重试配置
     private static final int MAX_RETRIES = 3;
@@ -34,7 +33,7 @@ public class GaussDBClusterConfig {
      * 获取主库 JDBC URL（写操作）
      */
     public static String getPrimaryJdbcUrl() {
-        return String.format("jdbc:postgresql://%s:%s/%s", PRIMARY_HOST, PORT, DATABASE);
+        return String.format("jdbc:postgresql://%s:%s/%s", VM_HOST, PRIMARY_PORT, DATABASE);
     }
     
     /**
@@ -43,7 +42,7 @@ public class GaussDBClusterConfig {
     public static String getReplicaJdbcUrl() {
         // 返回备库连接串，支持 PostgreSQL JDBC 驱动的负载均衡
         return String.format("jdbc:postgresql://%s:%s,%s:%s/%s?targetServerType=preferSlave&loadBalanceHosts=true",
-            STANDBY1_HOST, PORT, STANDBY2_HOST, PORT, DATABASE);
+            VM_HOST, STANDBY1_PORT, VM_HOST, STANDBY2_PORT, DATABASE);
     }
     
     /**
@@ -52,7 +51,7 @@ public class GaussDBClusterConfig {
     public static Properties getPrimaryConnectionProperties() {
         Properties props = new Properties();
         props.setProperty("user", USERNAME);
-        props.setProperty("password", PRIMARY_PASSWORD);
+        props.setProperty("password", PASSWORD);
         props.setProperty("driver", "org.postgresql.Driver");
         props.setProperty("fetchsize", "1000");
         props.setProperty("batchsize", "1000");
@@ -68,7 +67,7 @@ public class GaussDBClusterConfig {
     public static Properties getReplicaConnectionProperties() {
         Properties props = new Properties();
         props.setProperty("user", USERNAME);
-        props.setProperty("password", PRIMARY_PASSWORD);
+        props.setProperty("password", PASSWORD);
         props.setProperty("driver", "org.postgresql.Driver");
         props.setProperty("fetchsize", "1000");
         props.setProperty("batchsize", "1000");
@@ -185,7 +184,7 @@ public class GaussDBClusterConfig {
             Dataset<Row> primaryTest = spark.read()
                 .jdbc(getPrimaryJdbcUrl(), "(SELECT 1 as test) t", getPrimaryConnectionProperties());
             primaryTest.show();
-            logger.info("主库连接成功: {}", PRIMARY_HOST);
+            logger.info("主库连接成功: {}:{}", VM_HOST, PRIMARY_PORT);
         } catch (Exception e) {
             logger.error("✗ 主库连接失败: {}", e.getMessage(), e);
             throw new RuntimeException("主库连接失败", e);
