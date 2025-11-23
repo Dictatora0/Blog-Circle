@@ -320,5 +320,4 @@ docker-compose -f docker-compose-vm-fixed.yml down
 ---
 
 **报告生成时间**: 2025-11-22 12:45  
-**测试执行人**: Cascade AI Assistant  
 **部署状态**: ✅ 成功
