@@ -12,10 +12,13 @@ RED='\033[0;31m'
 NC='\033[0m'
 BOLD='\033[1m'
 
+# 加载环境变量配置
+[ -f ".env.local" ] && source .env.local
+
 MODE="${1:-local}"
-VM_IP="10.211.55.11"
-VM_USER="root"
-VM_PASSWORD="747599qw@"
+VM_IP="${VM_IP:-10.211.55.11}"
+VM_USER="${VM_USER:-root}"
+VM_PASSWORD="${VM_PASSWORD:-747599qw@}"
 
 echo ""
 echo -e "${BOLD}${CYAN}═══ Blog Circle 服务状态 ═══${NC}"

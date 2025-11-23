@@ -14,13 +14,16 @@ RED='\033[0;31m'
 NC='\033[0m'
 BOLD='\033[1m'
 
-# 虚拟机配置
-VM_IP="10.211.55.11"
-VM_USER="root"
-VM_PASSWORD="747599qw@"
-VM_PROJECT_DIR="/root/CloudCom"
+# 加载环境变量配置
+[ -f ".env.local" ] && source .env.local
+
+# 虚拟机配置（支持环境变量覆盖）
+VM_IP="${VM_IP:-10.211.55.11}"
+VM_USER="${VM_USER:-root}"
+VM_PASSWORD="${VM_PASSWORD:-747599qw@}"
+VM_PROJECT_DIR="${VM_PROJECT_DIR:-/root/CloudCom}"
 # 使用兼容旧版 Docker Compose 的配置文件
-COMPOSE_FILE="docker-compose-opengauss-cluster-legacy.yml"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-opengauss-cluster-legacy.yml}"
 
 echo ""
 echo -e "${BOLD}${YELLOW}╔════════════════════════════════════════════════╗${NC}"

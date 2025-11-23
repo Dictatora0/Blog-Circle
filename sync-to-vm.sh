@@ -14,10 +14,13 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-VM_IP="10.211.55.11"
-VM_USER="root"
-VM_PASSWORD="747599qw@"
-VM_PROJECT_DIR="/root/CloudCom"
+# 加载环境变量配置
+[ -f ".env.local" ] && source .env.local
+
+VM_IP="${VM_IP:-10.211.55.11}"
+VM_USER="${VM_USER:-root}"
+VM_PASSWORD="${VM_PASSWORD:-747599qw@}"
+VM_PROJECT_DIR="${VM_PROJECT_DIR:-/root/CloudCom}"
 
 echo ""
 echo -e "${CYAN}═══ 同步文件到虚拟机 ═══${NC}"

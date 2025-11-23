@@ -7,11 +7,14 @@
 
 set -euo pipefail
 
-# 配置
-VM_IP="10.211.55.11"
-VM_USER="root"
-VM_PASSWORD="747599qw@"
-VM_PROJECT_DIR="CloudCom"
+# 加载环境变量配置
+[ -f ".env.local" ] && source .env.local
+
+# 配置（支持环境变量覆盖）
+VM_IP="${VM_IP:-10.211.55.11}"
+VM_USER="${VM_USER:-root}"
+VM_PASSWORD="${VM_PASSWORD:-747599qw@}"
+VM_PROJECT_DIR="${VM_PROJECT_DIR:-CloudCom}"
 
 # 颜色
 GREEN='\033[0;32m'
