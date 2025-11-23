@@ -85,3 +85,10 @@ derby.log
 
 # Reports
 reports/
+
+# LaTeX 报告副本
+*副本*/
+*_副本/
+
+# 废弃配置
+.env.cluster
