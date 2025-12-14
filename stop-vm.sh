@@ -26,17 +26,12 @@ VM_PROJECT_DIR="${VM_PROJECT_DIR:-/root/CloudCom}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-opengauss-cluster-legacy.yml}"
 
 echo ""
-echo -e "${BOLD}${YELLOW}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${YELLOW}║                                                ║${NC}"
-echo -e "${BOLD}${YELLOW}║       Blog Circle 虚拟机停止                   ║${NC}"
-echo -e "${BOLD}${YELLOW}║       VM System Shutdown                       ║${NC}"
-echo -e "${BOLD}${YELLOW}║                                                ║${NC}"
-echo -e "${BOLD}${YELLOW}╚════════════════════════════════════════════════╝${NC}"
+echo -e "${YELLOW}VM System Shutdown${NC}"
 echo ""
 
 # 检查 sshpass
 if ! command -v sshpass &> /dev/null; then
-    echo -e "${RED}✗ sshpass 未安装${NC}"
+    echo -e "${RED}sshpass 未安装${NC}"
     exit 1
 fi
 
@@ -52,16 +47,16 @@ vm_cmd() {
 # 检查连接
 echo -e "${YELLOW}[1/3]${NC} 检查虚拟机连接..."
 if ! vm_cmd "echo 'Connected'" &>/dev/null; then
-    echo -e "${RED}✗ 无法连接到虚拟机 ${VM_IP}${NC}"
+    echo -e "${RED}无法连接到虚拟机 ${VM_IP}${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓ 虚拟机连接正常${NC}"
+echo -e "${GREEN}虚拟机连接正常${NC}"
 
 # 检查服务状态
 echo ""
 echo -e "${YELLOW}[2/3]${NC} 检查服务状态..."
 if ! vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f ${COMPOSE_FILE} ps | grep -q 'Up'"; then
-    echo -e "${GREEN}✓ 没有运行中的服务${NC}"
+    echo -e "${GREEN}没有运行中的服务${NC}"
     exit 0
 fi
 
@@ -84,7 +79,7 @@ echo "  • 清理容器..."
 vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f ${COMPOSE_FILE} down"
 
 echo ""
-echo -e "${BOLD}${GREEN}✓ 虚拟机服务已停止${NC}"
+echo -e "${BOLD}${GREEN}虚拟机服务已停止${NC}"
 echo ""
 echo -e "${BOLD}提示：${NC}"
 echo "  • 数据已保留在虚拟机的 Docker volumes 中"

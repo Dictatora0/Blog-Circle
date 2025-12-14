@@ -18,9 +18,9 @@ BOLD='\033[1m'
 # 加载环境变量配置
 if [ -f ".env.local" ]; then
     source .env.local
-    echo "✓ 已加载 .env.local 配置"
+    echo "已加载 .env.local 配置"
 else
-    echo "⚠️  未找到 .env.local，使用默认配置"
+    echo "未找到 .env.local，使用默认配置"
 fi
 
 # 虚拟机配置（支持环境变量覆盖）
@@ -32,17 +32,13 @@ VM_PROJECT_DIR="${VM_PROJECT_DIR:-/root/CloudCom}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-opengauss-cluster-legacy.yml}"
 
 echo ""
-echo -e "${BOLD}${CYAN}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${CYAN}║                                                ║${NC}"
-echo -e "${BOLD}${CYAN}║       Blog Circle 虚拟机启动                   ║${NC}"
-echo -e "${BOLD}${CYAN}║       VM System Startup                        ║${NC}"
-echo -e "${BOLD}${CYAN}║                                                ║${NC}"
-echo -e "${BOLD}${CYAN}╚════════════════════════════════════════════════╝${NC}"
+echo -e "${BOLD}${CYAN}Blog Circle 虚拟机启动${NC}"
+echo -e "${CYAN}VM System Startup${NC}"
 echo ""
 
 # 检查 sshpass
 if ! command -v sshpass &> /dev/null; then
-    echo -e "${RED}✗ sshpass 未安装${NC}"
+    echo -e "${RED}sshpass 未安装${NC}"
     echo "安装方法："
     echo "  macOS: brew install hudochenkov/sshpass/sshpass"
     echo "  Linux: sudo apt-get install sshpass"
@@ -61,20 +57,20 @@ vm_cmd() {
 # 检查虚拟机连接
 echo -e "${BLUE}[1/8]${NC} 检查虚拟机连接..."
 if ! vm_cmd "echo 'Connected'" &>/dev/null; then
-    echo -e "${RED}✗ 无法连接到虚拟机 ${VM_IP}${NC}"
+    echo -e "${RED}无法连接到虚拟机 ${VM_IP}${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓ 虚拟机连接正常${NC}"
+echo -e "${GREEN}虚拟机连接正常${NC}"
 
 # 检查项目目录
 echo ""
 echo -e "${BLUE}[2/8]${NC} 检查项目目录..."
 if ! vm_cmd "[ -d ${VM_PROJECT_DIR} ]"; then
-    echo -e "${RED}✗ 项目目录不存在: ${VM_PROJECT_DIR}${NC}"
+    echo -e "${RED}项目目录不存在: ${VM_PROJECT_DIR}${NC}"
     echo "请先部署项目到虚拟机"
     exit 1
 fi
-echo -e "${GREEN}✓ 项目目录存在${NC}"
+echo -e "${GREEN}项目目录存在${NC}"
 
 # 同步配置文件
 echo ""
@@ -89,16 +85,16 @@ if [ -f "scripts/full_verify.sh" ]; then
         scripts/full_verify.sh ${VM_USER}@${VM_IP}:${VM_PROJECT_DIR}/scripts/
     vm_cmd "chmod +x ${VM_PROJECT_DIR}/scripts/full_verify.sh"
 fi
-echo -e "${GREEN}✓ 配置文件同步完成${NC}"
+echo -e "${GREEN}配置文件同步完成${NC}"
 
 # 检查 Docker
 echo ""
 echo -e "${BLUE}[4/8]${NC} 检查 Docker 环境..."
 if ! vm_cmd "docker --version" &>/dev/null; then
-    echo -e "${RED}✗ Docker 未安装${NC}"
+    echo -e "${RED}Docker 未安装${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓ Docker 已安装${NC}"
+echo -e "${GREEN}Docker 已安装${NC}"
 vm_cmd "docker --version"
 
 # 停止已有服务并清理
@@ -108,7 +104,7 @@ vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f ${COMPOSE_FILE} down 2>/dev/nu
 vm_cmd "docker rm -f blogcircle-backend blogcircle-frontend 2>/dev/null || true"
 vm_cmd "docker rm -f opengauss-primary opengauss-standby1 opengauss-standby2 2>/dev/null || true"
 vm_cmd "docker rm -f gaussdb-primary gaussdb-standby1 gaussdb-standby2 2>/dev/null || true"
-echo -e "${GREEN}✓ 已清理旧容器${NC}"
+echo -e "${GREEN}已清理旧容器${NC}"
 
 # 在本地构建并准备所有镜像
 echo ""
@@ -126,18 +122,18 @@ done
 # 构建后端镜像
 echo "  • 构建后端镜像..."
 docker build -t blogcircle-backend:vm ./backend || {
-    echo -e "${RED}✗ 后端镜像构建失败${NC}"
+    echo -e "${RED}后端镜像构建失败${NC}"
     exit 1
 }
 
 # 构建前端镜像
 echo "  • 构建前端镜像..."
 docker build -t blogcircle-frontend:vm ./frontend || {
-    echo -e "${RED}✗ 前端镜像构建失败${NC}"
+    echo -e "${RED}前端镜像构建失败${NC}"
     exit 1
 }
 
-echo -e "${GREEN}✓ 应用镜像构建完成${NC}"
+echo -e "${GREEN}应用镜像构建完成${NC}"
 
 # 传输镜像到虚拟机
 echo ""
@@ -167,7 +163,7 @@ vm_cmd "cd /tmp && \
 # 清理本地临时文件
 rm -rf /tmp/vm-images
 
-echo -e "${GREEN}✓ 镜像传输完成${NC}"
+echo -e "${GREEN}镜像传输完成${NC}"
 
 # 启动服务
 echo ""
@@ -189,42 +185,37 @@ sleep 20
 
 # 检查服务状态
 echo ""
-echo -e "${YELLOW}═══ 服务状态 ═══${NC}"
+echo -e "${YELLOW}服务状态${NC}"
 vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f ${COMPOSE_FILE} ps"
 
 # 检查健康状态
 echo ""
-echo -e "${YELLOW}═══ 健康检查 ═══${NC}"
+echo -e "${YELLOW}健康检查${NC}"
 
 echo -n "  • openGauss 主库: "
 if vm_cmd "docker exec opengauss-primary su - omm -c '/usr/local/opengauss/bin/gsql -d postgres -c \"SELECT 1\"'" &>/dev/null; then
-    echo -e "${GREEN}✓ 健康${NC}"
+    echo -e "${GREEN}健康${NC}"
 else
-    echo -e "${YELLOW}⚠ 未就绪${NC}"
+    echo -e "${YELLOW}未就绪${NC}"
 fi
 
 echo -n "  • 后端服务: "
 if vm_cmd "curl -sf http://localhost:8082/actuator/health" &>/dev/null; then
-    echo -e "${GREEN}✓ 健康${NC}"
+    echo -e "${GREEN}健康${NC}"
 else
-    echo -e "${YELLOW}⚠ 未就绪（可能仍在初始化）${NC}"
+    echo -e "${YELLOW}未就绪（可能仍在初始化）${NC}"
 fi
 
 echo -n "  • 前端服务: "
 if vm_cmd "curl -sf http://localhost:8080" &>/dev/null; then
-    echo -e "${GREEN}✓ 健康${NC}"
+    echo -e "${GREEN}健康${NC}"
 else
-    echo -e "${YELLOW}⚠ 未就绪${NC}"
+    echo -e "${YELLOW}未就绪${NC}"
 fi
 
 # 完成
 echo ""
-echo -e "${BOLD}${GREEN}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${GREEN}║                                                ║${NC}"
-echo -e "${BOLD}${GREEN}║  ✓ 虚拟机服务启动完成！                       ║${NC}"
-echo -e "${BOLD}${GREEN}║    VM System Started Successfully!             ║${NC}"
-echo -e "${BOLD}${GREEN}║                                                ║${NC}"
-echo -e "${BOLD}${GREEN}╚════════════════════════════════════════════════╝${NC}"
+echo -e "${BOLD}${GREEN}虚拟机服务启动完成${NC}"
 echo ""
 echo -e "${BOLD}访问地址：${NC}"
 echo -e "  • 前端：${CYAN}http://${VM_IP}:8080${NC}"

@@ -15,19 +15,15 @@ NC='\033[0m'
 BOLD='\033[1m'
 
 echo ""
-echo -e "${BOLD}${YELLOW}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${YELLOW}║                                                ║${NC}"
-echo -e "${BOLD}${YELLOW}║       Blog Circle 本地停止                     ║${NC}"
-echo -e "${BOLD}${YELLOW}║       Local System Shutdown                    ║${NC}"
-echo -e "${BOLD}${YELLOW}║                                                ║${NC}"
-echo -e "${BOLD}${YELLOW}╚════════════════════════════════════════════════╝${NC}"
+echo -e "${BOLD}${YELLOW}Blog Circle 本地停止${NC}"
+echo -e "${YELLOW}Local System Shutdown${NC}"
 echo ""
 
 # 检查服务状态
 echo -e "${YELLOW}[1/3]${NC} 检查服务状态..."
 if ! docker-compose ps | grep -q "Up"; then
-    echo -e "${GREEN}✓ 没有运行中的服务${NC}"
-    exit 0
+	echo -e "${GREEN}没有运行中的服务${NC}"
+	exit 0
 fi
 
 # 停止服务
@@ -48,7 +44,7 @@ echo -e "${YELLOW}[3/3]${NC} 清理容器..."
 docker-compose down
 
 echo ""
-echo -e "${BOLD}${GREEN}✓ 服务已停止${NC}"
+echo -e "${BOLD}${GREEN}服务已停止${NC}"
 echo ""
 echo -e "${BOLD}提示：${NC}"
 echo "  • 数据已保留在 Docker volumes 中"

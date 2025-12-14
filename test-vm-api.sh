@@ -38,12 +38,8 @@ AUTH_TOKEN=""
 USER_ID=""
 
 echo ""
-echo -e "${BOLD}${CYAN}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${CYAN}║                                                ║${NC}"
-echo -e "${BOLD}${CYAN}║       Blog Circle API 测试                     ║${NC}"
-echo -e "${BOLD}${CYAN}║       API Testing Suite                       ║${NC}"
-echo -e "${BOLD}${CYAN}║                                                ║${NC}"
-echo -e "${BOLD}${CYAN}╚════════════════════════════════════════════════╝${NC}"
+echo -e "${BOLD}${CYAN}Blog Circle API 测试${NC}"
+echo -e "${CYAN}API Testing Suite${NC}"
 echo ""
 echo -e "${BLUE}测试目标: ${BASE_URL}${NC}"
 echo ""
@@ -51,9 +47,9 @@ echo ""
 # 辅助函数：打印测试标题
 print_test() {
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}----------------------------------------${NC}"
     echo -e "${BOLD}[测试 ${TOTAL_TESTS}] $1${NC}"
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}----------------------------------------${NC}"
 }
 
 # 辅助函数：检查响应
@@ -71,24 +67,17 @@ check_response() {
     echo ""
     
     if [ "$http_code" = "$expected_code" ]; then
-        echo -e "${GREEN}✓ 测试通过${NC}"
+        echo -e "${GREEN}测试通过${NC}"
         PASSED_TESTS=$((PASSED_TESTS + 1))
         echo "$test_name: PASSED" >> "$TEST_LOG"
         echo "$body"
         return 0
     else
-        echo -e "${RED}✗ 测试失败 (期望: $expected_code, 实际: $http_code)${NC}"
+        echo -e "${RED}测试失败 (期望: $expected_code, 实际: $http_code)${NC}"
         FAILED_TESTS=$((FAILED_TESTS + 1))
         echo "$test_name: FAILED (Expected: $expected_code, Got: $http_code)" >> "$TEST_LOG"
         return 1
     fi
-}
-
-# 辅助函数：提取 JSON 值
-extract_json() {
-    local json="$1"
-    local key="$2"
-    echo "$json" | grep -o "\"$key\"[^,}]*" | sed 's/"'$key'"://;s/[",]//g' | tr -d ' '
 }
 
 echo -e "${CYAN}开始 API 测试...${NC}"
@@ -428,12 +417,12 @@ db_status=$(echo "$db_health_response" | sed '$d' | grep -o '"db":{"status":"[^"
 
 echo "数据库状态: $db_status"
 if [ "$db_status" = "UP" ]; then
-    echo -e "${GREEN}✓ 数据库连接正常${NC}"
-    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo -e "${GREEN}数据库连接正常${NC}"
+    ((PASSED_TESTS++))
     echo "数据库连接测试: PASSED" >> "$TEST_LOG"
 else
-    echo -e "${RED}✗ 数据库连接异常${NC}"
-    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo -e "${RED}数据库连接异常${NC}"
+    ((FAILED_TESTS++))
     echo "数据库连接测试: FAILED" >> "$TEST_LOG"
 fi
 echo ""
@@ -442,12 +431,7 @@ echo ""
 # 测试总结
 ###############################################################
 echo ""
-echo -e "${BOLD}${CYAN}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${CYAN}║                                                ║${NC}"
-echo -e "${BOLD}${CYAN}║              测试结果总结                      ║${NC}"
-echo -e "${BOLD}${CYAN}║              Test Summary                      ║${NC}"
-echo -e "${BOLD}${CYAN}║                                                ║${NC}"
-echo -e "${BOLD}${CYAN}╚════════════════════════════════════════════════╝${NC}"
+echo -e "${BOLD}${CYAN}测试结果总结 (Test Summary)${NC}"
 echo ""
 
 echo -e "${BOLD}测试统计：${NC}"
@@ -461,7 +445,7 @@ echo -e "  通过率: ${BOLD}${PASS_RATE}%${NC}"
 echo ""
 
 if [ $FAILED_TESTS -eq 0 ]; then
-    echo -e "${GREEN}${BOLD}🎉 所有测试通过！系统运行正常！${NC}"
+    echo -e "${GREEN}${BOLD}所有测试通过，系统运行正常。${NC}"
     echo ""
     echo -e "${CYAN}系统信息：${NC}"
     echo -e "  前端地址: ${FRONTEND_URL}"
@@ -469,7 +453,7 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo -e "  健康检查: ${BASE_URL}/actuator/health"
     EXIT_CODE=0
 else
-    echo -e "${RED}${BOLD}⚠️  有 ${FAILED_TESTS} 个测试失败，请检查系统！${NC}"
+    echo -e "${RED}${BOLD}有 ${FAILED_TESTS} 个测试失败，请检查系统。${NC}"
     echo ""
     echo -e "${YELLOW}查看详细日志：${NC}"
     echo -e "  cat $TEST_LOG"
