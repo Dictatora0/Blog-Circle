@@ -4,6 +4,8 @@
 
 ## 项目概览
 
+本项目通过一个“朋友圈风格”的博客系统，将前端展示、后端业务逻辑、关系型数据库、高可用集群和数据分析串联在一起，解决的是如何在接近真实环境的条件下，完整演示：用户登录与社交互动、数据在 GaussDB 主备集群中的读写分离、高可用保障，以及后续基于访问日志的数据分析与可视化。
+
 - 支持虚拟机环境部署（当前部署在 10.211.55.11）
 - 支持 openGauss 一主两备集群部署
 - 支持读写分离（主库写入、备库读取）
@@ -43,6 +45,12 @@
 - 个人资料管理 (昵称、头像、封面图)
 - 密码加密存储 (BCrypt)
 
+实现说明：
+
+- 后端通过 `AuthController`、`UserController` 提供 `/api/auth` 和 `/api/users` 系列接口，`UserService` + `UserMapper` 负责对 `users` 表的读写。
+- `JwtInterceptor` 统一拦截需要登录的接口，从请求头 `Authorization: Bearer <token>` 中解析并校验 JWT。
+- 所有接口返回值通过 `common/Result` 统一封装，前端在 `frontend/src/api/auth.js` 中封装登录、注册、获取当前用户等调用。
+
 ### 文章系统
 
 - 发布文章 (支持多图上传，最多 9 张)
@@ -50,6 +58,13 @@
 - 文章列表与详情
 - 浏览量统计
 - 好友时间线 (仅显示自己和好友的文章)
+
+实现说明：
+
+- 后端由 `PostController` 提供 `/api/posts` 相关接口，`PostService`、`PostMapper` 和 `Post` 实体类负责文章表的增删改查。
+- 图片上传由 `UploadController` 处理，文件保存路径和访问前缀由 `file.upload.*` 配置控制，对应前端的 `Upload.vue` / `Publish.vue` 等页面。
+- 用户访问文章列表、详情、发布动态时，会在 `access_logs` 表中记录访问行为，为后续统计和 Spark 分析提供数据来源。
+- 前端主要页面位于 `frontend/src/views/Posts.vue`、`PostDetail.vue`、`Timeline.vue` 和 `MyPosts.vue`，通过 `frontend/src/api/post.js` 调用后端接口。
 
 ### 社交功能
 
@@ -59,6 +74,13 @@
 - 文章评论
 - 文章点赞
 
+实现说明：
+
+- 好友相关接口由 `FriendshipController`、`FriendshipService` 和 `Friendship` 实体类实现，对应数据库 `friendship` 表，支持好友申请、同意、拒绝、删除等状态流转。
+- 评论功能由 `CommentController`、`CommentService`、`CommentMapper` 和 `Comment` 实体实现，前端页面包括 `PostDetail.vue`、`MyComments.vue` 等。
+- 点赞功能由 `LikeController`、`LikeService`、`LikeMapper` 和 `Like` 实体实现，接口统一为 `/api/likes` 系列，前端通过 `frontend/src/api/comment.js`、`like` 相关 API 进行调用。
+- 前端社交相关页面集中在 `frontend/src/views/Friends.vue`、`Timeline.vue`、`Home.vue` 等，配合用户登录态展示“我的好友”“好友时间线”等视图。
+
 ### 数据统计
 
 - 实时统计 (文章数、浏览量、点赞数、评论数)
@@ -66,34 +88,64 @@
 - 文章热度排行
 - Spark 大数据分析 (可选)
 
+实现说明：
+
+- 后端由 `StatisticsController` 提供 `/api/stats` 系列接口，`SparkAnalyticsService` 负责执行数据分析逻辑。
+- 当调用 `/api/stats/analyze` 时，服务优先尝试使用 Spark 从 GaussDB 主库读取 `access_logs` 数据，计算发文数、浏览量、评论数等聚合结果；若 Spark 不可用则回退到基于 SQL 的统计逻辑。
+- 分析结果写入 `statistics` 表，并通过 `/api/stats` 接口以聚合 + 明细的形式返回给前端。
+- 前端统计页面位于 `frontend/src/views/Statistics.vue`，通过 `frontend/src/api/statistics.js` 调用上述接口，展示文章数、浏览量、活跃用户数等指标。
+
+### 整体工作流程
+
+1. 用户在浏览器中访问前端页面（登录、时间线、统计、个人中心等）。
+2. 前端页面通过 `frontend/src/api/*.js` 中封装的函数向后端发送 HTTP JSON 请求。
+3. 后端 `controller` 层接收请求，完成参数校验、权限校验后，调用对应的 `service` 层方法。
+4. `service` 层根据业务逻辑调用 MyBatis `mapper` 访问数据库：
+   - 写操作（注册、发布动态、点赞、评论等）默认路由到主库（PRIMARY）。
+   - 只读查询可以使用 `@ReadOnly` 注解，由切面自动路由到备库（REPLICA）。
+5. 数据库操作完成后，后端使用统一的 `Result` 返回结构将结果封装为标准 JSON 响应。
+6. 对关键操作（访问文章、创建动态、评论等），后端向 `access_logs` 表追加访问记录，为后续统计和 Spark 分析提供原始数据。
+7. 当后台或脚本调用 `/api/stats/analyze` 时，`SparkAnalyticsService` 从 GaussDB 读取访问日志，计算聚合统计结果并写入 `statistics` 表。
+8. 前端 `Statistics.vue` 页面通过 `/api/stats` 接口获取统计数据，在页面上展示文章数量、访问量、活跃用户等指标。
+
 ## 项目结构
 
 ```
 CloudCom/
-├── backend/              # Spring Boot 后端
-│   │   │   ├── mapper/          # MyBatis 数据访问层
-│   │   │   ├── entity/          # 实体类
-│   │   │   ├── dto/             # 数据传输对象
-│   │   │   ├── config/          # 配置类
-│   │   │   └── util/            # 工具类
-│   │   └── resources/
-│   │       ├── application.yml  # 主配置文件
-│   │       ├── db/01_init.sql   # 数据库初始化脚本
-│   │       └── mapper/*.xml     # MyBatis SQL 映射
+├── backend/                      # 后端服务代码（Spring Boot）
+│   ├── src/main/java/com/cloudcom/blog/
+│   │   ├── controller/           # HTTP API 控制器
+│   │   ├── service/              # 业务逻辑与领域用例
+│   │   ├── mapper/               # MyBatis 数据访问层
+│   │   ├── entity/               # 领域实体类
+│   │   ├── config/               # 安全配置、数据源配置、Web 配置
+│   │   ├── aspect/annotation/    # 读写分离等 AOP 相关代码
+│   │   └── util/common/          # 工具类、统一返回结构等
+│   ├── src/main/resources/
+│   │   ├── application.yml                   # 本地 PostgreSQL 配置
+│   │   ├── application-gaussdb-cluster.yml   # GaussDB 集群配置（读写分离）
+│   │   ├── db/01_init.sql                    # 数据库初始化脚本
+│   │   └── mapper/*.xml                      # MyBatis SQL 映射
 │   └── pom.xml
-├── frontend/                     # Vue 3 前端
-│   ├── src/
-│   │   ├── views/               # 页面组件
-│   │   ├── components/          # 可复用组件
-│   │   ├── api/                 # API 接口封装
-│   │   ├── stores/              # Pinia 状态管理
-│   │   ├── router/              # 路由配置
-│   │   └── utils/               # 工具函数
-│   ├── tests/                   # 测试文件
+├── frontend/                     # 前端工程（Vue 3 + Vite）
+│   ├── src/views/                # 页面组件（登录、时间线、统计、个人中心等）
+│   ├── src/components/           # 可复用 UI 组件
+│   ├── src/api/                  # 后端 API 封装
+│   ├── src/stores/               # Pinia 状态管理
+│   ├── src/router/               # 路由配置
 │   └── package.json
-├── docker-compose.yml            # Docker 编排配置
-├── start.sh                      # 本地开发启动脚本
-└── stop.sh                       # 本地开发停止脚本
+├── scripts/                      # 部署与维护脚本（full_verify、rebuild-docker-system 等）
+├── analytics/                    # 数据分析相关脚本与说明
+├── docker-compose.yml                               # 本地 PostgreSQL 开发环境
+├── docker-compose-opengauss-cluster.yml             # 本地 GaussDB 集群环境（新语法）
+├── docker-compose-opengauss-cluster-legacy.yml      # 虚拟机 GaussDB 集群（兼容旧版 Docker）
+├── start-local.sh                # 本地 Docker 开发环境启动
+├── stop-local.sh                 # 本地 Docker 开发环境停止
+├── start-vm.sh                   # 虚拟机部署启动（构建并推送镜像）
+├── stop-vm.sh                    # 虚拟机部署停止
+├── status.sh                     # 本地/虚拟机服务状态检查
+├── test-vm-api.sh                # 虚拟机 API 自动化测试脚本
+└── README.md                     # 项目文档
 ```
 
 ## 数据库表结构
