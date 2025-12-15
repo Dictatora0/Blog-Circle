@@ -735,44 +735,54 @@ curl http://localhost:8081/api/stats \
 
 ## 实验验证
 
-### 验证 GaussDB 集群
+### 验证 openGauss 集群
 
-#### 1. 验证主备复制
+**重要说明**：当前配置使用三个独立的 openGauss 实例。应用连接到 `opengauss-primary` 作为主数据库。
+
+#### 快速验证（推荐）
+
+在虚拟机上执行验证脚本：
 
 ```bash
-# 连接主库查看复制状态
-docker exec -it gaussdb-primary gsql -U bloguser -d blog_db \
-  -c "SELECT application_name, state, sync_state FROM pg_stat_replication;"
-
-# 预期输出：
-#  application_name | state     | sync_state
-# ------------------+-----------+------------
-#  standby1         | streaming | async
-#  standby2         | streaming | async
+ssh root@10.211.55.11
+cd ~/CloudCom
+chmod +x scripts/verify-opengauss.sh
+./scripts/verify-opengauss.sh
 ```
 
-#### 2. 验证备库恢复模式
+#### 手动验证步骤
+
+**所有命令需要在虚拟机上执行，或通过 SSH 远程执行**
+
+##### 1. 验证主库连接
 
 ```bash
-# 备库应返回 't' (true)
-docker exec -it gaussdb-standby1 gsql -U bloguser -d blog_db \
-  -c "SELECT pg_is_in_recovery();"
+# 在虚拟机上执行
+docker exec opengauss-primary bash -c 'su - omm -c "gsql -d blog_db -c \"SELECT version();\""'
 
-docker exec -it gaussdb-standby2 gsql -U bloguser -d blog_db \
-  -c "SELECT pg_is_in_recovery();"
+# 或从本地 Mac 通过 SSH 执行
+ssh root@10.211.55.11 "docker exec opengauss-primary bash -c 'su - omm -c \"gsql -d blog_db -c \\\"SELECT version();\\\"\""
 ```
 
-#### 3. 验证读写分离
+##### 2. 检查主库复制状态
 
 ```bash
-# 在主库写入数据
-docker exec -it gaussdb-primary gsql -U bloguser -d blog_db \
-  -c "INSERT INTO users (username, password, email, nickname)
-      VALUES ('test_user', 'password', 'test@example.com', 'Test');"
+# 在虚拟机上执行
+docker exec opengauss-primary bash -c 'su - omm -c "gsql -d blog_db -c \"SELECT application_name, state, sync_state FROM pg_stat_replication;\""'
 
-# 在备库查询数据 (应能查到)
-docker exec -it gaussdb-standby1 gsql -U bloguser -d blog_db \
-  -c "SELECT username FROM users WHERE username='test_user';"
+```
+
+##### 3. 检查数据库表和数据
+
+```bash
+# 查看表结构
+docker exec opengauss-primary bash -c 'su - omm -c "gsql -d blog_db -c \"\\dt\""'
+
+# 查询用户数量
+docker exec opengauss-primary bash -c 'su - omm -c "gsql -d blog_db -c \"SELECT COUNT(*) FROM users;\""'
+
+# 查询文章数量
+docker exec opengauss-primary bash -c 'su - omm -c "gsql -d blog_db -c \"SELECT COUNT(*) FROM posts;\""'
 ```
 
 #### 4. 验证读写分离

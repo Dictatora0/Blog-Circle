@@ -415,6 +415,8 @@ echo ""
 db_health_response=$(curl -s -w "\n%{http_code}" "${BASE_URL}/actuator/health")
 db_status=$(echo "$db_health_response" | sed '$d' | grep -o '"db":{"status":"[^"]*"' | sed 's/"db":{"status":"//;s/"//')
 
+# 通过访问 /actuator/health 接口，解析返回的 JSON，从中提取数据库（db）的健康状态（UP / DOWN），供后续自动化脚本判断系统是否可以继续运行
+
 echo "数据库状态: $db_status"
 if [ "$db_status" = "UP" ]; then
     echo -e "${GREEN}数据库连接正常${NC}"

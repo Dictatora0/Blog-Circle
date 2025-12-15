@@ -149,7 +149,7 @@ docker save -o /tmp/vm-images/backend.tar blogcircle-backend:vm
 echo "  • 导出前端镜像..."
 docker save -o /tmp/vm-images/frontend.tar blogcircle-frontend:vm
 
-echo "  • 传输镜像到虚拟机（约 500MB，请耐心等待 3-5 分钟）..."
+echo "  • 传输镜像到虚拟机..."
 sshpass -p "$VM_PASSWORD" scp -o StrictHostKeyChecking=no \
     /tmp/vm-images/*.tar ${VM_USER}@${VM_IP}:/tmp/
 
@@ -176,11 +176,11 @@ vm_cmd "cd ${VM_PROJECT_DIR} && docker-compose -f ${COMPOSE_FILE} up -d --remove
 # 等待服务就绪
 echo ""
 echo -e "${YELLOW}等待服务就绪...${NC}"
-echo "  • 等待数据库初始化（30秒）..."
+echo "  • 等待数据库初始化..."
 sleep 30
-echo "  • 等待后端服务启动（30秒）..."
+echo "  • 等待后端服务启动..."
 sleep 30
-echo "  • 等待前端服务就绪（20秒）..."
+echo "  • 等待前端服务就绪..."
 sleep 20
 
 # 检查服务状态
@@ -228,7 +228,7 @@ echo -e "  • 备库1：${CYAN}${VM_IP}:5434${NC}"
 echo -e "  • 备库2：${CYAN}${VM_IP}:5436${NC}"
 echo ""
 echo -e "${BOLD}常用命令：${NC}"
-echo -e "  • 查看日志：${CYAN}./scripts/check_db.sh${NC} (在虚拟机上)"
+echo -e "  • 查看日志：${CYAN}./scripts/check_db.sh${NC} \(在虚拟机上\)"
 echo -e "  • 停止服务：${CYAN}./stop-vm.sh${NC}"
-echo -e "  • 系统验证：${CYAN}./scripts/full_verify.sh${NC} (在虚拟机上)"
+echo -e "  • 系统验证：${CYAN}./scripts/full_verify.sh${NC} \(在虚拟机上\)"
 echo ""
