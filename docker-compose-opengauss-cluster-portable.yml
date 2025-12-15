@@ -1,0 +1,162 @@
+version: "3.8"
+
+services:
+  # openGauss 主库
+  opengauss-primary:
+    image: ${OPENGAUSS_IMAGE:-enmotech/opengauss-lite:5.0.0}
+    container_name: opengauss-primary
+    hostname: opengauss-primary
+    privileged: ${PRIVILEGED_MODE:-true}
+    environment:
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD:-Blog@2025}
+      GS_NODENAME: ${OPENGAUSS_PRIMARY_NODENAME:-gaussdb_primary}
+    volumes:
+      - opengauss-primary-data:/var/lib/opengauss
+    ports:
+      - "${OPENGAUSS_PRIMARY_PORT:-5432}:5432"
+    networks:
+      opengauss-network:
+        ipv4_address: ${OPENGAUSS_PRIMARY_IP:-172.26.0.10}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep gaussdb | grep -v grep || exit 1"]
+      interval: ${HEALTHCHECK_INTERVAL:-10}s
+      timeout: ${HEALTHCHECK_TIMEOUT:-5}s
+      retries: ${HEALTHCHECK_RETRIES:-5}
+
+  # openGauss 备库1
+  opengauss-standby1:
+    image: ${OPENGAUSS_IMAGE:-enmotech/opengauss-lite:5.0.0}
+    container_name: opengauss-standby1
+    hostname: opengauss-standby1
+    privileged: ${PRIVILEGED_MODE:-true}
+    environment:
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD:-Blog@2025}
+      GS_NODENAME: ${OPENGAUSS_STANDBY1_NODENAME:-gaussdb_standby1}
+      GS_PORT: ${OPENGAUSS_STANDBY1_PORT:-15432}
+    volumes:
+      - opengauss-standby1-data:/var/lib/opengauss
+    ports:
+      - "${OPENGAUSS_STANDBY1_MAPPED_PORT:-5434}:${OPENGAUSS_STANDBY1_PORT:-15432}"
+    depends_on:
+      - opengauss-primary
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep gaussdb | grep -v grep || exit 1"]
+      interval: ${HEALTHCHECK_INTERVAL:-10}s
+      timeout: ${HEALTHCHECK_TIMEOUT:-5}s
+      retries: ${HEALTHCHECK_RETRIES:-5}
+    networks:
+      opengauss-network:
+        ipv4_address: ${OPENGAUSS_STANDBY1_IP:-172.26.0.11}
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+  # openGauss 备库2
+  opengauss-standby2:
+    image: ${OPENGAUSS_IMAGE:-enmotech/opengauss-lite:5.0.0}
+    container_name: opengauss-standby2
+    hostname: opengauss-standby2
+    privileged: ${PRIVILEGED_MODE:-true}
+    environment:
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD:-Blog@2025}
+      GS_NODENAME: ${OPENGAUSS_STANDBY2_NODENAME:-gaussdb_standby2}
+      GS_PORT: ${OPENGAUSS_STANDBY2_PORT:-25432}
+    volumes:
+      - opengauss-standby2-data:/var/lib/opengauss
+    ports:
+      - "${OPENGAUSS_STANDBY2_MAPPED_PORT:-5436}:${OPENGAUSS_STANDBY2_PORT:-25432}"
+    depends_on:
+      - opengauss-primary
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep gaussdb | grep -v grep || exit 1"]
+      interval: ${HEALTHCHECK_INTERVAL:-10}s
+      timeout: ${HEALTHCHECK_TIMEOUT:-5}s
+      retries: ${HEALTHCHECK_RETRIES:-5}
+    networks:
+      opengauss-network:
+        ipv4_address: ${OPENGAUSS_STANDBY2_IP:-172.26.0.12}
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+  # 后端服务
+  backend:
+    image: blogcircle-backend:${BACKEND_IMAGE_TAG:-vm}
+    container_name: blogcircle-backend
+    privileged: ${PRIVILEGED_MODE:-true}
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    environment:
+      SPRING_PROFILES_ACTIVE: opengauss-cluster
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:opengauss://opengauss-primary:5432/blog_db}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-bloguser}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-Blog@2025}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:-org.opengauss.Driver}
+      SERVER_PORT: ${BACKEND_PORT:-8080}
+      JAVA_TOOL_OPTIONS: -Xms${JAVA_XMS:-64m} -Xmx${JAVA_XMX:-128m} -XX:+UseSerialGC
+    volumes:
+      - backend-uploads:/app/uploads
+    ports:
+      - "${BACKEND_MAPPED_PORT:-8082}:${BACKEND_PORT:-8080}"
+    depends_on:
+      opengauss-primary:
+        condition: service_healthy
+      opengauss-standby1:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:${BACKEND_PORT:-8080}/actuator/health",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - opengauss-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+  # 前端服务
+  frontend:
+    image: blogcircle-frontend:${FRONTEND_IMAGE_TAG:-vm}
+    container_name: blogcircle-frontend
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
+    ports:
+      - "${FRONTEND_MAPPED_PORT:-8080}:${FRONTEND_PORT:-8080}"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:${FRONTEND_PORT:-8080}/",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL:-10}s
+      timeout: ${HEALTHCHECK_TIMEOUT:-5}s
+      retries: ${HEALTHCHECK_RETRIES:-5}
+    networks:
+      - opengauss-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+volumes:
+  opengauss-primary-data:
+    driver: ${VOLUME_DRIVER:-local}
+  opengauss-standby1-data:
+    driver: ${VOLUME_DRIVER:-local}
+  opengauss-standby2-data:
+    driver: ${VOLUME_DRIVER:-local}
+  backend-uploads:
+    driver: ${VOLUME_DRIVER:-local}
+
+networks:
+  opengauss-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${DOCKER_NETWORK_SUBNET:-172.26.0.0/16}

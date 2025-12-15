@@ -28,7 +28,7 @@ for i in $(seq 1 30); do\n\
         break\n\
     fi\n\
     if [ $i -eq 30 ]; then\n\
-        echo "⚠ Backend 未响应，继续启动 Nginx"\n\
+        echo "Backend 未响应，继续启动 Nginx"\n\
     fi\n\
     sleep 1\n\
 done\n\
