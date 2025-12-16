@@ -1,22 +1,22 @@
 # Maven
-backend/target/
-backend/.mvn/
-backend/mvnw
-backend/mvnw.cmd
-backend/*.jar
-backend/*.war
-analytics/target/
+apps/backend/target/
+apps/backend/.mvn/
+apps/backend/mvnw
+apps/backend/mvnw.cmd
+apps/backend/*.jar
+apps/backend/*.war
+apps/analytics/target/
 
 # Node
-frontend/node_modules/
-frontend/dist/
-frontend/.temp/
-frontend/.cache/
-frontend/coverage/
-frontend/test-results/
-frontend/playwright-report/
-frontend/.vite/
-frontend/.vitest/
+apps/frontend/node_modules/
+apps/frontend/dist/
+apps/frontend/.temp/
+apps/frontend/.cache/
+apps/frontend/coverage/
+apps/frontend/test-results/
+apps/frontend/playwright-report/
+apps/frontend/.vite/
+apps/frontend/.vitest/
 
 # IDE
 .idea/
@@ -32,8 +32,8 @@ frontend/.vitest/
 # Logs
 *.log
 logs/
-backend/*.log
-frontend/*.log
+apps/backend/*.log
+apps/frontend/*.log
 
 # Environment
 .env
@@ -57,10 +57,24 @@ dist/
 build/
 out/
 
-# OS
+# OS / macOS artifacts
 Thumbs.db
-.DS_Store
 Desktop.ini
+.DS_Store
+.DS_Store?
+**/.DS_Store
+**/.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.AppleDB
+.AppleDesktop
+.DocumentRevisions-V100
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
 
 # Temporary files
 *.tmp
@@ -73,7 +87,7 @@ Desktop.ini
 *.pid
 
 # Uploads (可选，如果不想提交上传的文件)
-backend/uploads/
+apps/backend/uploads/
 
 # Docker images
 *.tar
