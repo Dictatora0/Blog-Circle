@@ -1,0 +1,107 @@
+spring:
+  application:
+    name: blog-circle
+
+  datasource:
+    # 主库配置（写操作）
+    primary:
+      jdbc-url: jdbc:opengauss://${OPENGAUSS_PRIMARY_HOST:opengauss-primary}:${OPENGAUSS_PRIMARY_PORT:5432}/${OPENGAUSS_DATABASE:blog_db}
+      username: ${OPENGAUSS_USERNAME:bloguser}
+      password: ${OPENGAUSS_PASSWORD:Blog@2025}
+      driver-class-name: org.opengauss.Driver
+      hikari:
+        maximum-pool-size: 10
+        minimum-idle: 2
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        pool-name: PrimaryHikariPool
+        connection-test-query: SELECT 1
+
+    # 备库1配置（读操作）
+    replica1:
+      jdbc-url: jdbc:opengauss://${OPENGAUSS_STANDBY1_HOST:opengauss-standby1}:${OPENGAUSS_STANDBY1_PORT:5432}/${OPENGAUSS_DATABASE:blog_db}
+      username: ${OPENGAUSS_USERNAME:bloguser}
+      password: ${OPENGAUSS_PASSWORD:Blog@2025}
+      driver-class-name: org.opengauss.Driver
+      hikari:
+        maximum-pool-size: 10
+        minimum-idle: 2
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        pool-name: Replica1HikariPool
+        connection-test-query: SELECT 1
+
+    # 备库2配置（读操作）
+    replica2:
+      jdbc-url: jdbc:opengauss://${OPENGAUSS_STANDBY2_HOST:opengauss-standby2}:${OPENGAUSS_STANDBY2_PORT:5432}/${OPENGAUSS_DATABASE:blog_db}
+      username: ${OPENGAUSS_USERNAME:bloguser}
+      password: ${OPENGAUSS_PASSWORD:Blog@2025}
+      driver-class-name: org.opengauss.Driver
+      hikari:
+        maximum-pool-size: 10
+        minimum-idle: 2
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        pool-name: Replica2HikariPool
+        connection-test-query: SELECT 1
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# JWT配置
+jwt:
+  secret: cloudcom-blog-circle-secret-key-2025-gaussdb-cluster
+  expiration: 86400000 # 24小时
+
+# Spark配置
+spark:
+  enabled: false # 容器环境中默认禁用
+  master: local[*]
+  app-name: blog-analytics
+
+# 服务器配置
+server:
+  port: 8080
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+# 日志配置
+logging:
+  level:
+    com.cloudcom.blog: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+  file:
+    name: logs/application.log
+
+# 健康检查配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

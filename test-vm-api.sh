@@ -15,10 +15,24 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 BOLD='\033[1m'
 
-# 虚拟机配置
-VM_IP="10.211.55.11"
-BASE_URL="http://${VM_IP}:8082"
-FRONTEND_URL="http://${VM_IP}:8080"
+# 加载环境变量
+if [ -f ".env" ]; then
+    set -a
+    source .env
+    set +a
+fi
+
+# 虚拟机配置（在 .env 中提供）
+if [ -z "${VM_IP}" ] || [ -z "${HOST_BACKEND_PORT}" ] || [ -z "${HOST_FRONTEND_PORT}" ]; then
+    echo -e "${RED}VM_IP / HOST_BACKEND_PORT / HOST_FRONTEND_PORT 未配置，请在 .env 中设置${NC}"
+    exit 1
+fi
+
+VM_IP="${VM_IP}"
+HOST_BACKEND_PORT="${HOST_BACKEND_PORT}"
+HOST_FRONTEND_PORT="${HOST_FRONTEND_PORT}"
+BASE_URL="http://${VM_IP}:${HOST_BACKEND_PORT}"
+FRONTEND_URL="http://${VM_IP}:${HOST_FRONTEND_PORT}"
 
 # 测试统计
 TOTAL_TESTS=0

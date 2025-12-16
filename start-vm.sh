@@ -15,21 +15,43 @@ RED='\033[0;31m'
 NC='\033[0m'
 BOLD='\033[1m'
 
-# 加载环境变量配置
-if [ -f ".env.local" ]; then
-    source .env.local
-    echo "已加载 .env.local 配置"
-else
-    echo "未找到 .env.local，使用默认配置"
-fi
+# 加载环境变量配置（处理包含空格的值）
+load_env_file() {
+    local env_file="$1"
+    if [ ! -f "$env_file" ]; then
+        echo "未找到 $env_file，无法继续"
+        exit 1
+    fi
+
+    local tmp_env
+    tmp_env=$(mktemp 2>/dev/null || mktemp -t env)
+
+    awk 'BEGIN {FS=OFS="="}
+        /^JAVA_TOOL_OPTIONS=/ {
+            sub(/^JAVA_TOOL_OPTIONS=/,"")
+            printf("JAVA_TOOL_OPTIONS=\"%s\"\n", $0)
+            next
+        }
+        {print}
+    ' "$env_file" > "$tmp_env"
+
+    set -a
+    # shellcheck disable=SC1090
+    source "$tmp_env"
+    set +a
+    rm -f "$tmp_env"
+    echo "已加载 $env_file 配置"
+}
+
+load_env_file ".env"
 
 # 虚拟机配置（支持环境变量覆盖）
-VM_IP="${VM_IP:-10.211.55.11}"
+VM_IP="${VM_IP:-${REMOTE_VM_IP:-10.211.55.11}}"
 VM_USER="${VM_USER:-root}"
-VM_PASSWORD="${VM_PASSWORD:-747599qw@}"
+VM_PASSWORD="${VM_PASSWORD:-${REMOTE_VM_PASSWORD:-password}}"
 VM_PROJECT_DIR="${VM_PROJECT_DIR:-/root/CloudCom}"
 # 使用兼容旧版 Docker Compose 的配置文件
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-opengauss-cluster-legacy.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-infra/docker-compose/opengauss-cluster-legacy.yml}"
 
 echo ""
 echo -e "${BOLD}${CYAN}Blog Circle 虚拟机启动${NC}"
@@ -76,15 +98,14 @@ echo -e "${GREEN}项目目录存在${NC}"
 echo ""
 echo -e "${BLUE}[3/8]${NC} 同步配置文件到虚拟机..."
 echo "  • 同步 Docker Compose 配置（兼容版本）..."
+vm_cmd "mkdir -p ${VM_PROJECT_DIR}/infra/docker-compose"
 sshpass -p "$VM_PASSWORD" scp -o StrictHostKeyChecking=no \
-    docker-compose-opengauss-cluster-legacy.yml ${VM_USER}@${VM_IP}:${VM_PROJECT_DIR}/
-echo "  • 同步脚本文件..."
-vm_cmd "mkdir -p ${VM_PROJECT_DIR}/scripts"
-if [ -f "scripts/full_verify.sh" ]; then
-    sshpass -p "$VM_PASSWORD" scp -o StrictHostKeyChecking=no \
-        scripts/full_verify.sh ${VM_USER}@${VM_IP}:${VM_PROJECT_DIR}/scripts/
-    vm_cmd "chmod +x ${VM_PROJECT_DIR}/scripts/full_verify.sh"
-fi
+    ${COMPOSE_FILE} ${VM_USER}@${VM_IP}:${VM_PROJECT_DIR}/${COMPOSE_FILE}
+echo "  • 同步环境变量 (.env)..."
+sshpass -p "$VM_PASSWORD" scp -o StrictHostKeyChecking=no \
+    .env ${VM_USER}@${VM_IP}:${VM_PROJECT_DIR}/.env
+sshpass -p "$VM_PASSWORD" scp -o StrictHostKeyChecking=no \
+    .env ${VM_USER}@${VM_IP}:${VM_PROJECT_DIR}/infra/docker-compose/.env
 echo -e "${GREEN}配置文件同步完成${NC}"
 
 # 检查 Docker
@@ -121,14 +142,14 @@ done
 
 # 构建后端镜像
 echo "  • 构建后端镜像..."
-docker build -t blogcircle-backend:vm ./backend || {
+docker build -t blogcircle-backend:vm ./apps/backend || {
     echo -e "${RED}后端镜像构建失败${NC}"
     exit 1
 }
 
 # 构建前端镜像
 echo "  • 构建前端镜像..."
-docker build -t blogcircle-frontend:vm ./frontend || {
+docker build -t blogcircle-frontend:vm ./apps/frontend || {
     echo -e "${RED}前端镜像构建失败${NC}"
     exit 1
 }

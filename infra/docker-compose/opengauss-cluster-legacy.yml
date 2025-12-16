@@ -1,0 +1,158 @@
+version: "3.3"
+
+services:
+  # openGauss primary instance
+  opengauss-primary:
+    image: enmotech/opengauss-lite:latest
+    hostname: ${OPENGAUSS_PRIMARY_HOST:-opengauss-primary}
+    env_file:
+      - .env
+    environment:
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD}
+      GS_NODENAME: ${OPENGAUSS_PRIMARY_NODENAME:-gaussdb_primary}
+      GS_PORT: ${OPENGAUSS_PRIMARY_PORT}
+    volumes:
+      - opengauss-primary-data:/var/lib/opengauss
+    ports:
+      - "${HOST_PRIMARY_DB_PORT:-5432}:${OPENGAUSS_PRIMARY_PORT:-5432}"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - ps aux | grep gaussdb | grep -v grep || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  # openGauss standby 1
+  opengauss-standby1:
+    image: enmotech/opengauss-lite:latest
+    hostname: ${OPENGAUSS_STANDBY1_HOST:-opengauss-standby1}
+    env_file:
+      - .env
+    environment:
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD}
+      GS_NODENAME: ${OPENGAUSS_STANDBY1_NODENAME:-gaussdb_standby1}
+      GS_PORT: ${OPENGAUSS_STANDBY1_PORT}
+    volumes:
+      - opengauss-standby1-data:/var/lib/opengauss
+    ports:
+      - "${HOST_STANDBY1_DB_PORT:-5434}:${OPENGAUSS_STANDBY1_PORT:-15432}"
+    depends_on:
+      - opengauss-primary
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - ps aux | grep gaussdb | grep -v grep || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  # openGauss standby 2
+  opengauss-standby2:
+    image: enmotech/opengauss-lite:latest
+    hostname: ${OPENGAUSS_STANDBY2_HOST:-opengauss-standby2}
+    env_file:
+      - .env
+    environment:
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD}
+      GS_NODENAME: ${OPENGAUSS_STANDBY2_NODENAME:-gaussdb_standby2}
+      GS_PORT: ${OPENGAUSS_STANDBY2_PORT}
+    volumes:
+      - opengauss-standby2-data:/var/lib/opengauss
+    ports:
+      - "${HOST_STANDBY2_DB_PORT:-5436}:${OPENGAUSS_STANDBY2_PORT:-25432}"
+    depends_on:
+      - opengauss-primary
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - ps aux | grep gaussdb | grep -v grep || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  # Spring Boot backend
+  backend:
+    image: blogcircle-backend:vm
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      SPRING_DATASOURCE_PRIMARY_JDBCURL: "jdbc:opengauss://opengauss-primary:${OPENGAUSS_PRIMARY_PORT}/${OPENGAUSS_DATABASE}"
+      SPRING_DATASOURCE_PRIMARY_USERNAME: ${OPENGAUSS_USERNAME}
+      SPRING_DATASOURCE_PRIMARY_PASSWORD: ${OPENGAUSS_PASSWORD}
+      SPRING_DATASOURCE_REPLICA1_JDBCURL: "jdbc:opengauss://opengauss-primary:${OPENGAUSS_PRIMARY_PORT}/${OPENGAUSS_DATABASE}"
+      SPRING_DATASOURCE_REPLICA1_USERNAME: ${OPENGAUSS_USERNAME}
+      SPRING_DATASOURCE_REPLICA1_PASSWORD: ${OPENGAUSS_PASSWORD}
+      SPRING_DATASOURCE_REPLICA2_JDBCURL: "jdbc:opengauss://opengauss-primary:${OPENGAUSS_PRIMARY_PORT}/${OPENGAUSS_DATABASE}"
+      SPRING_DATASOURCE_REPLICA2_USERNAME: ${OPENGAUSS_USERNAME}
+      SPRING_DATASOURCE_REPLICA2_PASSWORD: ${OPENGAUSS_PASSWORD}
+      SERVER_PORT: ${BACKEND_CONTAINER_PORT}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS}
+      PGPASSWORD: ${OPENGAUSS_PASSWORD}
+    command:
+      - /bin/sh
+      - -c
+      - |
+        if ! command -v pg_isready >/dev/null 2>&1; then
+          apt-get update && \
+          apt-get install -y postgresql-client && \
+          rm -rf /var/lib/apt/lists/*
+        fi
+        until pg_isready -h opengauss-primary -p ${OPENGAUSS_PRIMARY_PORT} -U ${OPENGAUSS_USERNAME}; do
+          echo "Waiting for openGauss primary..."
+          sleep 5
+        done
+        exec java -jar app.jar
+    volumes:
+      - backend-uploads:/app/uploads
+    ports:
+      - "${HOST_BACKEND_PORT:-8082}:${BACKEND_CONTAINER_PORT:-8080}"
+    security_opt:
+      - seccomp=unconfined
+    depends_on:
+      - opengauss-primary
+      - opengauss-standby1
+    healthcheck:
+      test:
+        - CMD
+        - /bin/sh
+        - -c
+        - curl -f http://localhost:${BACKEND_CONTAINER_PORT}/actuator/health || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    image: blogcircle-frontend:vm
+    env_file:
+      - .env
+    environment:
+      BACKEND_URL: ${FRONTEND_BACKEND_URL}
+    ports:
+      - "${HOST_FRONTEND_PORT:-8080}:${FRONTEND_CONTAINER_PORT:-8080}"
+    depends_on:
+      - backend
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --tries=1
+        - --spider
+        - http://localhost:${FRONTEND_CONTAINER_PORT}/
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  opengauss-primary-data:
+  opengauss-standby1-data:
+  opengauss-standby2-data:
+  backend-uploads:

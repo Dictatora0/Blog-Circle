@@ -15,6 +15,19 @@ RED='\033[0;31m'
 NC='\033[0m'
 BOLD='\033[1m'
 
+# 加载环境变量
+if [ -f ".env" ]; then
+    set -a
+    source .env
+    set +a
+fi
+
+POSTGRES_DB="${LOCAL_POSTGRES_DB:-blog_db}"
+POSTGRES_USER="${LOCAL_POSTGRES_USER:-bloguser}"
+POSTGRES_PASSWORD="${LOCAL_POSTGRES_PASSWORD:-blogpass}"
+LOCAL_BACKEND_PORT="${LOCAL_BACKEND_PORT:-8081}"
+LOCAL_FRONTEND_PORT="${LOCAL_FRONTEND_PORT:-8080}"
+
 echo ""
 echo -e "${BOLD}${CYAN}Blog Circle 本地启动${NC}"
 echo -e "${CYAN}Local Development Environment${NC}"
@@ -87,21 +100,21 @@ echo -e "${YELLOW}健康检查${NC}"
 
 # 检查数据库
 echo -n "  • PostgreSQL 数据库: "
-if docker exec blogcircle-db pg_isready -U bloguser -d blog_db &>/dev/null; then
+if docker exec blogcircle-db pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} &>/dev/null; then
 	echo -e "${GREEN}健康${NC}"
 else
 	echo -e "${YELLOW}未就绪${NC}"
 fi
 
 echo -n "  • 后端服务: "
-if curl -sf http://localhost:8081/actuator/health &>/dev/null; then
+if curl -sf http://localhost:${LOCAL_BACKEND_PORT}/actuator/health &>/dev/null; then
 	echo -e "${GREEN}健康${NC}"
 else
 	echo -e "${YELLOW}未就绪（可能仍在初始化）${NC}"
 fi
 
 echo -n "  • 前端服务: "
-if curl -sf http://localhost:8080 &>/dev/null; then
+if curl -sf http://localhost:${LOCAL_FRONTEND_PORT} &>/dev/null; then
 	echo -e "${GREEN}健康${NC}"
 else
 	echo -e "${YELLOW}未就绪${NC}"
@@ -113,15 +126,15 @@ echo -e "${BOLD}${GREEN}本地开发环境启动完成${NC}"
 echo -e "${GREEN}Local Environment Started${NC}"
 echo ""
 echo -e "${BOLD}访问地址：${NC}"
-echo -e "  • 前端：${CYAN}http://localhost:8080${NC}"
-echo -e "  • 后端：${CYAN}http://localhost:8081${NC}"
-echo -e "  • 健康检查：${CYAN}http://localhost:8081/actuator/health${NC}"
+echo -e "  • 前端：${CYAN}http://localhost:${LOCAL_FRONTEND_PORT}${NC}"
+echo -e "  • 后端：${CYAN}http://localhost:${LOCAL_BACKEND_PORT}${NC}"
+echo -e "  • 健康检查：${CYAN}http://localhost:${LOCAL_BACKEND_PORT}/actuator/health${NC}"
 echo ""
 echo -e "${BOLD}数据库连接：${NC}"
 echo -e "  • PostgreSQL：${CYAN}localhost:5432${NC}"
-echo -e "  • 数据库名：${CYAN}blog_db${NC}"
-echo -e "  • 用户名：${CYAN}bloguser${NC}"
-echo -e "  • 密码：${CYAN}blogpass${NC}"
+echo -e "  • 数据库名：${CYAN}${POSTGRES_DB}${NC}"
+echo -e "  • 用户名：${CYAN}${POSTGRES_USER}${NC}"
+echo -e "  • 密码：${CYAN}${POSTGRES_PASSWORD}${NC}"
 echo ""
 echo -e "${BOLD}常用命令：${NC}"
 echo -e "  • 查看日志：${CYAN}docker-compose logs -f${NC}"

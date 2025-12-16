@@ -14,16 +14,39 @@ RED='\033[0;31m'
 NC='\033[0m'
 BOLD='\033[1m'
 
-# 加载环境变量配置
-[ -f ".env.local" ] && source .env.local
+# 加载环境变量（兼容包含空格的值）
+load_env_file() {
+    local env_file="$1"
+    [ -f "$env_file" ] || return
+
+    local tmp_env
+    tmp_env=$(mktemp 2>/dev/null || mktemp -t env)
+
+    awk 'BEGIN {FS=OFS="="}
+        /^JAVA_TOOL_OPTIONS=/ {
+            sub(/^JAVA_TOOL_OPTIONS=/,"")
+            printf("JAVA_TOOL_OPTIONS=\"%s\"\n", $0)
+            next
+        }
+        {print}
+    ' "$env_file" > "$tmp_env"
+
+    set -a
+    # shellcheck disable=SC1090
+    source "$tmp_env"
+    set +a
+    rm -f "$tmp_env"
+}
+
+load_env_file ".env"
 
 # 虚拟机配置（支持环境变量覆盖）
-VM_IP="${VM_IP:-10.211.55.11}"
+VM_IP="${VM_IP:-${REMOTE_VM_IP:-10.211.55.11}}"
 VM_USER="${VM_USER:-root}"
-VM_PASSWORD="${VM_PASSWORD:-747599qw@}"
+VM_PASSWORD="${VM_PASSWORD:-${REMOTE_VM_PASSWORD:-password}}"
 VM_PROJECT_DIR="${VM_PROJECT_DIR:-/root/CloudCom}"
 # 使用兼容旧版 Docker Compose 的配置文件
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-opengauss-cluster-legacy.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-infra/docker-compose/opengauss-cluster-legacy.yml}"
 
 echo ""
 echo -e "${YELLOW}VM System Shutdown${NC}"
